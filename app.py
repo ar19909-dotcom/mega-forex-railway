@@ -58,6 +58,45 @@ def handle_preflight():
         return add_cors_headers(response)
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# IN-MEMORY CACHING SYSTEM (for faster responses)
+# ═══════════════════════════════════════════════════════════════════════════════
+import threading
+import time as time_module
+
+class SimpleCache:
+    def __init__(self):
+        self.data = {}
+        self.timestamps = {}
+        self.lock = threading.Lock()
+    
+    def get(self, key, max_age=60):
+        """Get cached data if not expired"""
+        with self.lock:
+            if key in self.data and key in self.timestamps:
+                age = time_module.time() - self.timestamps[key]
+                if age < max_age:
+                    logger.info(f"Cache HIT for {key} (age: {age:.1f}s)")
+                    return self.data[key]
+                else:
+                    logger.info(f"Cache EXPIRED for {key} (age: {age:.1f}s)")
+        return None
+    
+    def set(self, key, value):
+        """Set cache data"""
+        with self.lock:
+            self.data[key] = value
+            self.timestamps[key] = time_module.time()
+            logger.info(f"Cache SET for {key}")
+
+# Global cache instance
+cache = SimpleCache()
+
+# Cache durations (seconds)
+CACHE_SIGNALS = 60   # Cache signals for 60 seconds
+CACHE_RATES = 30     # Cache rates for 30 seconds
+CACHE_NEWS = 300     # Cache news for 5 minutes
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # API KEYS
 # ═══════════════════════════════════════════════════════════════════════════════
 POLYGON_API_KEY = os.getenv('POLYGON_API_KEY', '')
@@ -2606,34 +2645,70 @@ def icon_512():
 
 @app.route('/rates')
 def get_rates_endpoint():
+    # Check cache first
+    cached_rates = cache.get('rates', CACHE_RATES)
+    if cached_rates:
+        return jsonify({
+            'success': True,
+            'count': len(cached_rates),
+            'timestamp': datetime.now().isoformat(),
+            'cached': True,
+            'rates': cached_rates
+        })
+    
     rates = get_all_rates()
+    
+    # Cache the results
+    cache.set('rates', rates)
+    
     return jsonify({
         'success': True,
         'count': len(rates),
         'timestamp': datetime.now().isoformat(),
+        'cached': False,
         'rates': rates
     })
 
 @app.route('/signals')
 def get_signals():
     try:
+        # Check cache first
+        cached_signals = cache.get('signals', CACHE_SIGNALS)
+        if cached_signals:
+            return jsonify({
+                'success': True,
+                'count': len(cached_signals),
+                'timestamp': datetime.now().isoformat(),
+                'version': '8.2',
+                'cached': True,
+                'signals': cached_signals
+            })
+        
+        # Generate fresh signals
         signals = []
         
         with ThreadPoolExecutor(max_workers=10) as executor:
             future_to_pair = {executor.submit(generate_signal, pair): pair for pair in FOREX_PAIRS}
             
-            for future in as_completed(future_to_pair):
-                signal = future.result()
-                if signal:
-                    signals.append(signal)
+            for future in as_completed(future_to_pair, timeout=45):
+                try:
+                    signal = future.result(timeout=10)
+                    if signal:
+                        signals.append(signal)
+                except Exception as e:
+                    logger.warning(f"Signal generation timeout: {e}")
         
         signals.sort(key=lambda x: x['composite_score'], reverse=True)
+        
+        # Cache the results
+        cache.set('signals', signals)
         
         return jsonify({
             'success': True,
             'count': len(signals),
             'timestamp': datetime.now().isoformat(),
-            'version': '8.1',
+            'version': '8.2',
+            'cached': False,
             'signals': signals
         })
     
