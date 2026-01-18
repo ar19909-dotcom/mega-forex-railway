@@ -2,21 +2,18 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="theme-color" content="#0a0e17">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MEGA FOREX v8.2 PRO - Professional Trading Dashboard</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#3b82f6">
+    <meta name="description" content="Professional 45-Pair Forex Trading Dashboard">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/icon-192.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="MEGA FOREX">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="format-detection" content="telephone=no">
-    <meta name="description" content="MEGA FOREX v8.2 PRO - Professional 45-Pair Trading Dashboard">
     
-    <!-- PWA Manifest -->
-    <link rel="manifest" href="/manifest.json">
-    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
-    <link rel="apple-touch-icon" href="/icon-192.png">
-    
-    <title>MEGA FOREX v8.2 PRO</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
@@ -37,98 +34,30 @@
             --border-color: #374151;
             --gradient-bull: linear-gradient(135deg, #059669, #10b981);
             --gradient-bear: linear-gradient(135deg, #dc2626, #ef4444);
-            --safe-top: env(safe-area-inset-top);
-            --safe-bottom: env(safe-area-inset-bottom);
         }
         
-        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         
-        html, body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        body {
+            font-family: 'Inter', sans-serif;
             background: var(--bg-primary);
             color: var(--text-primary);
             min-height: 100vh;
-            min-height: -webkit-fill-available;
-            overflow-x: hidden;
-            -webkit-font-smoothing: antialiased;
         }
         
-        /* PWA Install Banner */
-        .install-banner {
-            display: none;
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: linear-gradient(135deg, #1e3a8a, #3b82f6);
-            padding: 1rem;
-            padding-bottom: calc(1rem + var(--safe-bottom));
-            z-index: 1000;
-            animation: slideUp 0.3s ease;
-        }
-        
-        .install-banner.show { display: block; }
-        
-        @keyframes slideUp {
-            from { transform: translateY(100%); }
-            to { transform: translateY(0); }
-        }
-        
-        .install-banner-content {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            max-width: 600px;
-            margin: 0 auto;
-            gap: 1rem;
-        }
-        
-        .install-banner h3 {
-            font-size: 0.95rem;
-            margin-bottom: 0.25rem;
-        }
-        
-        .install-banner p {
-            font-size: 0.8rem;
-            opacity: 0.9;
-        }
-        
-        .install-btn {
-            background: white;
-            color: #1e3a8a;
-            padding: 0.6rem 1.2rem;
-            border-radius: 0.5rem;
-            font-weight: 600;
-            border: none;
-            white-space: nowrap;
-        }
-        
-        .install-dismiss {
-            background: transparent;
-            border: none;
-            color: white;
-            padding: 0.5rem;
-            font-size: 1.25rem;
-            cursor: pointer;
-        }
-        
-        /* Header - Mobile Optimized */
+        /* Header */
         .header {
             background: var(--bg-secondary);
             border-bottom: 1px solid var(--border-color);
-            padding: 0.75rem 1rem;
-            padding-top: calc(0.75rem + var(--safe-top));
+            padding: 1rem 2rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            position: sticky;
-            top: 0;
-            z-index: 100;
         }
         
         .logo {
             font-family: 'JetBrains Mono', monospace;
-            font-size: 1.1rem;
+            font-size: 1.5rem;
             font-weight: 700;
             color: var(--accent-blue);
         }
@@ -137,7 +66,7 @@
         
         .header-stats {
             display: flex;
-            gap: 1rem;
+            gap: 2rem;
         }
         
         .stat-item {
@@ -146,23 +75,22 @@
         
         .stat-value {
             font-family: 'JetBrains Mono', monospace;
-            font-size: 0.95rem;
+            font-size: 1.25rem;
             font-weight: 600;
         }
         
         .stat-label {
-            font-size: 0.65rem;
+            font-size: 0.75rem;
             color: var(--text-secondary);
         }
         
         .connection-status {
             display: flex;
             align-items: center;
-            gap: 0.4rem;
-            padding: 0.4rem 0.75rem;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
             background: var(--bg-card);
-            border-radius: 0.4rem;
-            font-size: 0.75rem;
+            border-radius: 0.5rem;
         }
         
         .status-dot {
@@ -173,47 +101,40 @@
             animation: pulse 2s infinite;
         }
         
-        .status-dot.offline { background: var(--accent-red); animation: none; }
-        .status-dot.connecting { background: var(--accent-yellow); }
-        
         @keyframes pulse {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.5; }
         }
         
-        /* Navigation - Mobile Scrollable Tabs */
+        /* Navigation */
         .nav-container {
             background: var(--bg-secondary);
-            padding: 0.5rem;
+            padding: 0.5rem 2rem;
             overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            scrollbar-width: none;
         }
-        
-        .nav-container::-webkit-scrollbar { display: none; }
         
         .nav-tabs {
             display: flex;
-            gap: 0.4rem;
-            min-width: max-content;
-            padding: 0 0.5rem;
+            gap: 0.5rem;
         }
         
         .nav-tab {
-            padding: 0.6rem 0.9rem;
+            padding: 0.75rem 1.25rem;
             background: transparent;
             border: none;
             color: var(--text-secondary);
             cursor: pointer;
             border-radius: 0.5rem;
-            font-size: 0.8rem;
+            font-size: 0.875rem;
             font-weight: 500;
             transition: all 0.2s;
             white-space: nowrap;
-            touch-action: manipulation;
         }
         
-        .nav-tab:active { transform: scale(0.95); }
+        .nav-tab:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
         
         .nav-tab.active {
             background: var(--accent-blue);
@@ -222,113 +143,108 @@
         
         /* Main Content */
         .main-content {
-            padding: 1rem;
-            padding-bottom: calc(1rem + var(--safe-bottom));
+            padding: 1.5rem 2rem;
         }
         
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
+        .tab-content {
+            display: none;
+        }
         
-        /* Filters - Mobile */
+        .tab-content.active {
+            display: block;
+        }
+        
+        /* Filters */
         .filters-bar {
             display: flex;
-            gap: 0.5rem;
-            margin-bottom: 1rem;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
             flex-wrap: wrap;
         }
         
         .filter-group {
             display: flex;
             align-items: center;
-            gap: 0.4rem;
-            flex: 1;
-            min-width: 120px;
+            gap: 0.5rem;
         }
         
         .filter-label {
             color: var(--text-secondary);
-            font-size: 0.75rem;
-            display: none;
+            font-size: 0.875rem;
         }
         
         select, input {
             background: var(--bg-card);
             border: 1px solid var(--border-color);
             color: var(--text-primary);
-            padding: 0.6rem 0.8rem;
+            padding: 0.5rem 1rem;
             border-radius: 0.5rem;
-            font-size: 0.85rem;
-            width: 100%;
-            -webkit-appearance: none;
+            font-size: 0.875rem;
         }
         
         button {
             background: var(--accent-blue);
             border: none;
             color: white;
-            padding: 0.6rem 1rem;
+            padding: 0.5rem 1rem;
             border-radius: 0.5rem;
             cursor: pointer;
-            font-size: 0.85rem;
+            font-size: 0.875rem;
             font-weight: 500;
             transition: all 0.2s;
-            touch-action: manipulation;
         }
         
-        button:active { transform: scale(0.95); }
+        button:hover {
+            filter: brightness(1.1);
+        }
+        
         button.secondary {
             background: var(--bg-card);
             border: 1px solid var(--border-color);
         }
         
-        /* Signal Cards - Mobile Optimized */
+        /* Signal Cards */
         .signals-grid {
             display: grid;
-            grid-template-columns: 1fr;
-            gap: 0.75rem;
-        }
-        
-        @media (min-width: 640px) {
-            .signals-grid {
-                grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-            }
+            grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+            gap: 1rem;
         }
         
         .signal-card {
             background: var(--bg-card);
             border-radius: 0.75rem;
             border: 1px solid var(--border-color);
-            padding: 1rem;
+            padding: 1.25rem;
             transition: all 0.2s;
         }
         
-        .signal-card:active {
-            transform: scale(0.99);
+        .signal-card:hover {
             border-color: var(--accent-blue);
+            transform: translateY(-2px);
         }
         
         .card-header {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            margin-bottom: 0.75rem;
+            margin-bottom: 1rem;
         }
         
         .pair-info {
             display: flex;
             align-items: center;
-            gap: 0.5rem;
+            gap: 0.75rem;
         }
         
         .pair-name {
             font-family: 'JetBrains Mono', monospace;
-            font-size: 1.1rem;
+            font-size: 1.25rem;
             font-weight: 600;
         }
         
         .category-badge {
-            font-size: 0.6rem;
-            padding: 0.2rem 0.4rem;
+            font-size: 0.625rem;
+            padding: 0.25rem 0.5rem;
             border-radius: 0.25rem;
             font-weight: 600;
             text-transform: uppercase;
@@ -338,11 +254,13 @@
         .category-badge.cross { background: var(--accent-purple); }
         .category-badge.exotic { background: var(--accent-yellow); color: #000; }
         
-        .composite-score { text-align: right; }
+        .composite-score {
+            text-align: right;
+        }
         
         .score-value {
             font-family: 'JetBrains Mono', monospace;
-            font-size: 1.75rem;
+            font-size: 2rem;
             font-weight: 700;
         }
         
@@ -352,60 +270,73 @@
         
         .stars {
             color: var(--accent-yellow);
-            font-size: 0.8rem;
+            font-size: 0.875rem;
         }
         
         .direction-badge {
             display: inline-block;
-            padding: 0.35rem 0.9rem;
+            padding: 0.375rem 1rem;
             border-radius: 0.375rem;
             font-weight: 600;
-            font-size: 0.85rem;
-            margin-bottom: 0.75rem;
+            font-size: 0.875rem;
+            margin-bottom: 1rem;
         }
         
-        .direction-badge.long { background: var(--gradient-bull); color: white; }
-        .direction-badge.short { background: var(--gradient-bear); color: white; }
-        .direction-badge.neutral { background: var(--bg-hover); color: var(--text-secondary); }
+        .direction-badge.long {
+            background: var(--gradient-bull);
+            color: white;
+        }
         
-        /* Stats Row - Mobile */
+        .direction-badge.short {
+            background: var(--gradient-bear);
+            color: white;
+        }
+        
+        .direction-badge.neutral {
+            background: var(--bg-hover);
+            color: var(--text-secondary);
+        }
+        
+        /* Statistics Row */
         .stats-row {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 0.4rem;
-            margin-bottom: 0.75rem;
-            padding: 0.6rem;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            padding: 0.75rem;
             background: var(--bg-secondary);
             border-radius: 0.5rem;
         }
         
-        .stat-box { text-align: center; }
+        .stat-box {
+            text-align: center;
+        }
         
         .stat-box .value {
             font-family: 'JetBrains Mono', monospace;
-            font-size: 0.9rem;
+            font-size: 1rem;
             font-weight: 600;
         }
         
         .stat-box .label {
-            font-size: 0.55rem;
+            font-size: 0.625rem;
             color: var(--text-muted);
             text-transform: uppercase;
         }
         
-        /* Factor Grid - Mobile */
+        /* Factor Grid */
         .factor-grid {
             display: grid;
             grid-template-columns: repeat(5, 1fr);
-            gap: 0.3rem;
-            margin-bottom: 0.75rem;
+            gap: 0.375rem;
+            margin-bottom: 1rem;
         }
         
         .factor-item {
             text-align: center;
-            padding: 0.3rem;
+            padding: 0.375rem;
             border-radius: 0.25rem;
-            font-size: 0.55rem;
+            font-size: 0.625rem;
             font-weight: 600;
         }
         
@@ -413,35 +344,37 @@
         .factor-item.bearish { background: rgba(239, 68, 68, 0.2); color: var(--accent-red); }
         .factor-item.neutral { background: var(--bg-hover); color: var(--text-secondary); }
         
-        /* Trade Setup - Mobile */
+        /* Trade Setup */
         .trade-setup {
             background: var(--bg-secondary);
-            padding: 0.6rem;
+            padding: 0.75rem;
             border-radius: 0.5rem;
         }
         
         .setup-title {
-            font-size: 0.7rem;
+            font-size: 0.75rem;
             color: var(--text-muted);
-            margin-bottom: 0.4rem;
+            margin-bottom: 0.5rem;
         }
         
         .setup-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 0.4rem;
+            gap: 0.5rem;
         }
         
-        .setup-item { text-align: center; }
+        .setup-item {
+            text-align: center;
+        }
         
         .setup-item .label {
-            font-size: 0.55rem;
+            font-size: 0.625rem;
             color: var(--text-muted);
         }
         
         .setup-item .value {
             font-family: 'JetBrains Mono', monospace;
-            font-size: 0.8rem;
+            font-size: 0.875rem;
             font-weight: 500;
         }
         
@@ -449,17 +382,9 @@
         .setup-item.sl .value { color: var(--accent-red); }
         .setup-item.tp .value { color: var(--accent-green); }
         
-        /* Tables - Mobile Responsive */
-        .table-container {
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            margin: 0 -1rem;
-            padding: 0 1rem;
-        }
-        
+        /* Tables */
         .data-table {
             width: 100%;
-            min-width: 500px;
             border-collapse: collapse;
             background: var(--bg-card);
             border-radius: 0.5rem;
@@ -468,7 +393,7 @@
         
         .data-table th,
         .data-table td {
-            padding: 0.6rem 0.75rem;
+            padding: 0.75rem 1rem;
             text-align: left;
             border-bottom: 1px solid var(--border-color);
         }
@@ -476,77 +401,184 @@
         .data-table th {
             background: var(--bg-secondary);
             font-weight: 600;
-            font-size: 0.7rem;
+            font-size: 0.75rem;
             text-transform: uppercase;
             color: var(--text-secondary);
-            position: sticky;
-            top: 0;
         }
         
         .data-table td {
             font-family: 'JetBrains Mono', monospace;
-            font-size: 0.8rem;
+            font-size: 0.875rem;
         }
         
-        /* Loading */
-        .loading {
+        .data-table tr:hover {
+            background: var(--bg-hover);
+        }
+        
+        /* Analyzer */
+        .analyzer-container {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 1.5rem;
+        }
+        
+        .pair-list {
+            background: var(--bg-card);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+        
+        .pair-list-item {
+            padding: 0.75rem;
+            border-radius: 0.375rem;
+            cursor: pointer;
             display: flex;
-            flex-direction: column;
+            justify-content: space-between;
             align-items: center;
-            justify-content: center;
-            padding: 3rem;
-            color: var(--text-secondary);
+            transition: all 0.2s;
         }
         
-        .spinner {
-            width: 32px;
-            height: 32px;
-            border: 3px solid var(--border-color);
-            border-top-color: var(--accent-blue);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-bottom: 1rem;
+        .pair-list-item:hover,
+        .pair-list-item.selected {
+            background: var(--bg-hover);
         }
         
-        @keyframes spin {
-            to { transform: rotate(360deg); }
+        .analyzer-detail {
+            background: var(--bg-card);
+            border-radius: 0.5rem;
+            padding: 1.5rem;
         }
         
-        /* Offline Banner */
-        .offline-banner {
-            display: none;
-            background: var(--accent-red);
-            color: white;
-            text-align: center;
-            padding: 0.5rem;
-            font-size: 0.8rem;
+        /* Charts */
+        .chart-container {
+            background: var(--bg-card);
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            margin-top: 1rem;
+        }
+        
+        /* Weights Editor */
+        .weights-editor {
+            background: var(--bg-card);
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+        }
+        
+        .weight-row {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .weight-label {
+            width: 150px;
             font-weight: 500;
         }
         
-        .offline-banner.show { display: block; }
+        .weight-slider {
+            flex: 1;
+            -webkit-appearance: none;
+            height: 8px;
+            background: var(--bg-secondary);
+            border-radius: 4px;
+        }
         
-        /* Error Message */
-        .error-message {
-            background: rgba(239, 68, 68, 0.1);
-            border: 1px solid var(--accent-red);
+        .weight-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            background: var(--accent-blue);
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        
+        .weight-value {
+            width: 60px;
+            text-align: right;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+        }
+        
+        .weights-total {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: var(--bg-secondary);
+            border-radius: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .weights-total.valid { border: 2px solid var(--accent-green); }
+        .weights-total.invalid { border: 2px solid var(--accent-red); }
+        
+        /* Audit */
+        .audit-section {
+            background: var(--bg-card);
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .audit-section h3 {
+            margin-bottom: 1rem;
+            color: var(--accent-blue);
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        
+        .status-badge.ok { background: rgba(16, 185, 129, 0.2); color: var(--accent-green); }
+        .status-badge.limited { background: rgba(245, 158, 11, 0.2); color: var(--accent-yellow); }
+        .status-badge.error { background: rgba(239, 68, 68, 0.2); color: var(--accent-red); }
+        
+        /* Calendar */
+        .event-card {
+            background: var(--bg-card);
             border-radius: 0.5rem;
             padding: 1rem;
-            text-align: center;
-            color: var(--accent-red);
+            margin-bottom: 0.5rem;
+            border-left: 4px solid var(--border-color);
         }
         
-        .error-message button {
-            margin-top: 0.75rem;
-            background: var(--accent-red);
+        .event-card.high { border-left-color: var(--accent-red); }
+        .event-card.medium { border-left-color: var(--accent-yellow); }
+        .event-card.low { border-left-color: var(--accent-green); }
+        
+        /* News */
+        .news-item {
+            background: var(--bg-card);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
         }
         
-        /* Positioning bars */
+        .news-headline {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        
+        .news-meta {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+        
+        /* Positioning */
         .position-bar {
             display: flex;
             height: 24px;
             border-radius: 4px;
             overflow: hidden;
-            margin: 0.4rem 0;
+            margin: 0.5rem 0;
         }
         
         .position-long {
@@ -555,7 +587,7 @@
             align-items: center;
             justify-content: center;
             color: white;
-            font-size: 0.7rem;
+            font-size: 0.75rem;
             font-weight: 600;
         }
         
@@ -565,73 +597,31 @@
             align-items: center;
             justify-content: center;
             color: white;
-            font-size: 0.7rem;
-            font-weight: 600;
-        }
-        
-        /* Status badges */
-        .status-badge {
-            display: inline-block;
-            padding: 0.2rem 0.6rem;
-            border-radius: 0.25rem;
-            font-size: 0.7rem;
-            font-weight: 600;
-        }
-        
-        .status-badge.ok { background: rgba(16, 185, 129, 0.2); color: var(--accent-green); }
-        .status-badge.limited { background: rgba(245, 158, 11, 0.2); color: var(--accent-yellow); }
-        .status-badge.error { background: rgba(239, 68, 68, 0.2); color: var(--accent-red); }
-        
-        /* Pull to refresh indicator */
-        .pull-indicator {
-            position: fixed;
-            top: 60px;
-            left: 50%;
-            transform: translateX(-50%) translateY(-100%);
-            background: var(--accent-blue);
-            color: white;
-            padding: 0.5rem 1rem;
-            border-radius: 2rem;
-            font-size: 0.8rem;
-            transition: transform 0.3s;
-            z-index: 99;
-        }
-        
-        .pull-indicator.visible {
-            transform: translateX(-50%) translateY(0);
-        }
-        
-        /* Card styles for other tabs */
-        .card {
-            background: var(--bg-card);
-            border-radius: 0.75rem;
-            border: 1px solid var(--border-color);
-            padding: 1rem;
-            margin-bottom: 1rem;
-        }
-        
-        .card h3 {
-            font-size: 1rem;
-            margin-bottom: 0.75rem;
-            color: var(--accent-blue);
-        }
-        
-        /* Form inputs */
-        .form-group {
-            margin-bottom: 0.75rem;
-        }
-        
-        .form-group label {
-            display: block;
             font-size: 0.75rem;
-            color: var(--text-muted);
-            margin-bottom: 0.3rem;
+            font-weight: 600;
         }
         
-        /* Result cards */
+        /* Backtest */
+        .backtest-config {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            background: var(--bg-card);
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .backtest-results {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        
         .result-card {
-            background: var(--bg-secondary);
-            padding: 1rem;
+            background: var(--bg-card);
+            padding: 1.25rem;
             border-radius: 0.5rem;
             text-align: center;
         }
@@ -640,194 +630,82 @@
             font-family: 'JetBrains Mono', monospace;
             font-size: 1.5rem;
             font-weight: 700;
-            color: var(--accent-blue);
         }
         
         .result-card .label {
             font-size: 0.75rem;
             color: var(--text-muted);
-            margin-top: 0.25rem;
+            text-transform: uppercase;
         }
         
-        /* Weights editor */
-        .weight-row {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            padding: 0.6rem 0;
-            border-bottom: 1px solid var(--border-color);
-            flex-wrap: wrap;
+        /* Loading */
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-secondary);
         }
         
-        .weight-label {
-            flex: 1;
-            min-width: 100px;
-            font-weight: 500;
-            font-size: 0.85rem;
-        }
-        
-        .weight-slider {
-            flex: 2;
-            min-width: 120px;
-            -webkit-appearance: none;
-            height: 8px;
-            background: var(--bg-secondary);
-            border-radius: 4px;
-        }
-        
-        .weight-slider::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 24px;
-            height: 24px;
-            background: var(--accent-blue);
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border-color);
+            border-top-color: var(--accent-blue);
             border-radius: 50%;
-            cursor: pointer;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
         }
         
-        .weight-value {
-            width: 50px;
-            text-align: right;
-            font-family: 'JetBrains Mono', monospace;
-            font-weight: 600;
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
         
-        /* News items */
-        .news-item {
-            background: var(--bg-card);
-            border-radius: 0.5rem;
-            padding: 0.75rem;
-            margin-bottom: 0.5rem;
-        }
-        
-        .news-headline {
-            font-weight: 600;
-            font-size: 0.9rem;
-            margin-bottom: 0.3rem;
-        }
-        
-        .news-meta {
-            font-size: 0.7rem;
-            color: var(--text-muted);
-        }
-        
-        /* Event cards */
-        .event-card {
-            background: var(--bg-card);
-            border-radius: 0.5rem;
-            padding: 0.75rem;
-            margin-bottom: 0.5rem;
-            border-left: 4px solid var(--border-color);
-        }
-        
-        .event-card.high { border-left-color: var(--accent-red); }
-        .event-card.medium { border-left-color: var(--accent-yellow); }
-        .event-card.low { border-left-color: var(--accent-green); }
-        
-        /* Audit sections */
-        .audit-section {
-            background: var(--bg-card);
-            border-radius: 0.5rem;
-            padding: 1rem;
-            margin-bottom: 0.75rem;
-        }
-        
-        .audit-section h3 {
-            margin-bottom: 0.75rem;
-            color: var(--accent-blue);
-            font-size: 0.95rem;
-        }
-        
-        /* Backtest config */
-        .backtest-config {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-            gap: 0.75rem;
-            background: var(--bg-card);
-            padding: 1rem;
-            border-radius: 0.5rem;
-            margin-bottom: 1rem;
-        }
-        
-        /* Analyzer */
-        .analyzer-container {
+        /* Refresh Timer */
+        .refresh-timer {
             display: flex;
-            flex-direction: column;
-            gap: 1rem;
-        }
-        
-        @media (min-width: 768px) {
-            .analyzer-container {
-                flex-direction: row;
-            }
-            .pair-list { width: 280px; flex-shrink: 0; }
-            .analyzer-detail { flex: 1; }
-        }
-        
-        .pair-list {
-            background: var(--bg-card);
-            border-radius: 0.5rem;
-            padding: 0.75rem;
-            max-height: 50vh;
-            overflow-y: auto;
-        }
-        
-        .pair-list-item {
-            padding: 0.6rem;
-            border-radius: 0.375rem;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
             align-items: center;
-            font-size: 0.85rem;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
         }
         
-        .pair-list-item:active,
-        .pair-list-item.selected {
-            background: var(--bg-hover);
-        }
-        
-        .analyzer-detail {
-            background: var(--bg-card);
-            border-radius: 0.5rem;
-            padding: 1rem;
-        }
-        
-        /* Desktop optimizations */
-        @media (min-width: 1024px) {
-            .main-content { padding: 1.5rem 2rem; }
-            .header { padding: 1rem 2rem; }
-            .nav-container { padding: 0.5rem 2rem; }
-            .filter-label { display: block; }
-            .signals-grid { grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 1rem; }
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header { flex-direction: column; gap: 1rem; }
+            .header-stats { flex-wrap: wrap; justify-content: center; }
+            .signals-grid { grid-template-columns: 1fr; }
+            .analyzer-container { grid-template-columns: 1fr; }
+            .main-content { padding: 1rem; }
         }
     </style>
 </head>
 <body>
-    <!-- Offline Banner -->
-    <div class="offline-banner" id="offline-banner">
-        📡 You are offline - Data may not be current
-    </div>
-    
-    <!-- Pull to Refresh Indicator -->
-    <div class="pull-indicator" id="pull-indicator">
-        ↻ Release to refresh
-    </div>
-    
     <!-- Header -->
     <header class="header">
-        <div class="logo">MEGA<span>FOREX</span> <small style="font-size: 0.6rem; color: var(--text-muted);">v8.2</small></div>
+        <div class="logo">MEGA<span>FOREX</span> v8.1</div>
         <div class="header-stats">
             <div class="stat-item">
                 <div class="stat-value" id="total-pairs">45</div>
-                <div class="stat-label">PAIRS</div>
+                <div class="stat-label">Pairs</div>
             </div>
             <div class="stat-item">
-                <div class="stat-value" id="active-signals">--</div>
-                <div class="stat-label">SIGNALS</div>
+                <div class="stat-value" id="total-signals">-</div>
+                <div class="stat-label">Signals</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="bullish-count" style="color: var(--accent-green);">-</div>
+                <div class="stat-label">Bullish</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="bearish-count" style="color: var(--accent-red);">-</div>
+                <div class="stat-label">Bearish</div>
             </div>
         </div>
         <div class="connection-status">
-            <div class="status-dot" id="status-dot"></div>
+            <div class="status-dot" id="connection-dot"></div>
+            <span id="connection-text">Connected</span>
+        </div>
+        <div class="refresh-timer">
+            <span>Refresh in:</span>
             <span id="refresh-countdown">120s</span>
         </div>
     </header>
@@ -836,13 +714,14 @@
     <nav class="nav-container">
         <div class="nav-tabs">
             <button class="nav-tab active" data-tab="overview">📊 Overview</button>
-            <button class="nav-tab" data-tab="signals">🎯 Signals</button>
-            <button class="nav-tab" data-tab="rates">💹 Rates</button>
-            <button class="nav-tab" data-tab="analyzer">🔬 Analyzer</button>
+            <button class="nav-tab" data-tab="signals">🎯 Top Signals</button>
+            <button class="nav-tab" data-tab="rates">💹 Live Rates</button>
+            <button class="nav-tab" data-tab="analyzer">🔬 Pair Analyzer</button>
             <button class="nav-tab" data-tab="journal">📔 Journal</button>
-            <button class="nav-tab" data-tab="performance">📈 Stats</button>
-            <button class="nav-tab" data-tab="backtest">🧪 Backtest</button>
-            <button class="nav-tab" data-tab="positioning">👥 Position</button>
+            <button class="nav-tab" data-tab="performance">📊 Performance</button>
+            <button class="nav-tab" data-tab="backtest">📈 Backtesting</button>
+            <button class="nav-tab" data-tab="technical">📉 Technical</button>
+            <button class="nav-tab" data-tab="positioning">👥 Positioning</button>
             <button class="nav-tab" data-tab="news">📰 News</button>
             <button class="nav-tab" data-tab="calendar">📅 Calendar</button>
             <button class="nav-tab" data-tab="weights">⚖️ Weights</button>
@@ -858,30 +737,30 @@
                 <div class="filter-group">
                     <span class="filter-label">Category:</span>
                     <select id="filter-category">
-                        <option value="all">All Pairs</option>
-                        <option value="major">Major (7)</option>
-                        <option value="cross">Cross (23)</option>
-                        <option value="exotic">Exotic (15)</option>
+                        <option value="all">All</option>
+                        <option value="major">Major</option>
+                        <option value="cross">Cross</option>
+                        <option value="exotic">Exotic</option>
                     </select>
                 </div>
                 <div class="filter-group">
                     <span class="filter-label">Direction:</span>
                     <select id="filter-direction">
                         <option value="all">All</option>
-                        <option value="long">Long ↑</option>
-                        <option value="short">Short ↓</option>
+                        <option value="long">Long Only</option>
+                        <option value="short">Short Only</option>
                     </select>
                 </div>
                 <div class="filter-group">
                     <span class="filter-label">Min Score:</span>
                     <select id="filter-score">
-                        <option value="0">Any</option>
+                        <option value="0">All</option>
                         <option value="50">50+</option>
                         <option value="60">60+</option>
                         <option value="70">70+</option>
                     </select>
                 </div>
-                <button onclick="loadSignals()" style="flex: 0;">🔄</button>
+                <button onclick="loadSignals()">🔄 Refresh</button>
             </div>
             <div class="signals-grid" id="signals-container">
                 <div class="loading">
@@ -893,7 +772,7 @@
         
         <!-- Top Signals Tab -->
         <div class="tab-content" id="tab-signals">
-            <h2 style="margin-bottom: 1rem; font-size: 1.1rem;">🎯 Top 10 Trading Signals</h2>
+            <h2 style="margin-bottom: 1rem;">🎯 Top 10 Trading Signals</h2>
             <div id="top-signals-container">
                 <div class="loading"><div class="spinner"></div>Loading...</div>
             </div>
@@ -901,38 +780,41 @@
         
         <!-- Live Rates Tab -->
         <div class="tab-content" id="tab-rates">
-            <h2 style="margin-bottom: 1rem; font-size: 1.1rem;">💹 Live Forex Rates</h2>
+            <h2 style="margin-bottom: 1rem;">💹 Live Forex Rates</h2>
             <div class="filters-bar">
-                <select id="rates-category" style="flex: 1;">
-                    <option value="all">All (45)</option>
-                    <option value="major">Major (7)</option>
-                    <option value="cross">Cross (23)</option>
-                    <option value="exotic">Exotic (15)</option>
-                </select>
+                <div class="filter-group">
+                    <span class="filter-label">Category:</span>
+                    <select id="rates-category">
+                        <option value="all">All (45)</option>
+                        <option value="major">Major (7)</option>
+                        <option value="cross">Cross (23)</option>
+                        <option value="exotic">Exotic (15)</option>
+                    </select>
+                </div>
             </div>
-            <div class="table-container">
-                <table class="data-table" id="rates-table">
-                    <thead>
-                        <tr>
-                            <th>Pair</th>
-                            <th>Bid</th>
-                            <th>Ask</th>
-                            <th>Spread</th>
-                            <th>Source</th>
-                        </tr>
-                    </thead>
-                    <tbody id="rates-body">
-                        <tr><td colspan="5" class="loading">Loading...</td></tr>
-                    </tbody>
-                </table>
-            </div>
+            <table class="data-table" id="rates-table">
+                <thead>
+                    <tr>
+                        <th>Pair</th>
+                        <th>Bid</th>
+                        <th>Ask</th>
+                        <th>Spread</th>
+                        <th>Source</th>
+                    </tr>
+                </thead>
+                <tbody id="rates-body">
+                    <tr><td colspan="5" class="loading">Loading...</td></tr>
+                </tbody>
+            </table>
         </div>
         
         <!-- Pair Analyzer Tab -->
         <div class="tab-content" id="tab-analyzer">
-            <h2 style="margin-bottom: 1rem; font-size: 1.1rem;">🔬 Pair Analyzer</h2>
+            <h2 style="margin-bottom: 1rem;">🔬 Pair Analyzer</h2>
             <div class="analyzer-container">
-                <div class="pair-list" id="analyzer-pairs"></div>
+                <div class="pair-list" id="analyzer-pairs">
+                    <!-- Pairs will be loaded here -->
+                </div>
                 <div class="analyzer-detail" id="analyzer-detail">
                     <p style="color: var(--text-secondary);">Select a pair to analyze</p>
                 </div>
@@ -941,13 +823,15 @@
         
         <!-- Trade Journal Tab -->
         <div class="tab-content" id="tab-journal">
-            <h2 style="margin-bottom: 1rem; font-size: 1.1rem;">📔 Trade Journal</h2>
-            <div class="card">
-                <h3>➕ Add Trade</h3>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 0.75rem;">
-                    <div class="form-group">
-                        <label>Pair</label>
-                        <select id="journal-pair">
+            <h2 style="margin-bottom: 1rem;">📔 Trade Journal</h2>
+            
+            <!-- Add Trade Form -->
+            <div class="card" style="margin-bottom: 1.5rem;">
+                <h3 style="margin-bottom: 1rem;">➕ Add New Trade</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
+                    <div>
+                        <label style="display: block; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.3rem;">Pair</label>
+                        <select id="journal-pair" style="width: 100%; padding: 0.5rem; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 0.3rem; color: var(--text-primary);">
                             <option value="EUR/USD">EUR/USD</option>
                             <option value="GBP/USD">GBP/USD</option>
                             <option value="USD/JPY">USD/JPY</option>
@@ -958,94 +842,116 @@
                             <option value="GBP/JPY">GBP/JPY</option>
                         </select>
                     </div>
-                    <div class="form-group">
-                        <label>Direction</label>
-                        <select id="journal-direction">
+                    <div>
+                        <label style="display: block; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.3rem;">Direction</label>
+                        <select id="journal-direction" style="width: 100%; padding: 0.5rem; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 0.3rem; color: var(--text-primary);">
                             <option value="LONG">LONG</option>
                             <option value="SHORT">SHORT</option>
                         </select>
                     </div>
-                    <div class="form-group">
-                        <label>Lots</label>
-                        <input type="number" id="journal-lots" value="0.01" step="0.01" min="0.01">
+                    <div>
+                        <label style="display: block; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.3rem;">Lot Size</label>
+                        <input type="number" id="journal-lots" value="0.01" step="0.01" min="0.01" style="width: 100%; padding: 0.5rem; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 0.3rem; color: var(--text-primary);">
                     </div>
-                    <div class="form-group">
-                        <label>Entry</label>
-                        <input type="number" id="journal-entry" step="0.00001" placeholder="1.12345">
+                    <div>
+                        <label style="display: block; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.3rem;">Entry Price</label>
+                        <input type="number" id="journal-entry" step="0.00001" style="width: 100%; padding: 0.5rem; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 0.3rem; color: var(--text-primary);">
                     </div>
-                    <div class="form-group">
-                        <label>Stop Loss</label>
-                        <input type="number" id="journal-sl" step="0.00001" placeholder="1.12000">
+                    <div>
+                        <label style="display: block; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.3rem;">Stop Loss</label>
+                        <input type="number" id="journal-sl" step="0.00001" style="width: 100%; padding: 0.5rem; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 0.3rem; color: var(--text-primary);">
                     </div>
-                    <div class="form-group">
-                        <label>Take Profit</label>
-                        <input type="number" id="journal-tp" step="0.00001" placeholder="1.13000">
+                    <div>
+                        <label style="display: block; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.3rem;">Take Profit</label>
+                        <input type="number" id="journal-tp" step="0.00001" style="width: 100%; padding: 0.5rem; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 0.3rem; color: var(--text-primary);">
                     </div>
                 </div>
-                <div class="form-group" style="margin-top: 0.5rem;">
-                    <label>Notes</label>
-                    <input type="text" id="journal-notes" placeholder="Trade notes...">
+                <div style="margin-top: 1rem;">
+                    <label style="display: block; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.3rem;">Notes</label>
+                    <textarea id="journal-notes" rows="2" style="width: 100%; padding: 0.5rem; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 0.3rem; color: var(--text-primary); resize: vertical;"></textarea>
                 </div>
-                <button onclick="addJournalTrade()" style="width: 100%; margin-top: 0.75rem;">📝 Add Trade</button>
+                <button onclick="addTrade()" style="margin-top: 1rem; padding: 0.75rem 1.5rem; background: var(--accent); color: white; border: none; border-radius: 0.3rem; cursor: pointer; font-weight: 600;">Add Trade</button>
             </div>
             
-            <h3 style="margin: 1rem 0 0.75rem;">📋 Open Trades</h3>
-            <div id="journal-open-trades">
-                <div class="loading"><div class="spinner"></div>Loading...</div>
+            <!-- Open Trades -->
+            <div class="card" style="margin-bottom: 1.5rem;">
+                <h3 style="margin-bottom: 1rem;">🔓 Open Trades</h3>
+                <div id="open-trades-list">
+                    <p style="color: var(--text-muted);">Loading...</p>
+                </div>
             </div>
             
-            <h3 style="margin: 1.5rem 0 0.75rem;">📜 Trade History</h3>
-            <div id="journal-closed-trades">
-                <div class="loading"><div class="spinner"></div>Loading...</div>
+            <!-- Trade History -->
+            <div class="card">
+                <h3 style="margin-bottom: 1rem;">📜 Trade History</h3>
+                <div id="closed-trades-list">
+                    <p style="color: var(--text-muted);">Loading...</p>
+                </div>
             </div>
         </div>
         
         <!-- Performance Tab -->
         <div class="tab-content" id="tab-performance">
-            <h2 style="margin-bottom: 1rem; font-size: 1.1rem;">📈 Performance Stats</h2>
-            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; margin-bottom: 1rem;">
-                <div class="result-card">
-                    <div class="value" id="perf-total-trades">0</div>
-                    <div class="label">Total Trades</div>
+            <h2 style="margin-bottom: 1rem;">📊 Performance Analytics</h2>
+            
+            <!-- Overall Stats -->
+            <div class="stats-grid" style="margin-bottom: 1.5rem;">
+                <div class="stat-card">
+                    <div class="stat-value" id="perf-total-trades">0</div>
+                    <div class="stat-label">Total Trades</div>
                 </div>
-                <div class="result-card">
-                    <div class="value" id="perf-win-rate">0%</div>
-                    <div class="label">Win Rate</div>
+                <div class="stat-card">
+                    <div class="stat-value" id="perf-win-rate">0%</div>
+                    <div class="stat-label">Win Rate</div>
                 </div>
-                <div class="result-card">
-                    <div class="value" id="perf-total-pips">0</div>
-                    <div class="label">Total Pips</div>
+                <div class="stat-card">
+                    <div class="stat-value" id="perf-total-pips">0</div>
+                    <div class="stat-label">Total Pips</div>
                 </div>
-                <div class="result-card">
-                    <div class="value" id="perf-profit-factor">0</div>
-                    <div class="label">Profit Factor</div>
-                </div>
-            </div>
-            <div class="card">
-                <h3>Detailed Stats</h3>
-                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; font-size: 0.85rem;">
-                    <div>Wins: <span id="perf-wins" style="color: var(--accent-green);">0</span></div>
-                    <div>Losses: <span id="perf-losses" style="color: var(--accent-red);">0</span></div>
-                    <div>Best: <span id="perf-best" style="color: var(--accent-green);">0</span></div>
-                    <div>Worst: <span id="perf-worst" style="color: var(--accent-red);">0</span></div>
-                    <div>Avg Win: <span id="perf-avg-win">0</span></div>
-                    <div>Avg Loss: <span id="perf-avg-loss">0</span></div>
+                <div class="stat-card">
+                    <div class="stat-value" id="perf-profit-factor">0</div>
+                    <div class="stat-label">Profit Factor</div>
                 </div>
             </div>
+            
+            <!-- Detailed Stats -->
+            <div class="card" style="margin-bottom: 1.5rem;">
+                <h3 style="margin-bottom: 1rem;">📈 Detailed Statistics</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                    <div>
+                        <div style="font-size: 0.8rem; color: var(--text-muted);">Wins / Losses</div>
+                        <div style="font-size: 1.2rem; font-weight: 600;"><span id="perf-wins" style="color: #00ff88;">0</span> / <span id="perf-losses" style="color: #ff6666;">0</span></div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.8rem; color: var(--text-muted);">Best Trade</div>
+                        <div style="font-size: 1.2rem; font-weight: 600; color: #00ff88;" id="perf-best">0 pips</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.8rem; color: var(--text-muted);">Worst Trade</div>
+                        <div style="font-size: 1.2rem; font-weight: 600; color: #ff6666;" id="perf-worst">0 pips</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.8rem; color: var(--text-muted);">Avg Win / Avg Loss</div>
+                        <div style="font-size: 1.2rem; font-weight: 600;"><span id="perf-avg-win" style="color: #00ff88;">0</span> / <span id="perf-avg-loss" style="color: #ff6666;">0</span> pips</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Performance by Pair -->
             <div class="card">
-                <h3>Performance by Pair</h3>
+                <h3 style="margin-bottom: 1rem;">💱 Performance by Pair</h3>
                 <div id="perf-by-pair">
                     <p style="color: var(--text-muted);">No trade data yet</p>
                 </div>
             </div>
         </div>
         
-        <!-- Backtest Tab -->
+        <!-- Backtesting Tab -->
         <div class="tab-content" id="tab-backtest">
-            <h2 style="margin-bottom: 1rem; font-size: 1.1rem;">🧪 Backtesting</h2>
+            <h2 style="margin-bottom: 1rem;">📈 Strategy Backtesting</h2>
             <div class="backtest-config">
-                <div class="form-group">
-                    <label>Pair</label>
+                <div class="filter-group">
+                    <span class="filter-label">Pair:</span>
                     <select id="backtest-pair">
                         <option value="EUR/USD">EUR/USD</option>
                         <option value="GBP/USD">GBP/USD</option>
@@ -1054,8 +960,8 @@
                         <option value="EUR/GBP">EUR/GBP</option>
                     </select>
                 </div>
-                <div class="form-group">
-                    <label>Period</label>
+                <div class="filter-group">
+                    <span class="filter-label">Period:</span>
                     <select id="backtest-days">
                         <option value="14">14 Days</option>
                         <option value="30" selected>30 Days</option>
@@ -1063,8 +969,8 @@
                         <option value="90">90 Days</option>
                     </select>
                 </div>
-                <div class="form-group">
-                    <label>Min Score</label>
+                <div class="filter-group">
+                    <span class="filter-label">Min Score:</span>
                     <select id="backtest-score">
                         <option value="50">50+</option>
                         <option value="60" selected>60+</option>
@@ -1072,26 +978,47 @@
                         <option value="80">80+</option>
                     </select>
                 </div>
-                <div class="form-group">
-                    <label>Min Stars</label>
+                <div class="filter-group">
+                    <span class="filter-label">Min Stars:</span>
                     <select id="backtest-stars">
                         <option value="2">2+</option>
                         <option value="3" selected>3+</option>
                         <option value="4">4+</option>
                     </select>
                 </div>
+                <button onclick="runBacktest()">▶️ Run Backtest</button>
             </div>
-            <button onclick="runBacktest()" style="width: 100%; margin-bottom: 1rem;">▶️ Run Backtest</button>
             <div id="backtest-results">
-                <p style="color: var(--text-secondary); text-align: center;">Configure parameters and run backtest</p>
+                <p style="color: var(--text-secondary); text-align: center;">Configure parameters and click Run Backtest</p>
             </div>
+        </div>
+        
+        <!-- Technical Tab -->
+        <div class="tab-content" id="tab-technical">
+            <h2 style="margin-bottom: 1rem;">📉 Technical Indicators</h2>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Pair</th>
+                        <th>RSI</th>
+                        <th>MACD</th>
+                        <th>ADX</th>
+                        <th>ATR</th>
+                        <th>BB %</th>
+                        <th>EMA Signal</th>
+                    </tr>
+                </thead>
+                <tbody id="technical-body">
+                    <tr><td colspan="7" class="loading">Loading...</td></tr>
+                </tbody>
+            </table>
         </div>
         
         <!-- Positioning Tab -->
         <div class="tab-content" id="tab-positioning">
-            <h2 style="margin-bottom: 0.5rem; font-size: 1.1rem;">👥 Retail Positioning</h2>
-            <p style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 0.8rem;">
-                Contrarian: When retail is heavily long → consider selling. Heavily short → consider buying.
+            <h2 style="margin-bottom: 1rem;">👥 Retail Positioning</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+                Contrarian indicator: When retail is heavily long, consider selling. When heavily short, consider buying.
             </p>
             <div id="positioning-container">
                 <div class="loading"><div class="spinner"></div>Loading...</div>
@@ -1100,7 +1027,7 @@
         
         <!-- News Tab -->
         <div class="tab-content" id="tab-news">
-            <h2 style="margin-bottom: 1rem; font-size: 1.1rem;">📰 Forex News</h2>
+            <h2 style="margin-bottom: 1rem;">📰 Forex News & Sentiment</h2>
             <div id="news-container">
                 <div class="loading"><div class="spinner"></div>Loading...</div>
             </div>
@@ -1108,952 +1035,1233 @@
         
         <!-- Calendar Tab -->
         <div class="tab-content" id="tab-calendar">
-            <h2 style="margin-bottom: 0.75rem; font-size: 1.1rem;">📅 Economic Calendar</h2>
-            <div class="filters-bar">
-                <select id="calendar-currency">
-                    <option value="all">All Currencies</option>
-                    <option value="USD">🇺🇸 USD</option>
-                    <option value="EUR">🇪🇺 EUR</option>
-                    <option value="GBP">🇬🇧 GBP</option>
-                    <option value="JPY">🇯🇵 JPY</option>
-                    <option value="AUD">🇦🇺 AUD</option>
-                </select>
-                <select id="calendar-impact">
-                    <option value="all">All Impact</option>
-                    <option value="high">🔴 High</option>
-                    <option value="medium">🟡 Medium+</option>
-                </select>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h2>📅 Economic Calendar</h2>
+                <div style="display: flex; gap: 1rem; align-items: center;">
+                    <div class="filter-group">
+                        <span class="filter-label">Currency:</span>
+                        <select id="calendar-currency">
+                            <option value="all">All Currencies</option>
+                            <option value="USD">🇺🇸 USD</option>
+                            <option value="EUR">🇪🇺 EUR</option>
+                            <option value="GBP">🇬🇧 GBP</option>
+                            <option value="JPY">🇯🇵 JPY</option>
+                            <option value="AUD">🇦🇺 AUD</option>
+                            <option value="CAD">🇨🇦 CAD</option>
+                            <option value="NZD">🇳🇿 NZD</option>
+                            <option value="CHF">🇨🇭 CHF</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <span class="filter-label">Impact:</span>
+                        <select id="calendar-impact">
+                            <option value="all">All</option>
+                            <option value="high">🔴 High Only</option>
+                            <option value="medium">🟡 Medium+</option>
+                        </select>
+                    </div>
+                </div>
             </div>
+            
+            <!-- Calendar Legend -->
+            <div style="display: flex; gap: 2rem; margin-bottom: 1rem; padding: 0.75rem; background: var(--bg-card); border-radius: 0.5rem;">
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <span style="width: 12px; height: 12px; border-radius: 50%; background: #ef4444;"></span>
+                    <span style="font-size: 0.875rem; color: var(--text-secondary);">High Impact</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <span style="width: 12px; height: 12px; border-radius: 50%; background: #f59e0b;"></span>
+                    <span style="font-size: 0.875rem; color: var(--text-secondary);">Medium Impact</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <span style="width: 12px; height: 12px; border-radius: 50%; background: #10b981;"></span>
+                    <span style="font-size: 0.875rem; color: var(--text-secondary);">Low Impact</span>
+                </div>
+            </div>
+            
+            <!-- Calendar Table -->
             <div id="calendar-container">
-                <div class="loading"><div class="spinner"></div>Loading...</div>
+                <div class="loading"><div class="spinner"></div>Loading economic events...</div>
             </div>
         </div>
         
-        <!-- Weights Tab -->
+        <!-- Weights Editor Tab -->
         <div class="tab-content" id="tab-weights">
-            <h2 style="margin-bottom: 1rem; font-size: 1.1rem;">⚖️ Factor Weights</h2>
-            <div class="card" id="weights-editor">
-                <div class="loading"><div class="spinner"></div>Loading...</div>
+            <h2 style="margin-bottom: 1rem;">⚖️ Factor Weights Editor</h2>
+            <div class="weights-editor" id="weights-editor">
+                <div class="loading"><div class="spinner"></div>Loading weights...</div>
             </div>
         </div>
         
         <!-- Audit Tab -->
         <div class="tab-content" id="tab-audit">
-            <h2 style="margin-bottom: 1rem; font-size: 1.1rem;">🔍 System Audit</h2>
-            <button onclick="runAudit()" style="width: 100%; margin-bottom: 1rem;">▶️ Run Audit</button>
+            <h2 style="margin-bottom: 1rem;">🔍 System Audit</h2>
+            <button onclick="runAudit()" style="margin-bottom: 1rem;">▶️ Run Audit</button>
             <div id="audit-container">
-                <p style="color: var(--text-secondary); text-align: center;">Click Run Audit to check system health</p>
+                <p style="color: var(--text-secondary);">Click Run Audit to check system health</p>
+            </div>
+        </div>
+        
+        <!-- API Status Tab -->
+        <div class="tab-content" id="tab-api-status">
+            <h2 style="margin-bottom: 1rem;">⚙️ API Connection Status</h2>
+            <div id="api-status-container">
+                <div class="loading"><div class="spinner"></div>Loading...</div>
             </div>
         </div>
     </main>
-    
-    <!-- PWA Install Banner -->
-    <div class="install-banner" id="install-banner">
-        <div class="install-banner-content">
-            <button class="install-dismiss" onclick="dismissInstall()">×</button>
-            <div>
-                <h3>📱 Install MEGA FOREX</h3>
-                <p>Get the full app experience</p>
-            </div>
-            <button class="install-btn" onclick="installApp()">Install</button>
-        </div>
-    </div>
-    
+
     <script>
-        // ═══════════════════════════════════════════════════════════════════════════
-        // MEGA FOREX v8.2 PRO - PWA Dashboard JavaScript (FIXED VERSION)
-        // ═══════════════════════════════════════════════════════════════════════════
+        // Configuration - Auto-detect API base URL
+        const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? 'http://localhost:5000'
+            : window.location.origin;
         
-        // ✅ HELPER FUNCTIONS
-        function formatNumber(value, decimals = 2) {
-            if (value === null || value === undefined || isNaN(value)) {
-                return '--';
-            }
-            return Number(value).toFixed(decimals);
-        }
-        
-        function showError(container, message, retryFn = null) {
-            container.innerHTML = `
-                <div class="error-message">
-                    <p>⚠️ ${message}</p>
-                    ${retryFn ? '<button onclick="' + retryFn + '">🔄 Retry</button>' : ''}
-                </div>
-            `;
-        }
-        
-        // ✅ SAFE API FETCH - Handles 502 and non-JSON responses
-        async function safeFetch(url, options = {}) {
-            try {
-                const response = await fetch(url, options);
-                
-                // Check if response is OK (status 200-299)
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error(`API Error ${response.status}:`, errorText.substring(0, 200));
-                    throw new Error(`Server error: ${response.status}`);
-                }
-                
-                // Check content type before parsing JSON
-                const contentType = response.headers.get('content-type');
-                if (!contentType || !contentType.includes('application/json')) {
-                    const text = await response.text();
-                    console.error('Non-JSON response:', text.substring(0, 200));
-                    throw new Error('Server returned non-JSON response');
-                }
-                
-                return await response.json();
-            } catch (error) {
-                console.error('Fetch error:', error);
-                throw error;
-            }
-        }
-        
-        // API Configuration
-        const API_BASE = window.location.origin;
-        
-        // State
         let signalsData = [];
+        let refreshInterval;
         let countdown = 120;
-        let isOnline = navigator.onLine;
-        let deferredPrompt = null;
-        let retryCount = 0;
-        const MAX_RETRIES = 3;
         
-        // ═══════════════════════════════════════════════════════════════════════════
-        // PWA & OFFLINE HANDLING
-        // ═══════════════════════════════════════════════════════════════════════════
-        
-        // Register Service Worker
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js')
-                .then(reg => console.log('✅ Service Worker registered'))
-                .catch(err => console.log('⚠️ SW registration failed (non-critical):', err));
-        }
-        
-        // Online/Offline detection
-        window.addEventListener('online', () => {
-            isOnline = true;
-            document.getElementById('offline-banner').classList.remove('show');
-            document.getElementById('status-dot').classList.remove('offline');
-            retryCount = 0;
-            loadSignals();
-        });
-        
-        window.addEventListener('offline', () => {
-            isOnline = false;
-            document.getElementById('offline-banner').classList.add('show');
-            document.getElementById('status-dot').classList.add('offline');
-        });
-        
-        // PWA Install Prompt
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            deferredPrompt = e;
-            setTimeout(() => {
-                if (!localStorage.getItem('pwa-installed')) {
-                    document.getElementById('install-banner').classList.add('show');
-                }
-            }, 3000);
-        });
-        
-        async function installApp() {
-            if (!deferredPrompt) return;
-            deferredPrompt.prompt();
-            const result = await deferredPrompt.userChoice;
-            if (result.outcome === 'accepted') {
-                localStorage.setItem('pwa-installed', 'true');
-            }
-            deferredPrompt = null;
-            document.getElementById('install-banner').classList.remove('show');
-        }
-        
-        function dismissInstall() {
-            document.getElementById('install-banner').classList.remove('show');
-            localStorage.setItem('pwa-dismissed', Date.now());
-        }
-        
-        // ═══════════════════════════════════════════════════════════════════════════
-        // TAB NAVIGATION
-        // ═══════════════════════════════════════════════════════════════════════════
-        
+        // Tab Navigation
         document.querySelectorAll('.nav-tab').forEach(tab => {
             tab.addEventListener('click', () => {
                 document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-                tab.classList.add('active');
-                
-                const tabId = tab.dataset.tab;
                 document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-                document.getElementById(`tab-${tabId}`).classList.add('active');
                 
-                // Load tab-specific data
-                if (tabId === 'rates') loadRates();
-                else if (tabId === 'news') loadNews();
-                else if (tabId === 'calendar') loadCalendar();
-                else if (tabId === 'positioning') loadPositioning();
-                else if (tabId === 'weights') loadWeights();
-                else if (tabId === 'analyzer') loadAnalyzerPairs();
-                else if (tabId === 'journal') loadJournal();
-                else if (tabId === 'performance') loadPerformance();
-                else if (tabId === 'signals') renderTopSignals();
+                tab.classList.add('active');
+                document.getElementById(`tab-${tab.dataset.tab}`).classList.add('active');
+                
+                // Load data for specific tabs
+                const tabName = tab.dataset.tab;
+                if (tabName === 'rates') loadRates();
+                else if (tabName === 'analyzer') loadAnalyzerPairs();
+                else if (tabName === 'technical') loadTechnical();
+                else if (tabName === 'positioning') loadPositioning();
+                else if (tabName === 'news') loadNews();
+                else if (tabName === 'calendar') loadCalendar();
+                else if (tabName === 'weights') loadWeights();
+                else if (tabName === 'journal') loadJournal();
+                else if (tabName === 'performance') loadPerformance();
             });
         });
         
-        // ═══════════════════════════════════════════════════════════════════════════
-        // SIGNALS FUNCTIONS (FIXED)
-        // ═══════════════════════════════════════════════════════════════════════════
-        
+        // Load Signals
         async function loadSignals() {
             const container = document.getElementById('signals-container');
-            const statusDot = document.getElementById('status-dot');
-            
             container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading signals...</div>';
-            statusDot.classList.add('connecting');
-            statusDot.classList.remove('offline');
             
             try {
-                const data = await safeFetch(`${API_BASE}/signals`);
+                const response = await fetch(`${API_BASE}/signals`);
+                const data = await response.json();
                 
-                if (data.success) {
-                    signalsData = data.signals || [];
-                    const activeCount = signalsData.filter(s => Math.abs(s.composite_score || 0) >= 50).length;
-                    document.getElementById('active-signals').textContent = activeCount;
-                    document.getElementById('total-pairs').textContent = signalsData.length;
-                    statusDot.classList.remove('connecting', 'offline');
-                    retryCount = 0;
+                if (data.success && data.signals) {
+                    signalsData = data.signals;
                     renderSignals();
-                } else {
-                    throw new Error(data.error || 'Failed to load signals');
+                    updateStats();
+                    document.getElementById('connection-dot').style.background = 'var(--accent-green)';
+                    document.getElementById('connection-text').textContent = 'Connected';
                 }
             } catch (error) {
                 console.error('Error loading signals:', error);
-                statusDot.classList.add('offline');
-                statusDot.classList.remove('connecting');
-                
-                if (!isOnline) {
-                    showError(container, 'You are offline', 'loadSignals()');
-                } else if (retryCount < MAX_RETRIES) {
-                    retryCount++;
-                    container.innerHTML = `
-                        <div class="loading">
-                            <div class="spinner"></div>
-                            Retrying... (${retryCount}/${MAX_RETRIES})
-                        </div>
-                    `;
-                    setTimeout(loadSignals, 2000 * retryCount);
-                } else {
-                    showError(container, 'Connection error - Server may be waking up (free tier). Please wait 30-60s and retry.', 'loadSignals()');
-                }
+                container.innerHTML = '<div class="loading" style="color: var(--accent-red);">Failed to load signals. Is backend running?</div>';
+                document.getElementById('connection-dot').style.background = 'var(--accent-red)';
+                document.getElementById('connection-text').textContent = 'Disconnected';
             }
         }
         
+        // Render Signals
         function renderSignals() {
             const container = document.getElementById('signals-container');
-            const categoryFilter = document.getElementById('filter-category').value;
-            const directionFilter = document.getElementById('filter-direction').value;
-            const scoreFilter = parseInt(document.getElementById('filter-score').value) || 0;
+            const category = document.getElementById('filter-category').value;
+            const direction = document.getElementById('filter-direction').value;
+            const minScore = parseInt(document.getElementById('filter-score').value);
             
             let filtered = signalsData.filter(s => {
-                const category = (s.category || '').toLowerCase();
-                const direction = s.direction || 'NEUTRAL';
-                const absScore = Math.abs(s.composite_score || 0);
-                
-                if (categoryFilter !== 'all' && category !== categoryFilter) return false;
-                if (directionFilter === 'long' && direction !== 'LONG') return false;
-                if (directionFilter === 'short' && direction !== 'SHORT') return false;
-                if (absScore < scoreFilter) return false;
+                if (category !== 'all' && s.category.toLowerCase() !== category) return false;
+                if (direction !== 'all' && s.direction.toLowerCase() !== direction) return false;
+                if (s.composite_score < minScore) return false;
                 return true;
             });
             
-            // Sort by absolute score
-            filtered.sort((a, b) => Math.abs(b.composite_score || 0) - Math.abs(a.composite_score || 0));
-            
             if (filtered.length === 0) {
-                container.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 2rem;">No signals match your filters</p>';
+                container.innerHTML = '<div class="loading">No signals match your filters</div>';
                 return;
             }
             
-            container.innerHTML = filtered.map(signal => createSignalCard(signal)).join('');
+            container.innerHTML = filtered.map(s => createSignalCard(s)).join('');
         }
         
-        function createSignalCard(s) {
-            const score = s.composite_score || 0;
-            const absScore = Math.abs(score);
-            const scoreClass = score > 0 ? 'bullish' : score < 0 ? 'bearish' : 'neutral';
-            const direction = s.direction || 'NEUTRAL';
-            const dirClass = direction === 'LONG' ? 'long' : direction === 'SHORT' ? 'short' : 'neutral';
-            const starCount = s.signal_stars || 0;
-            const stars = '★'.repeat(starCount) + '☆'.repeat(5 - starCount);
-            const category = (s.category || 'UNKNOWN').toLowerCase();
+        // Create Signal Card
+        // Create Signal Card
+        function createSignalCard(signal) {
+            const scoreClass = signal.composite_score >= 60 ? 'bullish' : signal.composite_score <= 40 ? 'bearish' : 'neutral';
+            const dirClass = signal.direction.toLowerCase();
+            const stars = '★'.repeat(signal.stars) + '☆'.repeat(5 - signal.stars);
             
-            const factors = s.factors || {};
-            const factorNames = ['technical', 'fundamental', 'sentiment', 'intermarket', 'quantitative', 'mtf', 'structure', 'calendar', 'confluence'];
+            // Factor grid with proper value display
+            const factorGrid = Object.entries(signal.factor_grid || {}).map(([key, value]) => {
+                const valueClass = typeof value === 'string' ? value.toLowerCase() : 'neutral';
+                return `<div class="factor-item ${valueClass}">${key}<br><small style="opacity:0.7">${value || '--'}</small></div>`;
+            }).join('');
             
-            const trade = s.trade_setup || {};
+            const stats = signal.statistics || {};
+            const rate = signal.rate || {};
+            const tech = signal.technical || {};
+            const setup = signal.trade_setup || {};
             
-            // Determine decimals based on pair value
-            const priceDecimals = (s.bid && s.bid > 10) ? 2 : 5;
+            // Calculate spread in pips
+            const spread = rate.ask && rate.bid ? ((rate.ask - rate.bid) * 10000).toFixed(1) : '--';
             
             return `
-                <div class="signal-card">
+                <div class="signal-card" onclick="analyzeSignal('${signal.pair}')">
                     <div class="card-header">
                         <div class="pair-info">
-                            <span class="pair-name">${s.pair || 'N/A'}</span>
-                            <span class="category-badge ${category}">${category}</span>
+                            <span class="pair-name">${signal.pair}</span>
+                            <span class="category-badge ${signal.category.toLowerCase()}">${signal.category}</span>
                         </div>
                         <div class="composite-score">
-                            <div class="score-value ${scoreClass}">${score > 0 ? '+' : ''}${formatNumber(score, 1)}</div>
+                            <div class="score-value ${scoreClass}">${signal.composite_score >= 0 ? '+' : ''}${signal.composite_score.toFixed(1)}</div>
                             <div class="stars">${stars}</div>
                         </div>
                     </div>
                     
-                    <span class="direction-badge ${dirClass}">${direction === 'LONG' ? '↑ LONG' : direction === 'SHORT' ? '↓ SHORT' : '• NEUTRAL'}</span>
+                    <span class="direction-badge ${dirClass}">${signal.direction}</span>
                     
+                    <!-- Price Info Row -->
                     <div class="stats-row">
                         <div class="stat-box">
-                            <div class="value">${formatNumber(s.bid, priceDecimals)}</div>
-                            <div class="label">Bid</div>
+                            <div class="value">${rate.bid ? rate.bid.toFixed(5) : '--'}</div>
+                            <div class="label">BID</div>
                         </div>
                         <div class="stat-box">
-                            <div class="value">${formatNumber(s.ask, priceDecimals)}</div>
-                            <div class="label">Ask</div>
+                            <div class="value">${rate.ask ? rate.ask.toFixed(5) : '--'}</div>
+                            <div class="label">ASK</div>
                         </div>
                         <div class="stat-box">
-                            <div class="value">${formatNumber(s.spread, 1)}</div>
-                            <div class="label">Spread</div>
+                            <div class="value">${spread}</div>
+                            <div class="label">SPREAD</div>
                         </div>
                         <div class="stat-box">
-                            <div class="value">${formatNumber(s.atr, 4)}</div>
+                            <div class="value">${tech.atr ? tech.atr.toFixed(5) : '--'}</div>
                             <div class="label">ATR</div>
                         </div>
                     </div>
                     
-                    <div class="factor-grid">
-                        ${factorNames.map(f => {
-                            const val = factors[f] || 0;
-                            const fClass = val > 5 ? 'bullish' : val < -5 ? 'bearish' : 'neutral';
-                            return `<div class="factor-item ${fClass}">${f.substring(0,3).toUpperCase()}<br>${val > 0 ? '+' : ''}${formatNumber(val, 0)}</div>`;
-                        }).join('')}
-                    </div>
+                    <div class="factor-grid">${factorGrid}</div>
                     
-                    ${trade.entry ? `
-                        <div class="trade-setup">
-                            <div class="setup-title">📌 Trade Setup</div>
-                            <div class="setup-grid">
-                                <div class="setup-item entry">
-                                    <div class="label">Entry</div>
-                                    <div class="value">${formatNumber(trade.entry, 5)}</div>
-                                </div>
-                                <div class="setup-item sl">
-                                    <div class="label">SL</div>
-                                    <div class="value">${formatNumber(trade.stop_loss, 5)}</div>
-                                </div>
-                                <div class="setup-item tp">
-                                    <div class="label">TP</div>
-                                    <div class="value">${formatNumber(trade.take_profit, 5)}</div>
-                                </div>
-                                <div class="setup-item">
-                                    <div class="label">R:R</div>
-                                    <div class="value" style="color: var(--accent-purple);">${formatNumber(trade.risk_reward, 1)}</div>
-                                </div>
+                    <div class="trade-setup">
+                        <div class="setup-title">✈ Trade Setup ${setup.trade_quality ? `<span style="color: ${setup.trade_quality === 'A+' ? '#00ff88' : setup.trade_quality === 'A' ? '#00cc66' : setup.trade_quality === 'B' ? '#ffaa00' : '#ff6666'}; margin-left: 0.5rem;">[${setup.trade_quality}]</span>` : ''}</div>
+                        <div class="setup-grid">
+                            <div class="setup-item entry">
+                                <div class="label">Entry</div>
+                                <div class="value">${setup.entry ? setup.entry.toFixed(5) : (rate.mid ? rate.mid.toFixed(5) : '--')}</div>
+                            </div>
+                            <div class="setup-item sl">
+                                <div class="label">SL</div>
+                                <div class="value" style="color: #ef4444;">${setup.sl ? setup.sl.toFixed(5) : '--'}</div>
+                            </div>
+                            <div class="setup-item tp">
+                                <div class="label">TP</div>
+                                <div class="value" style="color: #10b981;">${setup.tp1 ? setup.tp1.toFixed(5) : '--'}</div>
+                            </div>
+                            <div class="setup-item">
+                                <div class="label">R:R</div>
+                                <div class="value">1:${setup.risk_reward_1 ? setup.risk_reward_1.toFixed(1) : (setup.risk_reward ? setup.risk_reward.toFixed(1) : '--')}</div>
                             </div>
                         </div>
-                    ` : ''}
+                        ${setup.market_context ? `
+                        <div style="margin-top: 0.5rem; font-size: 0.7rem; color: var(--text-muted); display: flex; gap: 0.5rem; justify-content: center;">
+                            <span>Vol: ${setup.market_context.volatility}</span>
+                            <span>|</span>
+                            <span>Trend: ${setup.market_context.trend}</span>
+                            <span>|</span>
+                            <span>Conf: ${setup.market_context.confidence}</span>
+                        </div>
+                        ` : ''}
+                        ${signal.patterns && signal.patterns.patterns && signal.patterns.patterns.length > 0 ? `
+                        <div style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid var(--border-color);">
+                            <div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.3rem;">🕯️ PATTERNS</div>
+                            <div style="display: flex; flex-wrap: wrap; gap: 0.3rem; justify-content: center;">
+                                ${signal.patterns.patterns.slice(0, 3).map(p => `
+                                    <span style="font-size: 0.65rem; padding: 0.2rem 0.4rem; border-radius: 0.2rem; background: ${p.signal === 'BULLISH' ? 'rgba(0,255,136,0.2)' : p.signal === 'BEARISH' ? 'rgba(255,102,102,0.2)' : 'rgba(255,255,255,0.1)'}; color: ${p.signal === 'BULLISH' ? '#00ff88' : p.signal === 'BEARISH' ? '#ff6666' : '#999'};">${p.name.replace(/_/g, ' ')}</span>
+                                `).join('')}
+                            </div>
+                        </div>
+                        ` : ''}
+                    </div>
                 </div>
             `;
         }
         
-        function renderTopSignals() {
-            const container = document.getElementById('top-signals-container');
-            
-            if (!signalsData || signalsData.length === 0) {
-                container.innerHTML = '<p style="color: var(--text-secondary); text-align: center;">No signals available. Loading...</p>';
-                return;
-            }
-            
-            const top10 = [...signalsData]
-                .sort((a, b) => Math.abs(b.composite_score || 0) - Math.abs(a.composite_score || 0))
-                .slice(0, 10);
-            
-            container.innerHTML = top10.map(s => createSignalCard(s)).join('');
+        // Update Stats
+        function updateStats() {
+            document.getElementById('total-signals').textContent = signalsData.length;
+            document.getElementById('bullish-count').textContent = signalsData.filter(s => s.direction === 'LONG').length;
+            document.getElementById('bearish-count').textContent = signalsData.filter(s => s.direction === 'SHORT').length;
         }
         
-        // ═══════════════════════════════════════════════════════════════════════════
-        // RATES FUNCTIONS (FIXED)
-        // ═══════════════════════════════════════════════════════════════════════════
-        
+        // Load Rates
         async function loadRates() {
-            const tbody = document.getElementById('rates-body');
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Loading...</td></tr>';
-            
             try {
-                const data = await safeFetch(`${API_BASE}/rates`);
+                const response = await fetch(`${API_BASE}/rates`);
+                const data = await response.json();
                 
-                if (data.success && data.rates) {
+                if (data.success) {
+                    const tbody = document.getElementById('rates-body');
                     const category = document.getElementById('rates-category').value;
-                    let rates = data.rates;
                     
-                    if (category !== 'all') {
-                        rates = rates.filter(r => (r.category || '').toLowerCase() === category);
-                    }
+                    let rates = Object.entries(data.rates);
                     
-                    if (rates.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color: var(--text-muted);">No rates available</td></tr>';
-                        return;
-                    }
-                    
-                    tbody.innerHTML = rates.map(r => {
-                        const decimals = (r.bid && r.bid > 10) ? 2 : 5;
-                        return `
-                            <tr>
-                                <td style="font-weight: 600;">${r.pair || 'N/A'}</td>
-                                <td>${formatNumber(r.bid, decimals)}</td>
-                                <td>${formatNumber(r.ask, decimals)}</td>
-                                <td>${formatNumber(r.spread, 1)}</td>
-                                <td style="font-size: 0.7rem; color: var(--text-muted);">${r.source || '--'}</td>
-                            </tr>
-                        `;
-                    }).join('');
-                } else {
-                    throw new Error('Invalid rates data');
+                    tbody.innerHTML = rates.map(([pair, rate]) => `
+                        <tr>
+                            <td style="font-weight: 600;">${pair}</td>
+                            <td>${rate.bid?.toFixed(5) || 'N/A'}</td>
+                            <td>${rate.ask?.toFixed(5) || 'N/A'}</td>
+                            <td>${((rate.ask - rate.bid) * 10000).toFixed(1)} pips</td>
+                            <td><span class="status-badge ${rate.source === 'polygon' ? 'ok' : rate.source === 'exchangerate' ? 'limited' : 'error'}">${rate.source}</span></td>
+                        </tr>
+                    `).join('');
                 }
             } catch (error) {
                 console.error('Error loading rates:', error);
-                tbody.innerHTML = '<tr><td colspan="5" style="color: var(--accent-red);">Error loading rates. <a href="#" onclick="loadRates(); return false;">Retry</a></td></tr>';
             }
         }
         
-        // ═══════════════════════════════════════════════════════════════════════════
-        // NEWS FUNCTIONS (FIXED)
-        // ═══════════════════════════════════════════════════════════════════════════
-        
-        async function loadNews() {
-            const container = document.getElementById('news-container');
-            container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading...</div>';
-            
-            try {
-                const data = await safeFetch(`${API_BASE}/news`);
-                
-                if (data.success && data.articles && data.articles.length > 0) {
-                    container.innerHTML = data.articles.slice(0, 20).map(n => `
-                        <div class="news-item">
-                            <div class="news-headline">${n.headline || n.title || 'No title'}</div>
-                            <div class="news-meta">
-                                ${n.source || 'Forex News'} • ${n.datetime ? new Date(n.datetime * 1000).toLocaleString() : 'Recent'}
-                            </div>
-                        </div>
-                    `).join('');
-                } else {
-                    container.innerHTML = '<p style="color: var(--text-muted); text-align: center;">No news available at this time</p>';
-                }
-            } catch (error) {
-                console.error('Error loading news:', error);
-                showError(container, 'Error loading news', 'loadNews()');
-            }
-        }
-        
-        // ═══════════════════════════════════════════════════════════════════════════
-        // CALENDAR FUNCTIONS (FIXED)
-        // ═══════════════════════════════════════════════════════════════════════════
-        
-        async function loadCalendar() {
-            const container = document.getElementById('calendar-container');
-            container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading...</div>';
-            
-            try {
-                const data = await safeFetch(`${API_BASE}/calendar`);
-                
-                if (data.success && data.events && data.events.length > 0) {
-                    const currency = document.getElementById('calendar-currency').value;
-                    const impact = document.getElementById('calendar-impact').value;
-                    
-                    let events = data.events;
-                    if (currency !== 'all') events = events.filter(e => e.country === currency);
-                    if (impact === 'high') events = events.filter(e => (e.impact || '').toLowerCase() === 'high');
-                    if (impact === 'medium') events = events.filter(e => ['high', 'medium'].includes((e.impact || '').toLowerCase()));
-                    
-                    if (events.length === 0) {
-                        container.innerHTML = '<p style="color: var(--text-muted); text-align: center;">No events match your filters</p>';
-                        return;
-                    }
-                    
-                    container.innerHTML = events.slice(0, 30).map(e => `
-                        <div class="event-card ${(e.impact || 'low').toLowerCase()}">
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <strong>${e.event || 'Event'}</strong>
-                                <span style="font-size: 0.75rem; color: var(--text-muted);">${e.country || ''}</span>
-                            </div>
-                            <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.3rem;">
-                                ${e.time || ''} ${e.date || ''}
-                            </div>
-                        </div>
-                    `).join('');
-                } else {
-                    container.innerHTML = '<p style="color: var(--text-muted); text-align: center;">No calendar events available</p>';
-                }
-            } catch (error) {
-                console.error('Error loading calendar:', error);
-                showError(container, 'Error loading calendar', 'loadCalendar()');
-            }
-        }
-        
-        // ═══════════════════════════════════════════════════════════════════════════
-        // POSITIONING FUNCTIONS (FIXED)
-        // ═══════════════════════════════════════════════════════════════════════════
-        
-        async function loadPositioning() {
-            const container = document.getElementById('positioning-container');
-            container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading...</div>';
-            
-            try {
-                const data = await safeFetch(`${API_BASE}/positioning`);
-                
-                if (data.success && data.data && data.data.length > 0) {
-                    container.innerHTML = data.data.map(p => {
-                        const longPct = parseFloat(p.long_percentage) || 50;
-                        const shortPct = parseFloat(p.short_percentage) || 50;
-                        const signal = p.contrarian_signal || 'NEUTRAL';
-                        
-                        return `
-                            <div class="card" style="margin-bottom: 0.5rem;">
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem;">
-                                    <strong>${p.pair || 'N/A'}</strong>
-                                    <span style="font-size: 0.75rem; padding: 0.2rem 0.5rem; border-radius: 0.25rem; 
-                                        background: ${signal === 'SELL' ? 'rgba(239,68,68,0.2)' : signal === 'BUY' ? 'rgba(16,185,129,0.2)' : 'var(--bg-hover)'};
-                                        color: ${signal === 'SELL' ? 'var(--accent-red)' : signal === 'BUY' ? 'var(--accent-green)' : 'var(--text-muted)'};">
-                                        ${signal}
-                                    </span>
-                                </div>
-                                <div class="position-bar">
-                                    <div class="position-long" style="width: ${longPct}%">${formatNumber(longPct, 0)}%</div>
-                                    <div class="position-short" style="width: ${shortPct}%">${formatNumber(shortPct, 0)}%</div>
-                                </div>
-                            </div>
-                        `;
-                    }).join('');
-                } else {
-                    container.innerHTML = '<p style="color: var(--text-muted); text-align: center;">No positioning data available</p>';
-                }
-            } catch (error) {
-                console.error('Error loading positioning:', error);
-                showError(container, 'Error loading positioning data', 'loadPositioning()');
-            }
-        }
-        
-        // ═══════════════════════════════════════════════════════════════════════════
-        // WEIGHTS FUNCTIONS (FIXED)
-        // ═══════════════════════════════════════════════════════════════════════════
-        
-        async function loadWeights() {
-            const container = document.getElementById('weights-editor');
-            
-            try {
-                const data = await safeFetch(`${API_BASE}/weights`);
-                
-                if (data.success && data.weights) {
-                    const weights = data.weights;
-                    const total = Object.values(weights).reduce((a, b) => a + (Number(b) || 0), 0);
-                    
-                    container.innerHTML = `
-                        ${Object.entries(weights).map(([key, val]) => `
-                            <div class="weight-row">
-                                <span class="weight-label">${key.charAt(0).toUpperCase() + key.slice(1)}</span>
-                                <input type="range" class="weight-slider" id="weight-${key}" 
-                                    min="0" max="30" value="${val || 0}" 
-                                    oninput="updateWeightDisplay('${key}', this.value)">
-                                <span class="weight-value" id="weight-val-${key}">${val || 0}%</span>
-                            </div>
-                        `).join('')}
-                        <div style="margin-top: 1rem; padding: 0.75rem; background: var(--bg-secondary); border-radius: 0.5rem;">
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <span>Total:</span>
-                                <strong id="weights-total">${total}%</strong>
-                            </div>
-                        </div>
-                        <button onclick="saveWeights()" style="width: 100%; margin-top: 1rem;">💾 Save Weights</button>
-                    `;
-                } else {
-                    throw new Error('Invalid weights data');
-                }
-            } catch (error) {
-                console.error('Error loading weights:', error);
-                showError(container, 'Error loading weights', 'loadWeights()');
-            }
-        }
-        
-        function updateWeightDisplay(key, value) {
-            const valEl = document.getElementById(`weight-val-${key}`);
-            if (valEl) valEl.textContent = value + '%';
-            updateWeightsTotal();
-        }
-        
-        function updateWeightsTotal() {
-            const sliders = document.querySelectorAll('.weight-slider');
-            let total = 0;
-            sliders.forEach(s => total += parseInt(s.value) || 0);
-            const totalEl = document.getElementById('weights-total');
-            if (totalEl) totalEl.textContent = total + '%';
-        }
-        
-        async function saveWeights() {
-            const sliders = document.querySelectorAll('.weight-slider');
-            const weights = {};
-            sliders.forEach(s => {
-                const key = s.id.replace('weight-', '');
-                weights[key] = parseInt(s.value) || 0;
-            });
-            
-            try {
-                await safeFetch(`${API_BASE}/weights`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(weights)
-                });
-                alert('✅ Weights saved successfully!');
-                loadSignals();
-            } catch (error) {
-                alert('❌ Error saving weights. Please try again.');
-            }
-        }
-        
-        // ═══════════════════════════════════════════════════════════════════════════
-        // ANALYZER FUNCTIONS (FIXED)
-        // ═══════════════════════════════════════════════════════════════════════════
-        
+        // Load Analyzer Pairs
         function loadAnalyzerPairs() {
             const container = document.getElementById('analyzer-pairs');
-            
-            if (!signalsData || signalsData.length === 0) {
-                container.innerHTML = '<p style="color: var(--text-muted); padding: 1rem;">Loading pairs...</p>';
-                return;
-            }
-            
-            container.innerHTML = signalsData.map(s => {
-                const score = s.composite_score || 0;
-                return `
-                    <div class="pair-list-item" onclick="analyzePair('${s.pair}')">
-                        <span>${s.pair || 'N/A'}</span>
-                        <span style="color: ${score > 0 ? 'var(--accent-green)' : score < 0 ? 'var(--accent-red)' : 'var(--text-muted)'}">
-                            ${score > 0 ? '+' : ''}${formatNumber(score, 1)}
-                        </span>
-                    </div>
-                `;
-            }).join('');
-        }
-        
-        async function analyzePair(pair) {
-            const detail = document.getElementById('analyzer-detail');
-            detail.innerHTML = '<div class="loading"><div class="spinner"></div>Analyzing...</div>';
-            
-            const signal = signalsData.find(s => s.pair === pair);
-            if (!signal) {
-                detail.innerHTML = '<p style="color: var(--accent-red);">Pair not found</p>';
-                return;
-            }
-            
-            detail.innerHTML = createSignalCard(signal);
-        }
-        
-        // ═══════════════════════════════════════════════════════════════════════════
-        // JOURNAL FUNCTIONS (FIXED)
-        // ═══════════════════════════════════════════════════════════════════════════
-        
-        async function loadJournal() {
-            try {
-                const [openRes, closedRes] = await Promise.allSettled([
-                    safeFetch(`${API_BASE}/journal?status=OPEN`),
-                    safeFetch(`${API_BASE}/journal?status=CLOSED&limit=20`)
-                ]);
-                
-                const openData = openRes.status === 'fulfilled' ? openRes.value : { trades: [] };
-                const closedData = closedRes.status === 'fulfilled' ? closedRes.value : { trades: [] };
-                
-                renderJournalTrades('journal-open-trades', openData.trades || [], true);
-                renderJournalTrades('journal-closed-trades', closedData.trades || [], false);
-            } catch (error) {
-                console.error('Error loading journal:', error);
-                document.getElementById('journal-open-trades').innerHTML = '<p style="color: var(--text-muted);">No open trades</p>';
-                document.getElementById('journal-closed-trades').innerHTML = '<p style="color: var(--text-muted);">No trade history</p>';
-            }
-        }
-        
-        function renderJournalTrades(containerId, trades, isOpen) {
-            const container = document.getElementById(containerId);
-            
-            if (!trades || trades.length === 0) {
-                container.innerHTML = '<p style="color: var(--text-muted); text-align: center;">No trades</p>';
-                return;
-            }
-            
-            container.innerHTML = trades.map(t => `
-                <div class="card" style="margin-bottom: 0.5rem;">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <strong>${t.pair || 'N/A'}</strong>
-                        <span class="direction-badge ${(t.direction || '').toLowerCase() === 'long' ? 'long' : 'short'}" style="font-size: 0.7rem; padding: 0.2rem 0.5rem;">
-                            ${t.direction || 'N/A'}
-                        </span>
-                    </div>
-                    <div style="font-size: 0.8rem; color: var(--text-secondary); margin: 0.3rem 0;">
-                        Entry: ${t.entry_price || '--'} | Lots: ${t.lot_size || '--'}
-                    </div>
-                    ${t.pnl_pips !== undefined && t.pnl_pips !== null ? `
-                        <div style="font-weight: 600; color: ${t.pnl_pips >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'}">
-                            P/L: ${t.pnl_pips >= 0 ? '+' : ''}${formatNumber(t.pnl_pips, 1)} pips
-                        </div>
-                    ` : ''}
-                    ${isOpen ? `
-                        <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
-                            <input type="number" id="exit-${t.id}" placeholder="Exit price" step="0.00001" style="flex: 1;">
-                            <button onclick="closeTrade(${t.id})" class="secondary" style="padding: 0.4rem 0.8rem;">Close</button>
-                        </div>
-                    ` : ''}
+            container.innerHTML = signalsData.map(s => `
+                <div class="pair-list-item" onclick="analyzeSignal('${s.pair}')">
+                    <span>${s.pair}</span>
+                    <span style="color: ${s.direction === 'LONG' ? 'var(--accent-green)' : s.direction === 'SHORT' ? 'var(--accent-red)' : 'var(--text-secondary)'}">
+                        ${s.composite_score}
+                    </span>
                 </div>
             `).join('');
         }
         
-        async function addJournalTrade() {
-            const trade = {
-                pair: document.getElementById('journal-pair').value,
-                direction: document.getElementById('journal-direction').value,
-                lot_size: parseFloat(document.getElementById('journal-lots').value) || 0.01,
-                entry_price: parseFloat(document.getElementById('journal-entry').value),
-                sl_price: parseFloat(document.getElementById('journal-sl').value) || null,
-                tp_price: parseFloat(document.getElementById('journal-tp').value) || null,
-                notes: document.getElementById('journal-notes').value || ''
-            };
+        // Analyze Signal
+        async function analyzeSignal(pair) {
+            const detail = document.getElementById('analyzer-detail');
+            detail.innerHTML = '<div class="loading"><div class="spinner"></div>Loading analysis...</div>';
             
-            if (!trade.entry_price || isNaN(trade.entry_price)) {
-                alert('⚠️ Please enter a valid entry price');
+            // Switch to analyzer tab
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.querySelector('[data-tab="analyzer"]').classList.add('active');
+            document.getElementById('tab-analyzer').classList.add('active');
+            
+            try {
+                const response = await fetch(`${API_BASE}/signal/${pair.replace('/', '_')}`);
+                const signal = await response.json();
+                
+                if (signal.success) {
+                    detail.innerHTML = `
+                        <h3 style="margin-bottom: 1rem;">${signal.pair} Analysis</h3>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+                            <div class="result-card">
+                                <div class="value ${signal.composite_score >= 60 ? '' : 'style="color: var(--accent-red)"'}">${signal.composite_score}</div>
+                                <div class="label">Composite Score</div>
+                            </div>
+                            <div class="result-card">
+                                <div class="value" style="color: ${signal.direction === 'LONG' ? 'var(--accent-green)' : 'var(--accent-red)'}">${signal.direction}</div>
+                                <div class="label">Direction</div>
+                            </div>
+                        </div>
+                        
+                        <h4 style="margin-bottom: 0.5rem;">9-Factor Breakdown (REAL DATA)</h4>
+                        <table class="data-table" style="margin-bottom: 1.5rem;">
+                            <thead>
+                                <tr>
+                                    <th>Factor</th>
+                                    <th>Score</th>
+                                    <th>Signal</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${Object.entries(signal.factors || {}).map(([name, data]) => `
+                                    <tr>
+                                        <td style="text-transform: capitalize;">${name}</td>
+                                        <td>${data.score?.toFixed(1) || 'N/A'}</td>
+                                        <td><span class="status-badge ${data.signal === 'BULLISH' ? 'ok' : data.signal === 'BEARISH' ? 'error' : 'limited'}">${data.signal}</span></td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                        
+                        <h4 style="margin-bottom: 0.5rem;">Technical Indicators</h4>
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem;">
+                            <div class="result-card">
+                                <div class="value">${signal.technical?.rsi?.toFixed(1) || 'N/A'}</div>
+                                <div class="label">RSI</div>
+                            </div>
+                            <div class="result-card">
+                                <div class="value">${signal.technical?.adx?.toFixed(1) || 'N/A'}</div>
+                                <div class="label">ADX</div>
+                            </div>
+                            <div class="result-card">
+                                <div class="value">${signal.technical?.atr?.toFixed(5) || 'N/A'}</div>
+                                <div class="label">ATR</div>
+                            </div>
+                        </div>
+                        
+                        <h4 style="margin: 1rem 0 0.5rem;">Smart Trade Setup ${signal.trade_setup?.trade_quality ? `<span style="color: ${signal.trade_setup.trade_quality === 'A+' ? '#00ff88' : signal.trade_setup.trade_quality === 'A' ? '#00cc66' : signal.trade_setup.trade_quality === 'B' ? '#ffaa00' : '#ff6666'}; font-size: 0.9rem;">[Grade: ${signal.trade_setup.trade_quality}]</span>` : ''}</h4>
+                        
+                        ${signal.trade_setup?.market_context ? `
+                        <div style="margin-bottom: 1rem; padding: 0.75rem; background: var(--bg-secondary); border-radius: 0.5rem; display: flex; gap: 1.5rem; justify-content: center; flex-wrap: wrap;">
+                            <div style="text-align: center;">
+                                <div style="font-size: 0.7rem; color: var(--text-muted);">VOLATILITY</div>
+                                <div style="font-weight: 600; color: ${signal.trade_setup.market_context.volatility === 'HIGH' ? '#ff6666' : signal.trade_setup.market_context.volatility === 'LOW' ? '#66aaff' : '#00cc66'};">${signal.trade_setup.market_context.volatility}</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 0.7rem; color: var(--text-muted);">TREND</div>
+                                <div style="font-weight: 600; color: ${signal.trade_setup.market_context.trend === 'STRONG' ? '#00ff88' : signal.trade_setup.market_context.trend === 'WEAK' ? '#ffaa00' : '#00cc66'};">${signal.trade_setup.market_context.trend}</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 0.7rem; color: var(--text-muted);">CONFIDENCE</div>
+                                <div style="font-weight: 600; color: ${signal.trade_setup.market_context.confidence === 'HIGH' ? '#00ff88' : signal.trade_setup.market_context.confidence === 'LOW' ? '#ff6666' : '#ffaa00'};">${signal.trade_setup.market_context.confidence}</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 0.7rem; color: var(--text-muted);">SL MULT</div>
+                                <div style="font-weight: 600;">${signal.trade_setup.sl_multiplier || '1.8'}x</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 0.7rem; color: var(--text-muted);">TP MULT</div>
+                                <div style="font-weight: 600;">${signal.trade_setup.tp1_multiplier || '2.5'}x</div>
+                            </div>
+                        </div>
+                        ` : ''}
+                        
+                        <div class="trade-setup">
+                            <div class="setup-grid" style="grid-template-columns: repeat(5, 1fr);">
+                                <div class="setup-item entry">
+                                    <div class="label">ENTRY</div>
+                                    <div class="value">${signal.trade_setup?.entry?.toFixed(5) || 'N/A'}</div>
+                                </div>
+                                <div class="setup-item sl">
+                                    <div class="label">SL (${signal.trade_setup?.sl_pips?.toFixed(0) || 0}p)</div>
+                                    <div class="value">${signal.trade_setup?.sl?.toFixed(5) || 'N/A'}</div>
+                                </div>
+                                <div class="setup-item tp">
+                                    <div class="label">TP1 (${signal.trade_setup?.tp1_pips?.toFixed(0) || 0}p)</div>
+                                    <div class="value">${signal.trade_setup?.tp1?.toFixed(5) || 'N/A'}</div>
+                                </div>
+                                <div class="setup-item tp">
+                                    <div class="label">TP2 (${signal.trade_setup?.tp2_pips?.toFixed(0) || 0}p)</div>
+                                    <div class="value">${signal.trade_setup?.tp2?.toFixed(5) || 'N/A'}</div>
+                                </div>
+                                <div class="setup-item" style="background: var(--bg-secondary);">
+                                    <div class="label">R:R</div>
+                                    <div class="value" style="color: ${(signal.trade_setup?.risk_reward_1 || 1.5) >= 2 ? '#00ff88' : (signal.trade_setup?.risk_reward_1 || 1.5) >= 1.5 ? '#00cc66' : '#ffaa00'};">1:${signal.trade_setup?.risk_reward_1?.toFixed(1) || '1.5'}</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- TradingView Chart -->
+                        <h4 style="margin: 1.5rem 0 0.5rem;">Price Chart</h4>
+                        <div style="height: 400px; background: var(--bg-secondary); border-radius: 0.5rem; overflow: hidden;">
+                            <iframe 
+                                src="https://s.tradingview.com/widgetembed/?frameElementId=tradingview&symbol=${signal.pair.replace('/', '')}&interval=60&theme=dark&style=1&locale=en&toolbar_bg=%231a1f2e&enable_publishing=false&hide_top_toolbar=false&hide_legend=false&save_image=false&container_id=tradingview_chart"
+                                style="width: 100%; height: 100%; border: none;">
+                            </iframe>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                detail.innerHTML = '<p style="color: var(--accent-red);">Error loading analysis</p>';
+            }
+        }
+        
+        // Load Technical
+        async function loadTechnical() {
+            try {
+                const tbody = document.getElementById('technical-body');
+                tbody.innerHTML = signalsData.slice(0, 20).map(s => `
+                    <tr>
+                        <td style="font-weight: 600;">${s.pair}</td>
+                        <td style="color: ${s.technical?.rsi < 30 ? 'var(--accent-green)' : s.technical?.rsi > 70 ? 'var(--accent-red)' : 'inherit'}">${s.technical?.rsi?.toFixed(1) || 'N/A'}</td>
+                        <td style="color: ${s.technical?.macd?.histogram > 0 ? 'var(--accent-green)' : 'var(--accent-red)'}">${s.technical?.macd?.histogram?.toFixed(5) || 'N/A'}</td>
+                        <td>${s.technical?.adx?.toFixed(1) || 'N/A'}</td>
+                        <td>${s.technical?.atr?.toFixed(5) || 'N/A'}</td>
+                        <td>${s.technical?.bollinger?.percent_b?.toFixed(1) || 'N/A'}%</td>
+                        <td><span class="status-badge ${s.technical?.ema_signal === 'BULLISH' ? 'ok' : s.technical?.ema_signal === 'BEARISH' ? 'error' : 'limited'}">${s.technical?.ema_signal || 'N/A'}</span></td>
+                    </tr>
+                `).join('');
+            } catch (error) {
+                console.error('Error loading technical:', error);
+            }
+        }
+        
+        // Load Positioning
+        async function loadPositioning() {
+            try {
+                const response = await fetch(`${API_BASE}/positioning`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const container = document.getElementById('positioning-container');
+                    
+                    // Show data source indicator
+                    const sourceLabel = data.source === 'IG_MARKETS_REAL' 
+                        ? '<span style="color: var(--accent-green); font-weight: 600;">📊 REAL DATA from IG Markets</span>'
+                        : '<span style="color: var(--accent-yellow); font-weight: 600;">⚠️ Configure IG API for real positioning data</span>';
+                    
+                    let html = `<div style="margin-bottom: 1rem; padding: 0.75rem; background: var(--bg-secondary); border-radius: 0.5rem; text-align: center;">${sourceLabel}</div>`;
+                    
+                    if (data.source === 'NOT_CONFIGURED') {
+                        html += `<div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+                            <p>Add IG credentials to .env file for REAL positioning data:</p>
+                            <code style="display: block; margin-top: 1rem; padding: 1rem; background: var(--bg-card); border-radius: 0.5rem; text-align: left;">
+                            IG_API_KEY=your_api_key<br>
+                            IG_USERNAME=your_username<br>
+                            IG_PASSWORD=your_password<br>
+                            IG_ACC_TYPE=DEMO
+                            </code>
+                        </div>`;
+                    } else {
+                        html += data.data.map(p => `
+                            <div style="background: var(--bg-card); padding: 1rem; border-radius: 0.5rem; margin-bottom: 0.5rem;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                                    <span style="font-weight: 600;">${p.pair}</span>
+                                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                        ${p.source === 'IG_REAL' ? '<span style="font-size: 0.7rem; color: var(--accent-green);">● IG</span>' : ''}
+                                        <span class="status-badge ${p.contrarian_signal === 'LONG' ? 'ok' : p.contrarian_signal === 'SHORT' ? 'error' : 'limited'}">
+                                            Contrarian: ${p.contrarian_signal}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="position-bar">
+                                    <div class="position-long" style="width: ${p.long_percentage}%">${p.long_percentage}% Long</div>
+                                    <div class="position-short" style="width: ${p.short_percentage}%">${p.short_percentage}% Short</div>
+                                </div>
+                            </div>
+                        `).join('');
+                    }
+                    
+                    container.innerHTML = html;
+                }
+            } catch (error) {
+                console.error('Error loading positioning:', error);
+                document.getElementById('positioning-container').innerHTML = `
+                    <div style="text-align: center; padding: 2rem; color: var(--accent-red);">
+                        <p>Failed to load positioning data. Check backend connection.</p>
+                    </div>
+                `;
+            }
+        }
+        
+        // Load News
+        async function loadNews() {
+            try {
+                const response = await fetch(`${API_BASE}/news`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const container = document.getElementById('news-container');
+                    
+                    if (data.articles && data.articles.length > 0) {
+                        container.innerHTML = data.articles.map(article => `
+                            <div class="news-item">
+                                <div class="news-headline">${article.headline}</div>
+                                <div class="news-meta">
+                                    ${article.source} | ${new Date(article.datetime * 1000).toLocaleString()}
+                                </div>
+                            </div>
+                        `).join('');
+                    } else {
+                        container.innerHTML = '<p style="color: var(--text-secondary);">No news available. Make sure Finnhub API key is configured.</p>';
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading news:', error);
+            }
+        }
+        
+        // Load Calendar
+        async function loadCalendar() {
+            try {
+                const response = await fetch(`${API_BASE}/calendar`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const container = document.getElementById('calendar-container');
+                    const impactFilter = document.getElementById('calendar-impact').value;
+                    const currencyFilter = document.getElementById('calendar-currency').value;
+                    
+                    let events = data.events || [];
+                    
+                    // Filter by impact
+                    if (impactFilter !== 'all') {
+                        events = events.filter(e => {
+                            if (impactFilter === 'high') return e.impact === 'high';
+                            return e.impact === 'high' || e.impact === 'medium';
+                        });
+                    }
+                    
+                    // Filter by currency
+                    if (currencyFilter !== 'all') {
+                        const currencyMap = {
+                            'USD': ['US', 'USA'],
+                            'EUR': ['EU', 'DE', 'FR', 'IT', 'ES'],
+                            'GBP': ['UK', 'GB'],
+                            'JPY': ['JP'],
+                            'AUD': ['AU'],
+                            'CAD': ['CA'],
+                            'NZD': ['NZ'],
+                            'CHF': ['CH']
+                        };
+                        const codes = currencyMap[currencyFilter] || [currencyFilter];
+                        events = events.filter(e => codes.some(c => e.country.toUpperCase().includes(c)));
+                    }
+                    
+                    if (events.length > 0) {
+                        const getFlag = (country) => {
+                            const flags = {
+                                'US': '🇺🇸', 'USA': '🇺🇸',
+                                'EU': '🇪🇺', 'DE': '🇩🇪', 'FR': '🇫🇷', 'IT': '🇮🇹', 'ES': '🇪🇸',
+                                'UK': '🇬🇧', 'GB': '🇬🇧',
+                                'JP': '🇯🇵',
+                                'AU': '🇦🇺',
+                                'CA': '🇨🇦',
+                                'NZ': '🇳🇿',
+                                'CH': '🇨🇭',
+                                'CN': '🇨🇳'
+                            };
+                            return flags[country.toUpperCase()] || '🌐';
+                        };
+                        
+                        const getImpactDots = (impact) => {
+                            if (impact === 'high') return '<span style="color: #ef4444;">●●●</span>';
+                            if (impact === 'medium') return '<span style="color: #f59e0b;">●●</span><span style="color: #374151;">●</span>';
+                            return '<span style="color: #10b981;">●</span><span style="color: #374151;">●●</span>';
+                        };
+                        
+                        const getCountdown = (timeStr) => {
+                            if (!timeStr) return '<span style="color: var(--text-muted);">--:--</span>';
+                            
+                            const eventDate = new Date(timeStr);
+                            const now = new Date();
+                            const diff = eventDate - now;
+                            
+                            if (diff < 0) return '<span style="color: var(--accent-green);">Released</span>';
+                            
+                            const hours = Math.floor(diff / (1000 * 60 * 60));
+                            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                            
+                            if (hours > 24) {
+                                const days = Math.floor(hours / 24);
+                                return `<span style="color: var(--text-secondary);">${days}d ${hours % 24}h</span>`;
+                            }
+                            if (hours > 0) {
+                                return `<span style="color: var(--accent-yellow);">${hours}h ${minutes}m</span>`;
+                            }
+                            return `<span style="color: var(--accent-red);">${minutes}m</span>`;
+                        };
+                        
+                        const formatTime = (timeStr) => {
+                            if (!timeStr) return '--:--';
+                            const date = new Date(timeStr);
+                            return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+                        };
+                        
+                        const formatDate = (timeStr) => {
+                            if (!timeStr) return '--';
+                            const date = new Date(timeStr);
+                            return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                        };
+                        
+                        container.innerHTML = `
+                            <table class="data-table" style="width: 100%;">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 100px;">Time</th>
+                                        <th style="width: 80px;">Currency</th>
+                                        <th style="width: 60px;">Impact</th>
+                                        <th>Event</th>
+                                        <th style="width: 90px;">Forecast</th>
+                                        <th style="width: 90px;">Previous</th>
+                                        <th style="width: 90px;">Actual</th>
+                                        <th style="width: 100px;">Countdown</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${events.map(e => `
+                                        <tr style="border-left: 3px solid ${e.impact === 'high' ? '#ef4444' : e.impact === 'medium' ? '#f59e0b' : '#10b981'};">
+                                            <td>
+                                                <div style="font-weight: 600;">${formatTime(e.time)}</div>
+                                                <div style="font-size: 0.7rem; color: var(--text-muted);">${formatDate(e.time)}</div>
+                                            </td>
+                                            <td>
+                                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                                    <span style="font-size: 1.25rem;">${getFlag(e.country)}</span>
+                                                    <span style="font-weight: 500;">${e.country}</span>
+                                                </div>
+                                            </td>
+                                            <td style="text-align: center;">${getImpactDots(e.impact)}</td>
+                                            <td style="font-weight: 500;">${e.event}</td>
+                                            <td style="text-align: center; color: var(--text-secondary);">${e.estimate || '-'}</td>
+                                            <td style="text-align: center; color: var(--text-secondary);">${e.previous || '-'}</td>
+                                            <td style="text-align: center; font-weight: 600; color: ${e.actual ? (parseFloat(e.actual) > parseFloat(e.estimate) ? 'var(--accent-green)' : 'var(--accent-red)') : 'var(--text-muted)'};">
+                                                ${e.actual || 'Pending'}
+                                            </td>
+                                            <td style="text-align: center; font-family: 'JetBrains Mono', monospace;">
+                                                ${getCountdown(e.time)}
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        `;
+                    } else {
+                        container.innerHTML = `
+                            <div style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+                                <div style="font-size: 3rem; margin-bottom: 1rem;">📅</div>
+                                <p>No events match your filters.</p>
+                                <p style="font-size: 0.875rem; margin-top: 0.5rem;">Try selecting "All" for Impact and Currency filters.</p>
+                            </div>
+                        `;
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading calendar:', error);
+                document.getElementById('calendar-container').innerHTML = `
+                    <div style="text-align: center; padding: 3rem; color: var(--accent-red);">
+                        <p>Failed to load calendar. Check backend connection.</p>
+                    </div>
+                `;
+            }
+        }
+        
+        // Calendar filter listeners
+        document.getElementById('calendar-impact').addEventListener('change', loadCalendar);
+        document.getElementById('calendar-currency').addEventListener('change', loadCalendar);
+        
+        // Load Weights
+        async function loadWeights() {
+            try {
+                const response = await fetch(`${API_BASE}/weights`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const editor = document.getElementById('weights-editor');
+                    const weights = data.weights;
+                    
+                    editor.innerHTML = `
+                        ${Object.entries(weights).map(([name, value]) => `
+                            <div class="weight-row">
+                                <span class="weight-label">${name.charAt(0).toUpperCase() + name.slice(1)}</span>
+                                <input type="range" class="weight-slider" id="weight-${name}" min="0" max="30" value="${value}" 
+                                    oninput="updateWeightValue('${name}', this.value)">
+                                <span class="weight-value" id="value-${name}">${value}%</span>
+                            </div>
+                        `).join('')}
+                        
+                        <div class="weights-total" id="weights-total">
+                            <span>Total:</span>
+                            <span id="total-weight">${Object.values(weights).reduce((a, b) => a + b, 0)}%</span>
+                        </div>
+                        
+                        <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                            <button onclick="saveWeights()">💾 Save Weights</button>
+                            <button class="secondary" onclick="resetWeights()">🔄 Reset to Defaults</button>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error loading weights:', error);
+            }
+        }
+        
+        function updateWeightValue(name, value) {
+            document.getElementById(`value-${name}`).textContent = `${value}%`;
+            
+            // Calculate total
+            const sliders = document.querySelectorAll('.weight-slider');
+            let total = 0;
+            sliders.forEach(s => total += parseInt(s.value));
+            
+            document.getElementById('total-weight').textContent = `${total}%`;
+            
+            const totalDiv = document.getElementById('weights-total');
+            totalDiv.className = 'weights-total ' + (total === 100 ? 'valid' : 'invalid');
+        }
+        
+        async function saveWeights() {
+            const weights = {};
+            document.querySelectorAll('.weight-slider').forEach(slider => {
+                const name = slider.id.replace('weight-', '');
+                weights[name] = parseInt(slider.value);
+            });
+            
+            const total = Object.values(weights).reduce((a, b) => a + b, 0);
+            if (total !== 100) {
+                alert('Weights must sum to 100%');
                 return;
             }
             
             try {
-                const data = await safeFetch(`${API_BASE}/journal/add`, {
+                const response = await fetch(`${API_BASE}/weights`, {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(trade)
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(weights)
                 });
                 
+                const data = await response.json();
                 if (data.success) {
-                    alert('✅ Trade added successfully!');
+                    alert('Weights saved successfully!');
+                    loadSignals();
+                }
+            } catch (error) {
+                alert('Error saving weights');
+            }
+        }
+        
+        async function resetWeights() {
+            try {
+                const response = await fetch(`${API_BASE}/weights/reset`);
+                const data = await response.json();
+                if (data.success) {
+                    loadWeights();
+                    loadSignals();
+                }
+            } catch (error) {
+                alert('Error resetting weights');
+            }
+        }
+        
+        // Run Backtest
+        async function runBacktest() {
+            const container = document.getElementById('backtest-results');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div>Running backtest...</div>';
+            
+            const pair = document.getElementById('backtest-pair').value;
+            const days = document.getElementById('backtest-days').value;
+            const minScore = document.getElementById('backtest-score').value;
+            const minStars = document.getElementById('backtest-stars').value;
+            
+            try {
+                const response = await fetch(`${API_BASE}/backtest?pair=${encodeURIComponent(pair)}&days=${days}&min_score=${minScore}&min_stars=${minStars}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    container.innerHTML = `
+                        <div class="backtest-results">
+                            <div class="result-card">
+                                <div class="value" style="color: ${data.total_pnl >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'}">
+                                    $${data.total_pnl?.toFixed(2) || 0}
+                                </div>
+                                <div class="label">Total P&L</div>
+                            </div>
+                            <div class="result-card">
+                                <div class="value">${data.win_rate?.toFixed(1) || 0}%</div>
+                                <div class="label">Win Rate</div>
+                            </div>
+                            <div class="result-card">
+                                <div class="value">${data.profit_factor?.toFixed(2) || 0}</div>
+                                <div class="label">Profit Factor</div>
+                            </div>
+                            <div class="result-card">
+                                <div class="value">${data.total_trades || 0}</div>
+                                <div class="label">Total Trades</div>
+                            </div>
+                            <div class="result-card">
+                                <div class="value" style="color: var(--accent-red)">-${data.max_drawdown?.toFixed(1) || 0}%</div>
+                                <div class="label">Max Drawdown</div>
+                            </div>
+                            <div class="result-card">
+                                <div class="value">$${data.expectancy?.toFixed(2) || 0}</div>
+                                <div class="label">Expectancy</div>
+                            </div>
+                        </div>
+                        
+                        <div class="chart-container">
+                            <canvas id="equity-chart"></canvas>
+                        </div>
+                        
+                        <h4 style="margin: 1.5rem 0 1rem;">Recent Trades</h4>
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Direction</th>
+                                    <th>Entry</th>
+                                    <th>Exit</th>
+                                    <th>Pips</th>
+                                    <th>P&L</th>
+                                    <th>Result</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${(data.trades || []).map(t => `
+                                    <tr>
+                                        <td>${t.date}</td>
+                                        <td style="color: ${t.direction === 'LONG' ? 'var(--accent-green)' : 'var(--accent-red)'}">${t.direction}</td>
+                                        <td>${t.entry}</td>
+                                        <td>${t.exit}</td>
+                                        <td style="color: ${t.pips >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'}">${t.pips >= 0 ? '+' : ''}${t.pips}</td>
+                                        <td style="color: ${t.pnl >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'}">$${t.pnl}</td>
+                                        <td><span class="status-badge ${t.result === 'WIN' ? 'ok' : 'error'}">${t.result}</span></td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                    
+                    // Draw equity curve
+                    const ctx = document.getElementById('equity-chart').getContext('2d');
+                    new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: data.equity_curve.map((_, i) => i + 1),
+                            datasets: [{
+                                label: 'Equity',
+                                data: data.equity_curve,
+                                borderColor: '#10b981',
+                                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                                fill: true,
+                                tension: 0.4
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: {
+                                legend: { display: false }
+                            },
+                            scales: {
+                                y: { grid: { color: '#374151' } },
+                                x: { grid: { color: '#374151' } }
+                            }
+                        }
+                    });
+                } else {
+                    container.innerHTML = `<p style="color: var(--accent-red);">Backtest failed: ${data.error}</p>`;
+                }
+            } catch (error) {
+                container.innerHTML = `<p style="color: var(--accent-red);">Error running backtest</p>`;
+            }
+        }
+        
+        // ═══════════════════════════════════════════════════════════════════════════
+        // TRADE JOURNAL FUNCTIONS
+        // ═══════════════════════════════════════════════════════════════════════════
+        
+        async function loadJournal() {
+            // Load open trades
+            const openContainer = document.getElementById('open-trades-list');
+            const closedContainer = document.getElementById('closed-trades-list');
+            
+            try {
+                // Open trades
+                const openResp = await fetch(`${API_BASE}/journal?status=OPEN`);
+                const openData = await openResp.json();
+                
+                if (openData.trades && openData.trades.length > 0) {
+                    openContainer.innerHTML = openData.trades.map(t => `
+                        <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 0.5rem; margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                            <div>
+                                <strong style="color: ${t.direction === 'LONG' ? '#00ff88' : '#ff6666'};">${t.direction}</strong>
+                                <span style="font-weight: 600;">${t.pair}</span>
+                                <span style="color: var(--text-muted); font-size: 0.85rem;">@ ${t.entry_price}</span>
+                                <span style="color: var(--text-muted); font-size: 0.85rem; margin-left: 0.5rem;">(${t.lot_size} lots)</span>
+                            </div>
+                            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                <input type="number" id="exit-price-${t.id}" placeholder="Exit Price" step="0.00001" style="padding: 0.3rem; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 0.3rem; color: var(--text-primary); width: 100px;">
+                                <button onclick="closeTrade(${t.id}, 'WIN')" style="padding: 0.3rem 0.6rem; background: #00aa55; color: white; border: none; border-radius: 0.3rem; cursor: pointer; font-size: 0.8rem;">WIN</button>
+                                <button onclick="closeTrade(${t.id}, 'LOSS')" style="padding: 0.3rem 0.6rem; background: #cc3333; color: white; border: none; border-radius: 0.3rem; cursor: pointer; font-size: 0.8rem;">LOSS</button>
+                                <button onclick="closeTrade(${t.id}, 'BREAKEVEN')" style="padding: 0.3rem 0.6rem; background: #666; color: white; border: none; border-radius: 0.3rem; cursor: pointer; font-size: 0.8rem;">BE</button>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    openContainer.innerHTML = '<p style="color: var(--text-muted);">No open trades</p>';
+                }
+                
+                // Closed trades
+                const closedResp = await fetch(`${API_BASE}/journal?status=CLOSED&limit=20`);
+                const closedData = await closedResp.json();
+                
+                if (closedData.trades && closedData.trades.length > 0) {
+                    closedContainer.innerHTML = `
+                        <table class="data-table" style="width: 100%;">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Pair</th>
+                                    <th>Direction</th>
+                                    <th>Entry</th>
+                                    <th>Exit</th>
+                                    <th>P/L (pips)</th>
+                                    <th>Outcome</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${closedData.trades.map(t => `
+                                    <tr>
+                                        <td>${new Date(t.timestamp_open).toLocaleDateString()}</td>
+                                        <td>${t.pair}</td>
+                                        <td style="color: ${t.direction === 'LONG' ? '#00ff88' : '#ff6666'};">${t.direction}</td>
+                                        <td>${t.entry_price?.toFixed(5)}</td>
+                                        <td>${t.exit_price?.toFixed(5)}</td>
+                                        <td style="color: ${t.pnl_pips >= 0 ? '#00ff88' : '#ff6666'}; font-weight: 600;">${t.pnl_pips >= 0 ? '+' : ''}${t.pnl_pips?.toFixed(1)}</td>
+                                        <td><span class="status-badge ${t.outcome === 'WIN' ? 'ok' : t.outcome === 'LOSS' ? 'error' : 'limited'}">${t.outcome}</span></td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                } else {
+                    closedContainer.innerHTML = '<p style="color: var(--text-muted);">No closed trades yet</p>';
+                }
+            } catch (error) {
+                console.error('Error loading journal:', error);
+                openContainer.innerHTML = '<p style="color: var(--accent-red);">Error loading trades</p>';
+            }
+        }
+        
+        async function addTrade() {
+            const tradeData = {
+                pair: document.getElementById('journal-pair').value,
+                direction: document.getElementById('journal-direction').value,
+                lot_size: parseFloat(document.getElementById('journal-lots').value),
+                entry_price: parseFloat(document.getElementById('journal-entry').value),
+                sl_price: parseFloat(document.getElementById('journal-sl').value) || null,
+                tp_price: parseFloat(document.getElementById('journal-tp').value) || null,
+                notes: document.getElementById('journal-notes').value
+            };
+            
+            if (!tradeData.entry_price) {
+                alert('Please enter an entry price');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/journal/add`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(tradeData)
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('Trade added successfully!');
                     document.getElementById('journal-entry').value = '';
                     document.getElementById('journal-sl').value = '';
                     document.getElementById('journal-tp').value = '';
                     document.getElementById('journal-notes').value = '';
                     loadJournal();
                 } else {
-                    throw new Error(data.error || 'Failed to add trade');
+                    alert('Error: ' + data.error);
                 }
             } catch (error) {
-                alert('❌ Error adding trade: ' + error.message);
+                alert('Error adding trade: ' + error.message);
             }
         }
         
-        async function closeTrade(tradeId) {
-            const exitInput = document.getElementById(`exit-${tradeId}`);
-            const exitPrice = parseFloat(exitInput?.value);
+        async function closeTrade(tradeId, outcome) {
+            const exitPrice = document.getElementById(`exit-price-${tradeId}`).value;
             
-            if (!exitPrice || isNaN(exitPrice)) {
-                alert('⚠️ Please enter a valid exit price');
+            if (!exitPrice) {
+                alert('Please enter an exit price');
                 return;
             }
             
             try {
-                const data = await safeFetch(`${API_BASE}/journal/close/${tradeId}`, {
+                const response = await fetch(`${API_BASE}/journal/close/${tradeId}`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ exit_price: exitPrice })
+                    body: JSON.stringify({
+                        exit_price: parseFloat(exitPrice),
+                        outcome: outcome
+                    })
                 });
+                const data = await response.json();
                 
                 if (data.success) {
-                    const pnl = data.pnl_pips || 0;
-                    alert(`✅ Trade closed! P/L: ${pnl >= 0 ? '+' : ''}${formatNumber(pnl, 1)} pips`);
+                    alert(`Trade closed! P/L: ${data.pnl_pips} pips`);
                     loadJournal();
                     loadPerformance();
                 } else {
-                    throw new Error(data.error || 'Failed to close trade');
+                    alert('Error: ' + data.error);
                 }
             } catch (error) {
-                alert('❌ Error closing trade: ' + error.message);
+                alert('Error closing trade: ' + error.message);
             }
         }
         
         // ═══════════════════════════════════════════════════════════════════════════
-        // PERFORMANCE FUNCTIONS (FIXED)
+        // PERFORMANCE FUNCTIONS
         // ═══════════════════════════════════════════════════════════════════════════
         
         async function loadPerformance() {
             try {
-                const data = await safeFetch(`${API_BASE}/performance`);
+                const response = await fetch(`${API_BASE}/performance`);
+                const data = await response.json();
                 
                 if (data.success && data.overall) {
                     const o = data.overall;
+                    
                     document.getElementById('perf-total-trades').textContent = o.total_trades || 0;
-                    document.getElementById('perf-win-rate').textContent = formatNumber(o.win_rate, 1) + '%';
-                    document.getElementById('perf-total-pips').textContent = formatNumber(o.total_pips, 1);
-                    document.getElementById('perf-profit-factor').textContent = formatNumber(o.profit_factor, 2);
+                    document.getElementById('perf-win-rate').textContent = (o.win_rate || 0).toFixed(1) + '%';
+                    document.getElementById('perf-total-pips').textContent = (o.total_pips || 0).toFixed(1);
+                    document.getElementById('perf-profit-factor').textContent = (o.profit_factor || 0).toFixed(2);
+                    
                     document.getElementById('perf-wins').textContent = o.wins || 0;
                     document.getElementById('perf-losses').textContent = o.losses || 0;
-                    document.getElementById('perf-best').textContent = formatNumber(o.best_trade, 1);
-                    document.getElementById('perf-worst').textContent = formatNumber(o.worst_trade, 1);
-                    document.getElementById('perf-avg-win').textContent = formatNumber(o.avg_win, 1);
-                    document.getElementById('perf-avg-loss').textContent = formatNumber(o.avg_loss, 1);
+                    document.getElementById('perf-best').textContent = (o.best_trade || 0).toFixed(1) + ' pips';
+                    document.getElementById('perf-worst').textContent = (o.worst_trade || 0).toFixed(1) + ' pips';
+                    document.getElementById('perf-avg-win').textContent = (o.avg_win || 0).toFixed(1);
+                    document.getElementById('perf-avg-loss').textContent = (o.avg_loss || 0).toFixed(1);
+                    
+                    // Performance by pair
+                    const byPairContainer = document.getElementById('perf-by-pair');
+                    if (data.by_pair && data.by_pair.length > 0) {
+                        byPairContainer.innerHTML = `
+                            <table class="data-table" style="width: 100%;">
+                                <thead>
+                                    <tr><th>Pair</th><th>Trades</th><th>Wins</th><th>Pips</th></tr>
+                                </thead>
+                                <tbody>
+                                    ${data.by_pair.map(p => `
+                                        <tr>
+                                            <td>${p.pair}</td>
+                                            <td>${p.trades}</td>
+                                            <td>${p.wins}</td>
+                                            <td style="color: ${p.pips >= 0 ? '#00ff88' : '#ff6666'}; font-weight: 600;">${p.pips >= 0 ? '+' : ''}${p.pips?.toFixed(1)}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        `;
+                    } else {
+                        byPairContainer.innerHTML = '<p style="color: var(--text-muted);">No trade data yet</p>';
+                    }
                 }
             } catch (error) {
                 console.error('Error loading performance:', error);
             }
         }
         
-        // ═══════════════════════════════════════════════════════════════════════════
-        // BACKTEST FUNCTIONS (FIXED)
-        // ═══════════════════════════════════════════════════════════════════════════
-        
-        async function runBacktest() {
-            const container = document.getElementById('backtest-results');
-            container.innerHTML = '<div class="loading"><div class="spinner"></div>Running backtest...</div>';
-            
-            const params = new URLSearchParams({
-                pair: document.getElementById('backtest-pair').value,
-                days: document.getElementById('backtest-days').value,
-                min_score: document.getElementById('backtest-score').value,
-                min_stars: document.getElementById('backtest-stars').value
-            });
-            
-            try {
-                const data = await safeFetch(`${API_BASE}/backtest?${params}`);
-                
-                if (data.success && data.results) {
-                    const r = data.results;
-                    const winRate = r.win_rate || 0;
-                    const totalPips = r.total_pips || 0;
-                    
-                    container.innerHTML = `
-                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem;">
-                            <div class="result-card">
-                                <div class="value">${r.total_trades || 0}</div>
-                                <div class="label">Trades</div>
-                            </div>
-                            <div class="result-card">
-                                <div class="value" style="color: ${winRate >= 50 ? 'var(--accent-green)' : 'var(--accent-red)'}">
-                                    ${formatNumber(winRate, 1)}%
-                                </div>
-                                <div class="label">Win Rate</div>
-                            </div>
-                            <div class="result-card">
-                                <div class="value" style="color: ${totalPips >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'}">
-                                    ${totalPips >= 0 ? '+' : ''}${formatNumber(totalPips, 1)}
-                                </div>
-                                <div class="label">Total Pips</div>
-                            </div>
-                            <div class="result-card">
-                                <div class="value">${formatNumber(r.profit_factor, 2)}</div>
-                                <div class="label">Profit Factor</div>
-                            </div>
-                        </div>
-                    `;
-                } else {
-                    throw new Error(data.error || 'Backtest failed');
-                }
-            } catch (error) {
-                console.error('Error running backtest:', error);
-                showError(container, 'Error running backtest', 'runBacktest()');
-            }
-        }
-        
-        // ═══════════════════════════════════════════════════════════════════════════
-        // AUDIT FUNCTIONS (FIXED)
-        // ═══════════════════════════════════════════════════════════════════════════
-        
+        // Run Audit
         async function runAudit() {
             const container = document.getElementById('audit-container');
             container.innerHTML = '<div class="loading"><div class="spinner"></div>Running audit...</div>';
             
             try {
-                const data = await safeFetch(`${API_BASE}/audit`);
+                const response = await fetch(`${API_BASE}/audit`);
+                const data = await response.json();
                 
                 if (data.success) {
-                    const apiStatus = data.api_status || {};
-                    const dataQuality = data.data_quality || {};
-                    
                     container.innerHTML = `
                         <div class="audit-section">
                             <h3>🔌 API Status</h3>
-                            ${Object.entries(apiStatus).map(([name, info]) => {
-                                const status = (info && info.status) || 'UNKNOWN';
-                                const statusClass = status === 'OK' ? 'ok' : status === 'LIMITED' ? 'limited' : 'error';
-                                return `
-                                    <div style="display: flex; justify-content: space-between; padding: 0.4rem 0; border-bottom: 1px solid var(--border-color);">
-                                        <span style="text-transform: capitalize;">${name}</span>
-                                        <span class="status-badge ${statusClass}">${status}</span>
-                                    </div>
-                                `;
-                            }).join('')}
+                            <table class="data-table">
+                                <thead>
+                                    <tr><th>API</th><th>Status</th><th>Details</th></tr>
+                                </thead>
+                                <tbody>
+                                    ${Object.entries(data.api_status || {}).map(([name, info]) => `
+                                        <tr>
+                                            <td style="text-transform: capitalize;">${name}</td>
+                                            <td><span class="status-badge ${info.status === 'OK' ? 'ok' : info.status === 'LIMITED' ? 'limited' : 'error'}">${info.status}</span></td>
+                                            <td>${info.test_rate || info.test_value || info.articles || info.error || '-'}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
                         </div>
                         
                         <div class="audit-section">
                             <h3>📊 Data Quality</h3>
-                            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem;">
+                            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
                                 <div class="result-card">
-                                    <div class="value">${dataQuality.pairs_with_rates || 0}/${dataQuality.total_pairs || 45}</div>
-                                    <div class="label">Rates</div>
+                                    <div class="value">${data.data_quality?.pairs_with_rates || 0}/${data.data_quality?.total_pairs || 45}</div>
+                                    <div class="label">Pairs with Rates</div>
                                 </div>
                                 <div class="result-card">
-                                    <div class="value">${dataQuality.coverage || 0}%</div>
+                                    <div class="value">${data.data_quality?.coverage || 0}%</div>
                                     <div class="label">Coverage</div>
                                 </div>
                                 <div class="result-card">
-                                    <div class="value">${Object.keys(dataQuality.sources || {}).length}</div>
-                                    <div class="label">Sources</div>
+                                    <div class="value">${Object.keys(data.data_quality?.sources || {}).length}</div>
+                                    <div class="label">Data Sources</div>
                                 </div>
                             </div>
                         </div>
+                        
+                        <div class="audit-section">
+                            <h3>✅ Score Validation</h3>
+                            <p>Test Pair: ${data.score_validation?.test_pair || 'N/A'}</p>
+                            <p>Composite Score: ${data.score_validation?.composite_score || 'N/A'}</p>
+                            <p>Direction: ${data.score_validation?.direction || 'N/A'}</p>
+                            <p>Factors Available: ${data.score_validation?.factors_available || 0}</p>
+                            <p>Trade Setup Valid: ${data.score_validation?.trade_setup_valid ? '✅ Yes' : '❌ No'}</p>
+                        </div>
+                        
+                        <p style="color: var(--text-muted); margin-top: 1rem;">Audit completed at: ${data.timestamp}</p>
                     `;
-                } else {
-                    throw new Error('Audit failed');
                 }
             } catch (error) {
-                console.error('Error running audit:', error);
-                showError(container, 'Error running audit', 'runAudit()');
+                container.innerHTML = `<p style="color: var(--accent-red);">Error running audit</p>`;
             }
         }
         
-        // ═══════════════════════════════════════════════════════════════════════════
-        // FILTER LISTENERS & COUNTDOWN
-        // ═══════════════════════════════════════════════════════════════════════════
+        // Load API Status
+        async function loadApiStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/api-status`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const container = document.getElementById('api-status-container');
+                    container.innerHTML = `
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
+                            ${Object.entries(data).filter(([k]) => k !== 'success').map(([name, info]) => `
+                                <div class="result-card">
+                                    <div class="value">
+                                        <span class="status-badge ${info.status === 'OK' ? 'ok' : info.status === 'NOT_CONFIGURED' ? 'limited' : 'error'}">
+                                            ${info.status}
+                                        </span>
+                                    </div>
+                                    <div class="label">${name.toUpperCase()}</div>
+                                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">
+                                        ${info.configured ? 'Configured' : 'Not Configured'}
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error loading API status:', error);
+            }
+        }
         
+        // Filter listeners
         document.getElementById('filter-category').addEventListener('change', renderSignals);
         document.getElementById('filter-direction').addEventListener('change', renderSignals);
         document.getElementById('filter-score').addEventListener('change', renderSignals);
         document.getElementById('rates-category').addEventListener('change', loadRates);
-        document.getElementById('calendar-currency').addEventListener('change', loadCalendar);
-        document.getElementById('calendar-impact').addEventListener('change', loadCalendar);
         
+        // Countdown timer
         function updateCountdown() {
             countdown--;
             if (countdown <= 0) {
                 countdown = 120;
-                if (isOnline) {
-                    retryCount = 0;
-                    loadSignals();
-                }
+                loadSignals();
             }
             document.getElementById('refresh-countdown').textContent = `${countdown}s`;
         }
         
-        // ═══════════════════════════════════════════════════════════════════════════
-        // INITIALIZE
-        // ═══════════════════════════════════════════════════════════════════════════
-        
-        // Initial load
-        loadSignals();
-        setInterval(updateCountdown, 1000);
-        
-        // Check initial online status
-        if (!navigator.onLine) {
-            document.getElementById('offline-banner').classList.add('show');
-            document.getElementById('status-dot').classList.add('offline');
+        // Register Service Worker for PWA
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js')
+                .then(reg => console.log('Service Worker registered'))
+                .catch(err => console.log('Service Worker registration failed:', err));
         }
         
-        console.log('✅ MEGA FOREX v8.2 PRO Dashboard Loaded');
+        // Initialize
+        loadSignals();
+        setInterval(updateCountdown, 1000);
     </script>
 </body>
 </html>
