@@ -525,6 +525,21 @@
         
         .offline-banner.show { display: block; }
         
+        /* Error Message */
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid var(--accent-red);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            text-align: center;
+            color: var(--accent-red);
+        }
+        
+        .error-message button {
+            margin-top: 0.75rem;
+            background: var(--accent-red);
+        }
+        
         /* Positioning bars */
         .position-bar {
             display: flex;
@@ -1146,10 +1161,10 @@
     
     <script>
         // ═══════════════════════════════════════════════════════════════════════════
-        // MEGA FOREX v8.2 PRO - PWA Dashboard JavaScript
+        // MEGA FOREX v8.2 PRO - PWA Dashboard JavaScript (FIXED VERSION)
         // ═══════════════════════════════════════════════════════════════════════════
         
-        // ✨ HELPER FUNCTION - Add this at the very top!
+        // ✅ HELPER FUNCTIONS
         function formatNumber(value, decimals = 2) {
             if (value === null || value === undefined || isNaN(value)) {
                 return '--';
@@ -1157,7 +1172,43 @@
             return Number(value).toFixed(decimals);
         }
         
-        // API Configuration - CHANGE THIS TO YOUR DEPLOYED BACKEND URL
+        function showError(container, message, retryFn = null) {
+            container.innerHTML = `
+                <div class="error-message">
+                    <p>⚠️ ${message}</p>
+                    ${retryFn ? '<button onclick="' + retryFn + '">🔄 Retry</button>' : ''}
+                </div>
+            `;
+        }
+        
+        // ✅ SAFE API FETCH - Handles 502 and non-JSON responses
+        async function safeFetch(url, options = {}) {
+            try {
+                const response = await fetch(url, options);
+                
+                // Check if response is OK (status 200-299)
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error(`API Error ${response.status}:`, errorText.substring(0, 200));
+                    throw new Error(`Server error: ${response.status}`);
+                }
+                
+                // Check content type before parsing JSON
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    const text = await response.text();
+                    console.error('Non-JSON response:', text.substring(0, 200));
+                    throw new Error('Server returned non-JSON response');
+                }
+                
+                return await response.json();
+            } catch (error) {
+                console.error('Fetch error:', error);
+                throw error;
+            }
+        }
+        
+        // API Configuration
         const API_BASE = window.location.origin;
         
         // State
@@ -1165,6 +1216,8 @@
         let countdown = 120;
         let isOnline = navigator.onLine;
         let deferredPrompt = null;
+        let retryCount = 0;
+        const MAX_RETRIES = 3;
         
         // ═══════════════════════════════════════════════════════════════════════════
         // PWA & OFFLINE HANDLING
@@ -1174,7 +1227,7 @@
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/sw.js')
                 .then(reg => console.log('✅ Service Worker registered'))
-                .catch(err => console.log('❌ SW registration failed:', err));
+                .catch(err => console.log('⚠️ SW registration failed (non-critical):', err));
         }
         
         // Online/Offline detection
@@ -1182,6 +1235,7 @@
             isOnline = true;
             document.getElementById('offline-banner').classList.remove('show');
             document.getElementById('status-dot').classList.remove('offline');
+            retryCount = 0;
             loadSignals();
         });
         
@@ -1195,7 +1249,6 @@
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
-            // Show install banner after 3 seconds
             setTimeout(() => {
                 if (!localStorage.getItem('pwa-installed')) {
                     document.getElementById('install-banner').classList.add('show');
@@ -1225,11 +1278,9 @@
         
         document.querySelectorAll('.nav-tab').forEach(tab => {
             tab.addEventListener('click', () => {
-                // Update active tab
                 document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
                 tab.classList.add('active');
                 
-                // Show corresponding content
                 const tabId = tab.dataset.tab;
                 document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
                 document.getElementById(`tab-${tabId}`).classList.add('active');
@@ -1248,29 +1299,50 @@
         });
         
         // ═══════════════════════════════════════════════════════════════════════════
-        // SIGNALS FUNCTIONS
+        // SIGNALS FUNCTIONS (FIXED)
         // ═══════════════════════════════════════════════════════════════════════════
         
         async function loadSignals() {
             const container = document.getElementById('signals-container');
+            const statusDot = document.getElementById('status-dot');
+            
             container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading signals...</div>';
+            statusDot.classList.add('connecting');
+            statusDot.classList.remove('offline');
             
             try {
-                const response = await fetch(`${API_BASE}/signals`);
-                const data = await response.json();
+                const data = await safeFetch(`${API_BASE}/signals`);
                 
                 if (data.success) {
                     signalsData = data.signals || [];
-                    document.getElementById('active-signals').textContent = signalsData.filter(s => Math.abs(s.composite_score) >= 50).length;
+                    const activeCount = signalsData.filter(s => Math.abs(s.composite_score || 0) >= 50).length;
+                    document.getElementById('active-signals').textContent = activeCount;
+                    document.getElementById('total-pairs').textContent = signalsData.length;
+                    statusDot.classList.remove('connecting', 'offline');
+                    retryCount = 0;
                     renderSignals();
                 } else {
-                    container.innerHTML = '<p style="color: var(--accent-red); text-align: center;">Error loading signals</p>';
+                    throw new Error(data.error || 'Failed to load signals');
                 }
             } catch (error) {
-                console.error('Error:', error);
-                container.innerHTML = `<p style="color: var(--accent-red); text-align: center;">
-                    ${isOnline ? 'Connection error' : 'You are offline'}
-                </p>`;
+                console.error('Error loading signals:', error);
+                statusDot.classList.add('offline');
+                statusDot.classList.remove('connecting');
+                
+                if (!isOnline) {
+                    showError(container, 'You are offline', 'loadSignals()');
+                } else if (retryCount < MAX_RETRIES) {
+                    retryCount++;
+                    container.innerHTML = `
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            Retrying... (${retryCount}/${MAX_RETRIES})
+                        </div>
+                    `;
+                    setTimeout(loadSignals, 2000 * retryCount);
+                } else {
+                    showError(container, 'Connection error - Server may be waking up (free tier). Please wait 30-60s and retry.', 'loadSignals()');
+                }
             }
         }
         
@@ -1278,18 +1350,22 @@
             const container = document.getElementById('signals-container');
             const categoryFilter = document.getElementById('filter-category').value;
             const directionFilter = document.getElementById('filter-direction').value;
-            const scoreFilter = parseInt(document.getElementById('filter-score').value);
+            const scoreFilter = parseInt(document.getElementById('filter-score').value) || 0;
             
             let filtered = signalsData.filter(s => {
-                if (categoryFilter !== 'all' && s.category?.toLowerCase() !== categoryFilter) return false;
-                if (directionFilter === 'long' && s.direction !== 'LONG') return false;
-                if (directionFilter === 'short' && s.direction !== 'SHORT') return false;
-                if (Math.abs(s.composite_score) < scoreFilter) return false;
+                const category = (s.category || '').toLowerCase();
+                const direction = s.direction || 'NEUTRAL';
+                const absScore = Math.abs(s.composite_score || 0);
+                
+                if (categoryFilter !== 'all' && category !== categoryFilter) return false;
+                if (directionFilter === 'long' && direction !== 'LONG') return false;
+                if (directionFilter === 'short' && direction !== 'SHORT') return false;
+                if (absScore < scoreFilter) return false;
                 return true;
             });
             
             // Sort by absolute score
-            filtered.sort((a, b) => Math.abs(b.composite_score) - Math.abs(a.composite_score));
+            filtered.sort((a, b) => Math.abs(b.composite_score || 0) - Math.abs(a.composite_score || 0));
             
             if (filtered.length === 0) {
                 container.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 2rem;">No signals match your filters</p>';
@@ -1305,7 +1381,8 @@
             const scoreClass = score > 0 ? 'bullish' : score < 0 ? 'bearish' : 'neutral';
             const direction = s.direction || 'NEUTRAL';
             const dirClass = direction === 'LONG' ? 'long' : direction === 'SHORT' ? 'short' : 'neutral';
-            const stars = '★'.repeat(s.signal_stars || 0) + '☆'.repeat(5 - (s.signal_stars || 0));
+            const starCount = s.signal_stars || 0;
+            const stars = '★'.repeat(starCount) + '☆'.repeat(5 - starCount);
             const category = (s.category || 'UNKNOWN').toLowerCase();
             
             const factors = s.factors || {};
@@ -1313,11 +1390,14 @@
             
             const trade = s.trade_setup || {};
             
+            // Determine decimals based on pair value
+            const priceDecimals = (s.bid && s.bid > 10) ? 2 : 5;
+            
             return `
                 <div class="signal-card">
                     <div class="card-header">
                         <div class="pair-info">
-                            <span class="pair-name">${s.pair}</span>
+                            <span class="pair-name">${s.pair || 'N/A'}</span>
                             <span class="category-badge ${category}">${category}</span>
                         </div>
                         <div class="composite-score">
@@ -1330,11 +1410,11 @@
                     
                     <div class="stats-row">
                         <div class="stat-box">
-                            <div class="value">${formatNumber(s.bid, s.bid > 10 ? 2 : 5)}</div>
+                            <div class="value">${formatNumber(s.bid, priceDecimals)}</div>
                             <div class="label">Bid</div>
                         </div>
                         <div class="stat-box">
-                            <div class="value">${formatNumber(s.ask, s.ask > 10 ? 2 : 5)}</div>
+                            <div class="value">${formatNumber(s.ask, priceDecimals)}</div>
                             <div class="label">Ask</div>
                         </div>
                         <div class="stat-box">
@@ -1351,7 +1431,7 @@
                         ${factorNames.map(f => {
                             const val = factors[f] || 0;
                             const fClass = val > 5 ? 'bullish' : val < -5 ? 'bearish' : 'neutral';
-                            return `<div class="factor-item ${fClass}">${fClass.slice(0,3).toUpperCase()}<br>${val > 0 ? '+' : ''}${formatNumber(val, 0)}</div>`;
+                            return `<div class="factor-item ${fClass}">${f.substring(0,3).toUpperCase()}<br>${val > 0 ? '+' : ''}${formatNumber(val, 0)}</div>`;
                         }).join('')}
                     </div>
                     
@@ -1384,20 +1464,21 @@
         
         function renderTopSignals() {
             const container = document.getElementById('top-signals-container');
-            const top10 = [...signalsData]
-                .sort((a, b) => Math.abs(b.composite_score) - Math.abs(a.composite_score))
-                .slice(0, 10);
             
-            if (top10.length === 0) {
-                container.innerHTML = '<p style="color: var(--text-secondary); text-align: center;">No signals available</p>';
+            if (!signalsData || signalsData.length === 0) {
+                container.innerHTML = '<p style="color: var(--text-secondary); text-align: center;">No signals available. Loading...</p>';
                 return;
             }
+            
+            const top10 = [...signalsData]
+                .sort((a, b) => Math.abs(b.composite_score || 0) - Math.abs(a.composite_score || 0))
+                .slice(0, 10);
             
             container.innerHTML = top10.map(s => createSignalCard(s)).join('');
         }
         
         // ═══════════════════════════════════════════════════════════════════════════
-        // RATES FUNCTIONS
+        // RATES FUNCTIONS (FIXED)
         // ═══════════════════════════════════════════════════════════════════════════
         
         async function loadRates() {
@@ -1405,34 +1486,44 @@
             tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Loading...</td></tr>';
             
             try {
-                const response = await fetch(`${API_BASE}/rates`);
-                const data = await response.json();
+                const data = await safeFetch(`${API_BASE}/rates`);
                 
                 if (data.success && data.rates) {
                     const category = document.getElementById('rates-category').value;
                     let rates = data.rates;
                     
                     if (category !== 'all') {
-                        rates = rates.filter(r => r.category?.toLowerCase() === category);
+                        rates = rates.filter(r => (r.category || '').toLowerCase() === category);
                     }
                     
-                    tbody.innerHTML = rates.map(r => `
-                        <tr>
-                            <td style="font-weight: 600;">${r.pair}</td>
-                            <td>${formatNumber(r.bid, r.bid > 10 ? 2 : 5)}</td>
-                            <td>${formatNumber(r.ask, r.ask > 10 ? 2 : 5)}</td>
-                            <td>${formatNumber(r.spread, 1)}</td>
-                            <td style="font-size: 0.7rem; color: var(--text-muted);">${r.source || '--'}</td>
-                        </tr>
-                    `).join('');
+                    if (rates.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color: var(--text-muted);">No rates available</td></tr>';
+                        return;
+                    }
+                    
+                    tbody.innerHTML = rates.map(r => {
+                        const decimals = (r.bid && r.bid > 10) ? 2 : 5;
+                        return `
+                            <tr>
+                                <td style="font-weight: 600;">${r.pair || 'N/A'}</td>
+                                <td>${formatNumber(r.bid, decimals)}</td>
+                                <td>${formatNumber(r.ask, decimals)}</td>
+                                <td>${formatNumber(r.spread, 1)}</td>
+                                <td style="font-size: 0.7rem; color: var(--text-muted);">${r.source || '--'}</td>
+                            </tr>
+                        `;
+                    }).join('');
+                } else {
+                    throw new Error('Invalid rates data');
                 }
             } catch (error) {
-                tbody.innerHTML = '<tr><td colspan="5" style="color: var(--accent-red);">Error loading rates</td></tr>';
+                console.error('Error loading rates:', error);
+                tbody.innerHTML = '<tr><td colspan="5" style="color: var(--accent-red);">Error loading rates. <a href="#" onclick="loadRates(); return false;">Retry</a></td></tr>';
             }
         }
         
         // ═══════════════════════════════════════════════════════════════════════════
-        // NEWS FUNCTIONS
+        // NEWS FUNCTIONS (FIXED)
         // ═══════════════════════════════════════════════════════════════════════════
         
         async function loadNews() {
@@ -1440,28 +1531,28 @@
             container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading...</div>';
             
             try {
-                const response = await fetch(`${API_BASE}/news`);
-                const data = await response.json();
+                const data = await safeFetch(`${API_BASE}/news`);
                 
-                if (data.success && data.articles) {
+                if (data.success && data.articles && data.articles.length > 0) {
                     container.innerHTML = data.articles.slice(0, 20).map(n => `
                         <div class="news-item">
-                            <div class="news-headline">${n.headline || n.title}</div>
+                            <div class="news-headline">${n.headline || n.title || 'No title'}</div>
                             <div class="news-meta">
-                                ${n.source || 'Forex News'} • ${n.datetime ? new Date(n.datetime * 1000).toLocaleString() : ''}
+                                ${n.source || 'Forex News'} • ${n.datetime ? new Date(n.datetime * 1000).toLocaleString() : 'Recent'}
                             </div>
                         </div>
                     `).join('');
                 } else {
-                    container.innerHTML = '<p style="color: var(--text-muted);">No news available</p>';
+                    container.innerHTML = '<p style="color: var(--text-muted); text-align: center;">No news available at this time</p>';
                 }
             } catch (error) {
-                container.innerHTML = '<p style="color: var(--accent-red);">Error loading news</p>';
+                console.error('Error loading news:', error);
+                showError(container, 'Error loading news', 'loadNews()');
             }
         }
         
         // ═══════════════════════════════════════════════════════════════════════════
-        // CALENDAR FUNCTIONS
+        // CALENDAR FUNCTIONS (FIXED)
         // ═══════════════════════════════════════════════════════════════════════════
         
         async function loadCalendar() {
@@ -1469,27 +1560,26 @@
             container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading...</div>';
             
             try {
-                const response = await fetch(`${API_BASE}/calendar`);
-                const data = await response.json();
+                const data = await safeFetch(`${API_BASE}/calendar`);
                 
-                if (data.success && data.events) {
+                if (data.success && data.events && data.events.length > 0) {
                     const currency = document.getElementById('calendar-currency').value;
                     const impact = document.getElementById('calendar-impact').value;
                     
                     let events = data.events;
                     if (currency !== 'all') events = events.filter(e => e.country === currency);
-                    if (impact === 'high') events = events.filter(e => e.impact === 'high');
-                    if (impact === 'medium') events = events.filter(e => e.impact === 'high' || e.impact === 'medium');
+                    if (impact === 'high') events = events.filter(e => (e.impact || '').toLowerCase() === 'high');
+                    if (impact === 'medium') events = events.filter(e => ['high', 'medium'].includes((e.impact || '').toLowerCase()));
                     
                     if (events.length === 0) {
-                        container.innerHTML = '<p style="color: var(--text-muted);">No events match your filters</p>';
+                        container.innerHTML = '<p style="color: var(--text-muted); text-align: center;">No events match your filters</p>';
                         return;
                     }
                     
                     container.innerHTML = events.slice(0, 30).map(e => `
-                        <div class="event-card ${e.impact || 'low'}">
+                        <div class="event-card ${(e.impact || 'low').toLowerCase()}">
                             <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <strong>${e.event}</strong>
+                                <strong>${e.event || 'Event'}</strong>
                                 <span style="font-size: 0.75rem; color: var(--text-muted);">${e.country || ''}</span>
                             </div>
                             <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.3rem;">
@@ -1497,14 +1587,17 @@
                             </div>
                         </div>
                     `).join('');
+                } else {
+                    container.innerHTML = '<p style="color: var(--text-muted); text-align: center;">No calendar events available</p>';
                 }
             } catch (error) {
-                container.innerHTML = '<p style="color: var(--accent-red);">Error loading calendar</p>';
+                console.error('Error loading calendar:', error);
+                showError(container, 'Error loading calendar', 'loadCalendar()');
             }
         }
         
         // ═══════════════════════════════════════════════════════════════════════════
-        // POSITIONING FUNCTIONS
+        // POSITIONING FUNCTIONS (FIXED)
         // ═══════════════════════════════════════════════════════════════════════════
         
         async function loadPositioning() {
@@ -1512,22 +1605,22 @@
             container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading...</div>';
             
             try {
-                const response = await fetch(`${API_BASE}/positioning`);
-                const data = await response.json();
+                const data = await safeFetch(`${API_BASE}/positioning`);
                 
-                if (data.success && data.data) {
+                if (data.success && data.data && data.data.length > 0) {
                     container.innerHTML = data.data.map(p => {
                         const longPct = parseFloat(p.long_percentage) || 50;
                         const shortPct = parseFloat(p.short_percentage) || 50;
+                        const signal = p.contrarian_signal || 'NEUTRAL';
                         
                         return `
                             <div class="card" style="margin-bottom: 0.5rem;">
                                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem;">
-                                    <strong>${p.pair}</strong>
+                                    <strong>${p.pair || 'N/A'}</strong>
                                     <span style="font-size: 0.75rem; padding: 0.2rem 0.5rem; border-radius: 0.25rem; 
-                                        background: ${p.contrarian_signal === 'SELL' ? 'rgba(239,68,68,0.2)' : p.contrarian_signal === 'BUY' ? 'rgba(16,185,129,0.2)' : 'var(--bg-hover)'};
-                                        color: ${p.contrarian_signal === 'SELL' ? 'var(--accent-red)' : p.contrarian_signal === 'BUY' ? 'var(--accent-green)' : 'var(--text-muted)'};">
-                                        ${p.contrarian_signal || 'NEUTRAL'}
+                                        background: ${signal === 'SELL' ? 'rgba(239,68,68,0.2)' : signal === 'BUY' ? 'rgba(16,185,129,0.2)' : 'var(--bg-hover)'};
+                                        color: ${signal === 'SELL' ? 'var(--accent-red)' : signal === 'BUY' ? 'var(--accent-green)' : 'var(--text-muted)'};">
+                                        ${signal}
                                     </span>
                                 </div>
                                 <div class="position-bar">
@@ -1537,59 +1630,68 @@
                             </div>
                         `;
                     }).join('');
+                } else {
+                    container.innerHTML = '<p style="color: var(--text-muted); text-align: center;">No positioning data available</p>';
                 }
             } catch (error) {
-                container.innerHTML = '<p style="color: var(--accent-red);">Error loading positioning data</p>';
+                console.error('Error loading positioning:', error);
+                showError(container, 'Error loading positioning data', 'loadPositioning()');
             }
         }
         
         // ═══════════════════════════════════════════════════════════════════════════
-        // WEIGHTS FUNCTIONS
+        // WEIGHTS FUNCTIONS (FIXED)
         // ═══════════════════════════════════════════════════════════════════════════
         
         async function loadWeights() {
             const container = document.getElementById('weights-editor');
             
             try {
-                const response = await fetch(`${API_BASE}/weights`);
-                const data = await response.json();
+                const data = await safeFetch(`${API_BASE}/weights`);
                 
-                if (data.success) {
+                if (data.success && data.weights) {
                     const weights = data.weights;
+                    const total = Object.values(weights).reduce((a, b) => a + (Number(b) || 0), 0);
+                    
                     container.innerHTML = `
                         ${Object.entries(weights).map(([key, val]) => `
                             <div class="weight-row">
                                 <span class="weight-label">${key.charAt(0).toUpperCase() + key.slice(1)}</span>
                                 <input type="range" class="weight-slider" id="weight-${key}" 
-                                    min="0" max="30" value="${val}" 
+                                    min="0" max="30" value="${val || 0}" 
                                     oninput="updateWeightDisplay('${key}', this.value)">
-                                <span class="weight-value" id="weight-val-${key}">${val}%</span>
+                                <span class="weight-value" id="weight-val-${key}">${val || 0}%</span>
                             </div>
                         `).join('')}
                         <div style="margin-top: 1rem; padding: 0.75rem; background: var(--bg-secondary); border-radius: 0.5rem;">
                             <div style="display: flex; justify-content: space-between; align-items: center;">
                                 <span>Total:</span>
-                                <strong id="weights-total">${Object.values(weights).reduce((a, b) => a + b, 0)}%</strong>
+                                <strong id="weights-total">${total}%</strong>
                             </div>
                         </div>
                         <button onclick="saveWeights()" style="width: 100%; margin-top: 1rem;">💾 Save Weights</button>
                     `;
+                } else {
+                    throw new Error('Invalid weights data');
                 }
             } catch (error) {
-                container.innerHTML = '<p style="color: var(--accent-red);">Error loading weights</p>';
+                console.error('Error loading weights:', error);
+                showError(container, 'Error loading weights', 'loadWeights()');
             }
         }
         
         function updateWeightDisplay(key, value) {
-            document.getElementById(`weight-val-${key}`).textContent = value + '%';
+            const valEl = document.getElementById(`weight-val-${key}`);
+            if (valEl) valEl.textContent = value + '%';
             updateWeightsTotal();
         }
         
         function updateWeightsTotal() {
             const sliders = document.querySelectorAll('.weight-slider');
             let total = 0;
-            sliders.forEach(s => total += parseInt(s.value));
-            document.getElementById('weights-total').textContent = total + '%';
+            sliders.forEach(s => total += parseInt(s.value) || 0);
+            const totalEl = document.getElementById('weights-total');
+            if (totalEl) totalEl.textContent = total + '%';
         }
         
         async function saveWeights() {
@@ -1597,36 +1699,45 @@
             const weights = {};
             sliders.forEach(s => {
                 const key = s.id.replace('weight-', '');
-                weights[key] = parseInt(s.value);
+                weights[key] = parseInt(s.value) || 0;
             });
             
             try {
-                await fetch(`${API_BASE}/weights`, {
+                await safeFetch(`${API_BASE}/weights`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(weights)
                 });
-                alert('Weights saved!');
+                alert('✅ Weights saved successfully!');
                 loadSignals();
             } catch (error) {
-                alert('Error saving weights');
+                alert('❌ Error saving weights. Please try again.');
             }
         }
         
         // ═══════════════════════════════════════════════════════════════════════════
-        // ANALYZER FUNCTIONS
+        // ANALYZER FUNCTIONS (FIXED)
         // ═══════════════════════════════════════════════════════════════════════════
         
         function loadAnalyzerPairs() {
             const container = document.getElementById('analyzer-pairs');
-            container.innerHTML = signalsData.map(s => `
-                <div class="pair-list-item" onclick="analyzePair('${s.pair}')">
-                    <span>${s.pair}</span>
-                    <span style="color: ${s.composite_score > 0 ? 'var(--accent-green)' : s.composite_score < 0 ? 'var(--accent-red)' : 'var(--text-muted)'}">
-                        ${s.composite_score > 0 ? '+' : ''}${formatNumber(s.composite_score, 1)}
-                    </span>
-                </div>
-            `).join('');
+            
+            if (!signalsData || signalsData.length === 0) {
+                container.innerHTML = '<p style="color: var(--text-muted); padding: 1rem;">Loading pairs...</p>';
+                return;
+            }
+            
+            container.innerHTML = signalsData.map(s => {
+                const score = s.composite_score || 0;
+                return `
+                    <div class="pair-list-item" onclick="analyzePair('${s.pair}')">
+                        <span>${s.pair || 'N/A'}</span>
+                        <span style="color: ${score > 0 ? 'var(--accent-green)' : score < 0 ? 'var(--accent-red)' : 'var(--text-muted)'}">
+                            ${score > 0 ? '+' : ''}${formatNumber(score, 1)}
+                        </span>
+                    </div>
+                `;
+            }).join('');
         }
         
         async function analyzePair(pair) {
@@ -1635,7 +1746,7 @@
             
             const signal = signalsData.find(s => s.pair === pair);
             if (!signal) {
-                detail.innerHTML = '<p>Pair not found</p>';
+                detail.innerHTML = '<p style="color: var(--accent-red);">Pair not found</p>';
                 return;
             }
             
@@ -1643,28 +1754,32 @@
         }
         
         // ═══════════════════════════════════════════════════════════════════════════
-        // JOURNAL FUNCTIONS
+        // JOURNAL FUNCTIONS (FIXED)
         // ═══════════════════════════════════════════════════════════════════════════
         
         async function loadJournal() {
             try {
-                const openRes = await fetch(`${API_BASE}/journal?status=OPEN`);
-                const openData = await openRes.json();
+                const [openRes, closedRes] = await Promise.allSettled([
+                    safeFetch(`${API_BASE}/journal?status=OPEN`),
+                    safeFetch(`${API_BASE}/journal?status=CLOSED&limit=20`)
+                ]);
                 
-                const closedRes = await fetch(`${API_BASE}/journal?status=CLOSED&limit=20`);
-                const closedData = await closedRes.json();
+                const openData = openRes.status === 'fulfilled' ? openRes.value : { trades: [] };
+                const closedData = closedRes.status === 'fulfilled' ? closedRes.value : { trades: [] };
                 
                 renderJournalTrades('journal-open-trades', openData.trades || [], true);
                 renderJournalTrades('journal-closed-trades', closedData.trades || [], false);
             } catch (error) {
                 console.error('Error loading journal:', error);
+                document.getElementById('journal-open-trades').innerHTML = '<p style="color: var(--text-muted);">No open trades</p>';
+                document.getElementById('journal-closed-trades').innerHTML = '<p style="color: var(--text-muted);">No trade history</p>';
             }
         }
         
         function renderJournalTrades(containerId, trades, isOpen) {
             const container = document.getElementById(containerId);
             
-            if (trades.length === 0) {
+            if (!trades || trades.length === 0) {
                 container.innerHTML = '<p style="color: var(--text-muted); text-align: center;">No trades</p>';
                 return;
             }
@@ -1672,15 +1787,15 @@
             container.innerHTML = trades.map(t => `
                 <div class="card" style="margin-bottom: 0.5rem;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <strong>${t.pair}</strong>
-                        <span class="direction-badge ${t.direction === 'LONG' ? 'long' : 'short'}" style="font-size: 0.7rem; padding: 0.2rem 0.5rem;">
-                            ${t.direction}
+                        <strong>${t.pair || 'N/A'}</strong>
+                        <span class="direction-badge ${(t.direction || '').toLowerCase() === 'long' ? 'long' : 'short'}" style="font-size: 0.7rem; padding: 0.2rem 0.5rem;">
+                            ${t.direction || 'N/A'}
                         </span>
                     </div>
                     <div style="font-size: 0.8rem; color: var(--text-secondary); margin: 0.3rem 0;">
-                        Entry: ${t.entry_price} | Lots: ${t.lot_size}
+                        Entry: ${t.entry_price || '--'} | Lots: ${t.lot_size || '--'}
                     </div>
-                    ${t.pnl_pips !== undefined ? `
+                    ${t.pnl_pips !== undefined && t.pnl_pips !== null ? `
                         <div style="font-weight: 600; color: ${t.pnl_pips >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'}">
                             P/L: ${t.pnl_pips >= 0 ? '+' : ''}${formatNumber(t.pnl_pips, 1)} pips
                         </div>
@@ -1699,72 +1814,76 @@
             const trade = {
                 pair: document.getElementById('journal-pair').value,
                 direction: document.getElementById('journal-direction').value,
-                lot_size: parseFloat(document.getElementById('journal-lots').value),
+                lot_size: parseFloat(document.getElementById('journal-lots').value) || 0.01,
                 entry_price: parseFloat(document.getElementById('journal-entry').value),
                 sl_price: parseFloat(document.getElementById('journal-sl').value) || null,
                 tp_price: parseFloat(document.getElementById('journal-tp').value) || null,
-                notes: document.getElementById('journal-notes').value
+                notes: document.getElementById('journal-notes').value || ''
             };
             
-            if (!trade.entry_price) {
-                alert('Please enter an entry price');
+            if (!trade.entry_price || isNaN(trade.entry_price)) {
+                alert('⚠️ Please enter a valid entry price');
                 return;
             }
             
             try {
-                const response = await fetch(`${API_BASE}/journal/add`, {
+                const data = await safeFetch(`${API_BASE}/journal/add`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(trade)
                 });
-                const data = await response.json();
                 
                 if (data.success) {
-                    alert('Trade added!');
+                    alert('✅ Trade added successfully!');
                     document.getElementById('journal-entry').value = '';
                     document.getElementById('journal-sl').value = '';
                     document.getElementById('journal-tp').value = '';
                     document.getElementById('journal-notes').value = '';
                     loadJournal();
+                } else {
+                    throw new Error(data.error || 'Failed to add trade');
                 }
             } catch (error) {
-                alert('Error adding trade');
+                alert('❌ Error adding trade: ' + error.message);
             }
         }
         
         async function closeTrade(tradeId) {
-            const exitPrice = parseFloat(document.getElementById(`exit-${tradeId}`).value);
-            if (!exitPrice) {
-                alert('Please enter exit price');
+            const exitInput = document.getElementById(`exit-${tradeId}`);
+            const exitPrice = parseFloat(exitInput?.value);
+            
+            if (!exitPrice || isNaN(exitPrice)) {
+                alert('⚠️ Please enter a valid exit price');
                 return;
             }
             
             try {
-                const response = await fetch(`${API_BASE}/journal/close/${tradeId}`, {
+                const data = await safeFetch(`${API_BASE}/journal/close/${tradeId}`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({ exit_price: exitPrice })
                 });
-                const data = await response.json();
                 
                 if (data.success) {
-                    alert(`Trade closed! P/L: ${formatNumber(data.pnl_pips, 1)} pips`);
+                    const pnl = data.pnl_pips || 0;
+                    alert(`✅ Trade closed! P/L: ${pnl >= 0 ? '+' : ''}${formatNumber(pnl, 1)} pips`);
                     loadJournal();
                     loadPerformance();
+                } else {
+                    throw new Error(data.error || 'Failed to close trade');
                 }
             } catch (error) {
-                alert('Error closing trade');
+                alert('❌ Error closing trade: ' + error.message);
             }
         }
         
         // ═══════════════════════════════════════════════════════════════════════════
-        // PERFORMANCE FUNCTIONS
+        // PERFORMANCE FUNCTIONS (FIXED)
         // ═══════════════════════════════════════════════════════════════════════════
         
         async function loadPerformance() {
             try {
-                const response = await fetch(`${API_BASE}/performance`);
-                const data = await response.json();
+                const data = await safeFetch(`${API_BASE}/performance`);
                 
                 if (data.success && data.overall) {
                     const o = data.overall;
@@ -1785,7 +1904,7 @@
         }
         
         // ═══════════════════════════════════════════════════════════════════════════
-        // BACKTEST FUNCTIONS
+        // BACKTEST FUNCTIONS (FIXED)
         // ═══════════════════════════════════════════════════════════════════════════
         
         async function runBacktest() {
@@ -1800,26 +1919,28 @@
             });
             
             try {
-                const response = await fetch(`${API_BASE}/backtest?${params}`);
-                const data = await response.json();
+                const data = await safeFetch(`${API_BASE}/backtest?${params}`);
                 
                 if (data.success && data.results) {
                     const r = data.results;
+                    const winRate = r.win_rate || 0;
+                    const totalPips = r.total_pips || 0;
+                    
                     container.innerHTML = `
                         <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem;">
                             <div class="result-card">
-                                <div class="value">${r.total_trades}</div>
+                                <div class="value">${r.total_trades || 0}</div>
                                 <div class="label">Trades</div>
                             </div>
                             <div class="result-card">
-                                <div class="value" style="color: ${r.win_rate >= 50 ? 'var(--accent-green)' : 'var(--accent-red)'}">
-                                    ${formatNumber(r.win_rate, 1)}%
+                                <div class="value" style="color: ${winRate >= 50 ? 'var(--accent-green)' : 'var(--accent-red)'}">
+                                    ${formatNumber(winRate, 1)}%
                                 </div>
                                 <div class="label">Win Rate</div>
                             </div>
                             <div class="result-card">
-                                <div class="value" style="color: ${r.total_pips >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'}">
-                                    ${r.total_pips >= 0 ? '+' : ''}${formatNumber(r.total_pips, 1)}
+                                <div class="value" style="color: ${totalPips >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'}">
+                                    ${totalPips >= 0 ? '+' : ''}${formatNumber(totalPips, 1)}
                                 </div>
                                 <div class="label">Total Pips</div>
                             </div>
@@ -1830,15 +1951,16 @@
                         </div>
                     `;
                 } else {
-                    container.innerHTML = '<p style="color: var(--accent-red);">Backtest failed</p>';
+                    throw new Error(data.error || 'Backtest failed');
                 }
             } catch (error) {
-                container.innerHTML = '<p style="color: var(--accent-red);">Error running backtest</p>';
+                console.error('Error running backtest:', error);
+                showError(container, 'Error running backtest', 'runBacktest()');
             }
         }
         
         // ═══════════════════════════════════════════════════════════════════════════
-        // AUDIT FUNCTIONS
+        // AUDIT FUNCTIONS (FIXED)
         // ═══════════════════════════════════════════════════════════════════════════
         
         async function runAudit() {
@@ -1846,42 +1968,51 @@
             container.innerHTML = '<div class="loading"><div class="spinner"></div>Running audit...</div>';
             
             try {
-                const response = await fetch(`${API_BASE}/audit`);
-                const data = await response.json();
+                const data = await safeFetch(`${API_BASE}/audit`);
                 
                 if (data.success) {
+                    const apiStatus = data.api_status || {};
+                    const dataQuality = data.data_quality || {};
+                    
                     container.innerHTML = `
                         <div class="audit-section">
                             <h3>🔌 API Status</h3>
-                            ${Object.entries(data.api_status || {}).map(([name, info]) => `
-                                <div style="display: flex; justify-content: space-between; padding: 0.4rem 0; border-bottom: 1px solid var(--border-color);">
-                                    <span style="text-transform: capitalize;">${name}</span>
-                                    <span class="status-badge ${info.status === 'OK' ? 'ok' : info.status === 'LIMITED' ? 'limited' : 'error'}">${info.status}</span>
-                                </div>
-                            `).join('')}
+                            ${Object.entries(apiStatus).map(([name, info]) => {
+                                const status = (info && info.status) || 'UNKNOWN';
+                                const statusClass = status === 'OK' ? 'ok' : status === 'LIMITED' ? 'limited' : 'error';
+                                return `
+                                    <div style="display: flex; justify-content: space-between; padding: 0.4rem 0; border-bottom: 1px solid var(--border-color);">
+                                        <span style="text-transform: capitalize;">${name}</span>
+                                        <span class="status-badge ${statusClass}">${status}</span>
+                                    </div>
+                                `;
+                            }).join('')}
                         </div>
                         
                         <div class="audit-section">
                             <h3>📊 Data Quality</h3>
                             <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem;">
                                 <div class="result-card">
-                                    <div class="value">${data.data_quality?.pairs_with_rates || 0}/${data.data_quality?.total_pairs || 45}</div>
+                                    <div class="value">${dataQuality.pairs_with_rates || 0}/${dataQuality.total_pairs || 45}</div>
                                     <div class="label">Rates</div>
                                 </div>
                                 <div class="result-card">
-                                    <div class="value">${data.data_quality?.coverage || 0}%</div>
+                                    <div class="value">${dataQuality.coverage || 0}%</div>
                                     <div class="label">Coverage</div>
                                 </div>
                                 <div class="result-card">
-                                    <div class="value">${Object.keys(data.data_quality?.sources || {}).length}</div>
+                                    <div class="value">${Object.keys(dataQuality.sources || {}).length}</div>
                                     <div class="label">Sources</div>
                                 </div>
                             </div>
                         </div>
                     `;
+                } else {
+                    throw new Error('Audit failed');
                 }
             } catch (error) {
-                container.innerHTML = '<p style="color: var(--accent-red);">Error running audit</p>';
+                console.error('Error running audit:', error);
+                showError(container, 'Error running audit', 'runAudit()');
             }
         }
         
@@ -1900,7 +2031,10 @@
             countdown--;
             if (countdown <= 0) {
                 countdown = 120;
-                if (isOnline) loadSignals();
+                if (isOnline) {
+                    retryCount = 0;
+                    loadSignals();
+                }
             }
             document.getElementById('refresh-countdown').textContent = `${countdown}s`;
         }
@@ -1909,6 +2043,7 @@
         // INITIALIZE
         // ═══════════════════════════════════════════════════════════════════════════
         
+        // Initial load
         loadSignals();
         setInterval(updateCountdown, 1000);
         
@@ -1917,6 +2052,8 @@
             document.getElementById('offline-banner').classList.add('show');
             document.getElementById('status-dot').classList.add('offline');
         }
+        
+        console.log('✅ MEGA FOREX v8.2 PRO Dashboard Loaded');
     </script>
 </body>
 </html>
