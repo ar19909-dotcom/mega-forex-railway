@@ -1143,10 +1143,19 @@
             <button class="install-btn" onclick="installApp()">Install</button>
         </div>
     </div>
+    
     <script>
         // ═══════════════════════════════════════════════════════════════════════════
         // MEGA FOREX v8.2 PRO - PWA Dashboard JavaScript
         // ═══════════════════════════════════════════════════════════════════════════
+        
+        // ✨ HELPER FUNCTION - Add this at the very top!
+        function formatNumber(value, decimals = 2) {
+            if (value === null || value === undefined || isNaN(value)) {
+                return '--';
+            }
+            return Number(value).toFixed(decimals);
+        }
         
         // API Configuration - CHANGE THIS TO YOUR DEPLOYED BACKEND URL
         const API_BASE = window.location.origin;
@@ -1312,7 +1321,7 @@
                             <span class="category-badge ${category}">${category}</span>
                         </div>
                         <div class="composite-score">
-                            <div class="score-value ${scoreClass}">${score > 0 ? '+' : ''}${score.toFixed(1)}</div>
+                            <div class="score-value ${scoreClass}">${score > 0 ? '+' : ''}${formatNumber(score, 1)}</div>
                             <div class="stars">${stars}</div>
                         </div>
                     </div>
@@ -1321,19 +1330,19 @@
                     
                     <div class="stats-row">
                         <div class="stat-box">
-                            <div class="value">${s.bid?.toFixed(s.bid > 10 ? 2 : 5) || '--'}</div>
+                            <div class="value">${formatNumber(s.bid, s.bid > 10 ? 2 : 5)}</div>
                             <div class="label">Bid</div>
                         </div>
                         <div class="stat-box">
-                            <div class="value">${s.ask?.toFixed(s.ask > 10 ? 2 : 5) || '--'}</div>
+                            <div class="value">${formatNumber(s.ask, s.ask > 10 ? 2 : 5)}</div>
                             <div class="label">Ask</div>
                         </div>
                         <div class="stat-box">
-                            <div class="value">${s.spread?.toFixed(1) || '--'}</div>
+                            <div class="value">${formatNumber(s.spread, 1)}</div>
                             <div class="label">Spread</div>
                         </div>
                         <div class="stat-box">
-                            <div class="value">${s.atr?.toFixed(4) || '--'}</div>
+                            <div class="value">${formatNumber(s.atr, 4)}</div>
                             <div class="label">ATR</div>
                         </div>
                     </div>
@@ -1342,7 +1351,7 @@
                         ${factorNames.map(f => {
                             const val = factors[f] || 0;
                             const fClass = val > 5 ? 'bullish' : val < -5 ? 'bearish' : 'neutral';
-                            return `<div class="factor-item ${fClass}">${f.slice(0,3).toUpperCase()}<br>${val > 0 ? '+' : ''}${val.toFixed(0)}</div>`;
+                            return `<div class="factor-item ${fClass}">${fClass.slice(0,3).toUpperCase()}<br>${val > 0 ? '+' : ''}${formatNumber(val, 0)}</div>`;
                         }).join('')}
                     </div>
                     
@@ -1352,19 +1361,19 @@
                             <div class="setup-grid">
                                 <div class="setup-item entry">
                                     <div class="label">Entry</div>
-                                    <div class="value">${trade.entry?.toFixed(5) || '--'}</div>
+                                    <div class="value">${formatNumber(trade.entry, 5)}</div>
                                 </div>
                                 <div class="setup-item sl">
                                     <div class="label">SL</div>
-                                    <div class="value">${trade.stop_loss?.toFixed(5) || '--'}</div>
+                                    <div class="value">${formatNumber(trade.stop_loss, 5)}</div>
                                 </div>
                                 <div class="setup-item tp">
                                     <div class="label">TP</div>
-                                    <div class="value">${trade.take_profit?.toFixed(5) || '--'}</div>
+                                    <div class="value">${formatNumber(trade.take_profit, 5)}</div>
                                 </div>
                                 <div class="setup-item">
                                     <div class="label">R:R</div>
-                                    <div class="value" style="color: var(--accent-purple);">${trade.risk_reward?.toFixed(1) || '--'}</div>
+                                    <div class="value" style="color: var(--accent-purple);">${formatNumber(trade.risk_reward, 1)}</div>
                                 </div>
                             </div>
                         </div>
@@ -1410,9 +1419,9 @@
                     tbody.innerHTML = rates.map(r => `
                         <tr>
                             <td style="font-weight: 600;">${r.pair}</td>
-                            <td>${r.bid?.toFixed(r.bid > 10 ? 2 : 5) || '--'}</td>
-                            <td>${r.ask?.toFixed(r.ask > 10 ? 2 : 5) || '--'}</td>
-                            <td>${r.spread?.toFixed(1) || '--'}</td>
+                            <td>${formatNumber(r.bid, r.bid > 10 ? 2 : 5)}</td>
+                            <td>${formatNumber(r.ask, r.ask > 10 ? 2 : 5)}</td>
+                            <td>${formatNumber(r.spread, 1)}</td>
                             <td style="font-size: 0.7rem; color: var(--text-muted);">${r.source || '--'}</td>
                         </tr>
                     `).join('');
@@ -1522,8 +1531,8 @@
                                     </span>
                                 </div>
                                 <div class="position-bar">
-                                    <div class="position-long" style="width: ${longPct}%">${longPct.toFixed(0)}%</div>
-                                    <div class="position-short" style="width: ${shortPct}%">${shortPct.toFixed(0)}%</div>
+                                    <div class="position-long" style="width: ${longPct}%">${formatNumber(longPct, 0)}%</div>
+                                    <div class="position-short" style="width: ${shortPct}%">${formatNumber(shortPct, 0)}%</div>
                                 </div>
                             </div>
                         `;
@@ -1614,7 +1623,7 @@
                 <div class="pair-list-item" onclick="analyzePair('${s.pair}')">
                     <span>${s.pair}</span>
                     <span style="color: ${s.composite_score > 0 ? 'var(--accent-green)' : s.composite_score < 0 ? 'var(--accent-red)' : 'var(--text-muted)'}">
-                        ${s.composite_score > 0 ? '+' : ''}${s.composite_score?.toFixed(1) || '0'}
+                        ${s.composite_score > 0 ? '+' : ''}${formatNumber(s.composite_score, 1)}
                     </span>
                 </div>
             `).join('');
@@ -1673,7 +1682,7 @@
                     </div>
                     ${t.pnl_pips !== undefined ? `
                         <div style="font-weight: 600; color: ${t.pnl_pips >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'}">
-                            P/L: ${t.pnl_pips >= 0 ? '+' : ''}${t.pnl_pips?.toFixed(1)} pips
+                            P/L: ${t.pnl_pips >= 0 ? '+' : ''}${formatNumber(t.pnl_pips, 1)} pips
                         </div>
                     ` : ''}
                     ${isOpen ? `
@@ -1739,7 +1748,7 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    alert(`Trade closed! P/L: ${data.pnl_pips?.toFixed(1)} pips`);
+                    alert(`Trade closed! P/L: ${formatNumber(data.pnl_pips, 1)} pips`);
                     loadJournal();
                     loadPerformance();
                 }
@@ -1760,15 +1769,15 @@
                 if (data.success && data.overall) {
                     const o = data.overall;
                     document.getElementById('perf-total-trades').textContent = o.total_trades || 0;
-                    document.getElementById('perf-win-rate').textContent = (o.win_rate || 0).toFixed(1) + '%';
-                    document.getElementById('perf-total-pips').textContent = (o.total_pips || 0).toFixed(1);
-                    document.getElementById('perf-profit-factor').textContent = (o.profit_factor || 0).toFixed(2);
+                    document.getElementById('perf-win-rate').textContent = formatNumber(o.win_rate, 1) + '%';
+                    document.getElementById('perf-total-pips').textContent = formatNumber(o.total_pips, 1);
+                    document.getElementById('perf-profit-factor').textContent = formatNumber(o.profit_factor, 2);
                     document.getElementById('perf-wins').textContent = o.wins || 0;
                     document.getElementById('perf-losses').textContent = o.losses || 0;
-                    document.getElementById('perf-best').textContent = (o.best_trade || 0).toFixed(1);
-                    document.getElementById('perf-worst').textContent = (o.worst_trade || 0).toFixed(1);
-                    document.getElementById('perf-avg-win').textContent = (o.avg_win || 0).toFixed(1);
-                    document.getElementById('perf-avg-loss').textContent = (o.avg_loss || 0).toFixed(1);
+                    document.getElementById('perf-best').textContent = formatNumber(o.best_trade, 1);
+                    document.getElementById('perf-worst').textContent = formatNumber(o.worst_trade, 1);
+                    document.getElementById('perf-avg-win').textContent = formatNumber(o.avg_win, 1);
+                    document.getElementById('perf-avg-loss').textContent = formatNumber(o.avg_loss, 1);
                 }
             } catch (error) {
                 console.error('Error loading performance:', error);
@@ -1804,18 +1813,18 @@
                             </div>
                             <div class="result-card">
                                 <div class="value" style="color: ${r.win_rate >= 50 ? 'var(--accent-green)' : 'var(--accent-red)'}">
-                                    ${r.win_rate?.toFixed(1)}%
+                                    ${formatNumber(r.win_rate, 1)}%
                                 </div>
                                 <div class="label">Win Rate</div>
                             </div>
                             <div class="result-card">
                                 <div class="value" style="color: ${r.total_pips >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'}">
-                                    ${r.total_pips >= 0 ? '+' : ''}${r.total_pips?.toFixed(1)}
+                                    ${r.total_pips >= 0 ? '+' : ''}${formatNumber(r.total_pips, 1)}
                                 </div>
                                 <div class="label">Total Pips</div>
                             </div>
                             <div class="result-card">
-                                <div class="value">${r.profit_factor?.toFixed(2)}</div>
+                                <div class="value">${formatNumber(r.profit_factor, 2)}</div>
                                 <div class="label">Profit Factor</div>
                             </div>
                         </div>
