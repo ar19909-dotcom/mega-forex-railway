@@ -1,0 +1,1913 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#0a0e17">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="MEGA FOREX">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="format-detection" content="telephone=no">
+    <meta name="description" content="MEGA FOREX v8.2 PRO - Professional 45-Pair Trading Dashboard">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+    <link rel="apple-touch-icon" href="/icon-192.png">
+    
+    <title>MEGA FOREX v8.2 PRO</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+        
+        :root {
+            --bg-primary: #0a0e17;
+            --bg-secondary: #111827;
+            --bg-card: #1a1f2e;
+            --bg-hover: #252b3d;
+            --text-primary: #f3f4f6;
+            --text-secondary: #9ca3af;
+            --text-muted: #6b7280;
+            --accent-green: #10b981;
+            --accent-red: #ef4444;
+            --accent-blue: #3b82f6;
+            --accent-yellow: #f59e0b;
+            --accent-purple: #8b5cf6;
+            --border-color: #374151;
+            --gradient-bull: linear-gradient(135deg, #059669, #10b981);
+            --gradient-bear: linear-gradient(135deg, #dc2626, #ef4444);
+            --safe-top: env(safe-area-inset-top);
+            --safe-bottom: env(safe-area-inset-bottom);
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
+        html, body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            min-height: -webkit-fill-available;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+        
+        /* PWA Install Banner */
+        .install-banner {
+            display: none;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+            padding: 1rem;
+            padding-bottom: calc(1rem + var(--safe-bottom));
+            z-index: 1000;
+            animation: slideUp 0.3s ease;
+        }
+        
+        .install-banner.show { display: block; }
+        
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+        
+        .install-banner-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 600px;
+            margin: 0 auto;
+            gap: 1rem;
+        }
+        
+        .install-banner h3 {
+            font-size: 0.95rem;
+            margin-bottom: 0.25rem;
+        }
+        
+        .install-banner p {
+            font-size: 0.8rem;
+            opacity: 0.9;
+        }
+        
+        .install-btn {
+            background: white;
+            color: #1e3a8a;
+            padding: 0.6rem 1.2rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            border: none;
+            white-space: nowrap;
+        }
+        
+        .install-dismiss {
+            background: transparent;
+            border: none;
+            color: white;
+            padding: 0.5rem;
+            font-size: 1.25rem;
+            cursor: pointer;
+        }
+        
+        /* Header - Mobile Optimized */
+        .header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            padding: 0.75rem 1rem;
+            padding-top: calc(0.75rem + var(--safe-top));
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .logo {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--accent-blue);
+        }
+        
+        .logo span { color: var(--accent-green); }
+        
+        .header-stats {
+            display: flex;
+            gap: 1rem;
+        }
+        
+        .stat-item {
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+        
+        .stat-label {
+            font-size: 0.65rem;
+            color: var(--text-secondary);
+        }
+        
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.4rem 0.75rem;
+            background: var(--bg-card);
+            border-radius: 0.4rem;
+            font-size: 0.75rem;
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent-green);
+            animation: pulse 2s infinite;
+        }
+        
+        .status-dot.offline { background: var(--accent-red); animation: none; }
+        .status-dot.connecting { background: var(--accent-yellow); }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        /* Navigation - Mobile Scrollable Tabs */
+        .nav-container {
+            background: var(--bg-secondary);
+            padding: 0.5rem;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+        }
+        
+        .nav-container::-webkit-scrollbar { display: none; }
+        
+        .nav-tabs {
+            display: flex;
+            gap: 0.4rem;
+            min-width: max-content;
+            padding: 0 0.5rem;
+        }
+        
+        .nav-tab {
+            padding: 0.6rem 0.9rem;
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-radius: 0.5rem;
+            font-size: 0.8rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            white-space: nowrap;
+            touch-action: manipulation;
+        }
+        
+        .nav-tab:active { transform: scale(0.95); }
+        
+        .nav-tab.active {
+            background: var(--accent-blue);
+            color: white;
+        }
+        
+        /* Main Content */
+        .main-content {
+            padding: 1rem;
+            padding-bottom: calc(1rem + var(--safe-bottom));
+        }
+        
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        
+        /* Filters - Mobile */
+        .filters-bar {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            flex: 1;
+            min-width: 120px;
+        }
+        
+        .filter-label {
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            display: none;
+        }
+        
+        select, input {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.6rem 0.8rem;
+            border-radius: 0.5rem;
+            font-size: 0.85rem;
+            width: 100%;
+            -webkit-appearance: none;
+        }
+        
+        button {
+            background: var(--accent-blue);
+            border: none;
+            color: white;
+            padding: 0.6rem 1rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            touch-action: manipulation;
+        }
+        
+        button:active { transform: scale(0.95); }
+        button.secondary {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+        }
+        
+        /* Signal Cards - Mobile Optimized */
+        .signals-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 0.75rem;
+        }
+        
+        @media (min-width: 640px) {
+            .signals-grid {
+                grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            }
+        }
+        
+        .signal-card {
+            background: var(--bg-card);
+            border-radius: 0.75rem;
+            border: 1px solid var(--border-color);
+            padding: 1rem;
+            transition: all 0.2s;
+        }
+        
+        .signal-card:active {
+            transform: scale(0.99);
+            border-color: var(--accent-blue);
+        }
+        
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 0.75rem;
+        }
+        
+        .pair-info {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .pair-name {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+        
+        .category-badge {
+            font-size: 0.6rem;
+            padding: 0.2rem 0.4rem;
+            border-radius: 0.25rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .category-badge.major { background: var(--accent-blue); }
+        .category-badge.cross { background: var(--accent-purple); }
+        .category-badge.exotic { background: var(--accent-yellow); color: #000; }
+        
+        .composite-score { text-align: right; }
+        
+        .score-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.75rem;
+            font-weight: 700;
+        }
+        
+        .score-value.bullish { color: var(--accent-green); }
+        .score-value.bearish { color: var(--accent-red); }
+        .score-value.neutral { color: var(--text-secondary); }
+        
+        .stars {
+            color: var(--accent-yellow);
+            font-size: 0.8rem;
+        }
+        
+        .direction-badge {
+            display: inline-block;
+            padding: 0.35rem 0.9rem;
+            border-radius: 0.375rem;
+            font-weight: 600;
+            font-size: 0.85rem;
+            margin-bottom: 0.75rem;
+        }
+        
+        .direction-badge.long { background: var(--gradient-bull); color: white; }
+        .direction-badge.short { background: var(--gradient-bear); color: white; }
+        .direction-badge.neutral { background: var(--bg-hover); color: var(--text-secondary); }
+        
+        /* Stats Row - Mobile */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.4rem;
+            margin-bottom: 0.75rem;
+            padding: 0.6rem;
+            background: var(--bg-secondary);
+            border-radius: 0.5rem;
+        }
+        
+        .stat-box { text-align: center; }
+        
+        .stat-box .value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+        
+        .stat-box .label {
+            font-size: 0.55rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+        
+        /* Factor Grid - Mobile */
+        .factor-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 0.3rem;
+            margin-bottom: 0.75rem;
+        }
+        
+        .factor-item {
+            text-align: center;
+            padding: 0.3rem;
+            border-radius: 0.25rem;
+            font-size: 0.55rem;
+            font-weight: 600;
+        }
+        
+        .factor-item.bullish { background: rgba(16, 185, 129, 0.2); color: var(--accent-green); }
+        .factor-item.bearish { background: rgba(239, 68, 68, 0.2); color: var(--accent-red); }
+        .factor-item.neutral { background: var(--bg-hover); color: var(--text-secondary); }
+        
+        /* Trade Setup - Mobile */
+        .trade-setup {
+            background: var(--bg-secondary);
+            padding: 0.6rem;
+            border-radius: 0.5rem;
+        }
+        
+        .setup-title {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-bottom: 0.4rem;
+        }
+        
+        .setup-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.4rem;
+        }
+        
+        .setup-item { text-align: center; }
+        
+        .setup-item .label {
+            font-size: 0.55rem;
+            color: var(--text-muted);
+        }
+        
+        .setup-item .value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        
+        .setup-item.entry .value { color: var(--accent-blue); }
+        .setup-item.sl .value { color: var(--accent-red); }
+        .setup-item.tp .value { color: var(--accent-green); }
+        
+        /* Tables - Mobile Responsive */
+        .table-container {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin: 0 -1rem;
+            padding: 0 1rem;
+        }
+        
+        .data-table {
+            width: 100%;
+            min-width: 500px;
+            border-collapse: collapse;
+            background: var(--bg-card);
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+        
+        .data-table th,
+        .data-table td {
+            padding: 0.6rem 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .data-table th {
+            background: var(--bg-secondary);
+            font-weight: 600;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            position: sticky;
+            top: 0;
+        }
+        
+        .data-table td {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+        }
+        
+        /* Loading */
+        .loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 3rem;
+            color: var(--text-secondary);
+        }
+        
+        .spinner {
+            width: 32px;
+            height: 32px;
+            border: 3px solid var(--border-color);
+            border-top-color: var(--accent-blue);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1rem;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Offline Banner */
+        .offline-banner {
+            display: none;
+            background: var(--accent-red);
+            color: white;
+            text-align: center;
+            padding: 0.5rem;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        
+        .offline-banner.show { display: block; }
+        
+        /* Positioning bars */
+        .position-bar {
+            display: flex;
+            height: 24px;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 0.4rem 0;
+        }
+        
+        .position-long {
+            background: var(--gradient-bull);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+        
+        .position-short {
+            background: var(--gradient-bear);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+        
+        /* Status badges */
+        .status-badge {
+            display: inline-block;
+            padding: 0.2rem 0.6rem;
+            border-radius: 0.25rem;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+        
+        .status-badge.ok { background: rgba(16, 185, 129, 0.2); color: var(--accent-green); }
+        .status-badge.limited { background: rgba(245, 158, 11, 0.2); color: var(--accent-yellow); }
+        .status-badge.error { background: rgba(239, 68, 68, 0.2); color: var(--accent-red); }
+        
+        /* Pull to refresh indicator */
+        .pull-indicator {
+            position: fixed;
+            top: 60px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-100%);
+            background: var(--accent-blue);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 2rem;
+            font-size: 0.8rem;
+            transition: transform 0.3s;
+            z-index: 99;
+        }
+        
+        .pull-indicator.visible {
+            transform: translateX(-50%) translateY(0);
+        }
+        
+        /* Card styles for other tabs */
+        .card {
+            background: var(--bg-card);
+            border-radius: 0.75rem;
+            border: 1px solid var(--border-color);
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .card h3 {
+            font-size: 1rem;
+            margin-bottom: 0.75rem;
+            color: var(--accent-blue);
+        }
+        
+        /* Form inputs */
+        .form-group {
+            margin-bottom: 0.75rem;
+        }
+        
+        .form-group label {
+            display: block;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-bottom: 0.3rem;
+        }
+        
+        /* Result cards */
+        .result-card {
+            background: var(--bg-secondary);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            text-align: center;
+        }
+        
+        .result-card .value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--accent-blue);
+        }
+        
+        .result-card .label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+        }
+        
+        /* Weights editor */
+        .weight-row {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.6rem 0;
+            border-bottom: 1px solid var(--border-color);
+            flex-wrap: wrap;
+        }
+        
+        .weight-label {
+            flex: 1;
+            min-width: 100px;
+            font-weight: 500;
+            font-size: 0.85rem;
+        }
+        
+        .weight-slider {
+            flex: 2;
+            min-width: 120px;
+            -webkit-appearance: none;
+            height: 8px;
+            background: var(--bg-secondary);
+            border-radius: 4px;
+        }
+        
+        .weight-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 24px;
+            height: 24px;
+            background: var(--accent-blue);
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        
+        .weight-value {
+            width: 50px;
+            text-align: right;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+        }
+        
+        /* News items */
+        .news-item {
+            background: var(--bg-card);
+            border-radius: 0.5rem;
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .news-headline {
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: 0.3rem;
+        }
+        
+        .news-meta {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+        }
+        
+        /* Event cards */
+        .event-card {
+            background: var(--bg-card);
+            border-radius: 0.5rem;
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+            border-left: 4px solid var(--border-color);
+        }
+        
+        .event-card.high { border-left-color: var(--accent-red); }
+        .event-card.medium { border-left-color: var(--accent-yellow); }
+        .event-card.low { border-left-color: var(--accent-green); }
+        
+        /* Audit sections */
+        .audit-section {
+            background: var(--bg-card);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+        }
+        
+        .audit-section h3 {
+            margin-bottom: 0.75rem;
+            color: var(--accent-blue);
+            font-size: 0.95rem;
+        }
+        
+        /* Backtest config */
+        .backtest-config {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 0.75rem;
+            background: var(--bg-card);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        /* Analyzer */
+        .analyzer-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        @media (min-width: 768px) {
+            .analyzer-container {
+                flex-direction: row;
+            }
+            .pair-list { width: 280px; flex-shrink: 0; }
+            .analyzer-detail { flex: 1; }
+        }
+        
+        .pair-list {
+            background: var(--bg-card);
+            border-radius: 0.5rem;
+            padding: 0.75rem;
+            max-height: 50vh;
+            overflow-y: auto;
+        }
+        
+        .pair-list-item {
+            padding: 0.6rem;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+        }
+        
+        .pair-list-item:active,
+        .pair-list-item.selected {
+            background: var(--bg-hover);
+        }
+        
+        .analyzer-detail {
+            background: var(--bg-card);
+            border-radius: 0.5rem;
+            padding: 1rem;
+        }
+        
+        /* Desktop optimizations */
+        @media (min-width: 1024px) {
+            .main-content { padding: 1.5rem 2rem; }
+            .header { padding: 1rem 2rem; }
+            .nav-container { padding: 0.5rem 2rem; }
+            .filter-label { display: block; }
+            .signals-grid { grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 1rem; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Offline Banner -->
+    <div class="offline-banner" id="offline-banner">
+        📡 You are offline - Data may not be current
+    </div>
+    
+    <!-- Pull to Refresh Indicator -->
+    <div class="pull-indicator" id="pull-indicator">
+        ↻ Release to refresh
+    </div>
+    
+    <!-- Header -->
+    <header class="header">
+        <div class="logo">MEGA<span>FOREX</span> <small style="font-size: 0.6rem; color: var(--text-muted);">v8.2</small></div>
+        <div class="header-stats">
+            <div class="stat-item">
+                <div class="stat-value" id="total-pairs">45</div>
+                <div class="stat-label">PAIRS</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="active-signals">--</div>
+                <div class="stat-label">SIGNALS</div>
+            </div>
+        </div>
+        <div class="connection-status">
+            <div class="status-dot" id="status-dot"></div>
+            <span id="refresh-countdown">120s</span>
+        </div>
+    </header>
+    
+    <!-- Navigation -->
+    <nav class="nav-container">
+        <div class="nav-tabs">
+            <button class="nav-tab active" data-tab="overview">📊 Overview</button>
+            <button class="nav-tab" data-tab="signals">🎯 Signals</button>
+            <button class="nav-tab" data-tab="rates">💹 Rates</button>
+            <button class="nav-tab" data-tab="analyzer">🔬 Analyzer</button>
+            <button class="nav-tab" data-tab="journal">📔 Journal</button>
+            <button class="nav-tab" data-tab="performance">📈 Stats</button>
+            <button class="nav-tab" data-tab="backtest">🧪 Backtest</button>
+            <button class="nav-tab" data-tab="positioning">👥 Position</button>
+            <button class="nav-tab" data-tab="news">📰 News</button>
+            <button class="nav-tab" data-tab="calendar">📅 Calendar</button>
+            <button class="nav-tab" data-tab="weights">⚖️ Weights</button>
+            <button class="nav-tab" data-tab="audit">🔍 Audit</button>
+        </div>
+    </nav>
+    
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Overview Tab -->
+        <div class="tab-content active" id="tab-overview">
+            <div class="filters-bar">
+                <div class="filter-group">
+                    <span class="filter-label">Category:</span>
+                    <select id="filter-category">
+                        <option value="all">All Pairs</option>
+                        <option value="major">Major (7)</option>
+                        <option value="cross">Cross (23)</option>
+                        <option value="exotic">Exotic (15)</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <span class="filter-label">Direction:</span>
+                    <select id="filter-direction">
+                        <option value="all">All</option>
+                        <option value="long">Long ↑</option>
+                        <option value="short">Short ↓</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <span class="filter-label">Min Score:</span>
+                    <select id="filter-score">
+                        <option value="0">Any</option>
+                        <option value="50">50+</option>
+                        <option value="60">60+</option>
+                        <option value="70">70+</option>
+                    </select>
+                </div>
+                <button onclick="loadSignals()" style="flex: 0;">🔄</button>
+            </div>
+            <div class="signals-grid" id="signals-container">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Loading signals...
+                </div>
+            </div>
+        </div>
+        
+        <!-- Top Signals Tab -->
+        <div class="tab-content" id="tab-signals">
+            <h2 style="margin-bottom: 1rem; font-size: 1.1rem;">🎯 Top 10 Trading Signals</h2>
+            <div id="top-signals-container">
+                <div class="loading"><div class="spinner"></div>Loading...</div>
+            </div>
+        </div>
+        
+        <!-- Live Rates Tab -->
+        <div class="tab-content" id="tab-rates">
+            <h2 style="margin-bottom: 1rem; font-size: 1.1rem;">💹 Live Forex Rates</h2>
+            <div class="filters-bar">
+                <select id="rates-category" style="flex: 1;">
+                    <option value="all">All (45)</option>
+                    <option value="major">Major (7)</option>
+                    <option value="cross">Cross (23)</option>
+                    <option value="exotic">Exotic (15)</option>
+                </select>
+            </div>
+            <div class="table-container">
+                <table class="data-table" id="rates-table">
+                    <thead>
+                        <tr>
+                            <th>Pair</th>
+                            <th>Bid</th>
+                            <th>Ask</th>
+                            <th>Spread</th>
+                            <th>Source</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rates-body">
+                        <tr><td colspan="5" class="loading">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Pair Analyzer Tab -->
+        <div class="tab-content" id="tab-analyzer">
+            <h2 style="margin-bottom: 1rem; font-size: 1.1rem;">🔬 Pair Analyzer</h2>
+            <div class="analyzer-container">
+                <div class="pair-list" id="analyzer-pairs"></div>
+                <div class="analyzer-detail" id="analyzer-detail">
+                    <p style="color: var(--text-secondary);">Select a pair to analyze</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Trade Journal Tab -->
+        <div class="tab-content" id="tab-journal">
+            <h2 style="margin-bottom: 1rem; font-size: 1.1rem;">📔 Trade Journal</h2>
+            <div class="card">
+                <h3>➕ Add Trade</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 0.75rem;">
+                    <div class="form-group">
+                        <label>Pair</label>
+                        <select id="journal-pair">
+                            <option value="EUR/USD">EUR/USD</option>
+                            <option value="GBP/USD">GBP/USD</option>
+                            <option value="USD/JPY">USD/JPY</option>
+                            <option value="AUD/USD">AUD/USD</option>
+                            <option value="USD/CAD">USD/CAD</option>
+                            <option value="EUR/GBP">EUR/GBP</option>
+                            <option value="EUR/JPY">EUR/JPY</option>
+                            <option value="GBP/JPY">GBP/JPY</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Direction</label>
+                        <select id="journal-direction">
+                            <option value="LONG">LONG</option>
+                            <option value="SHORT">SHORT</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Lots</label>
+                        <input type="number" id="journal-lots" value="0.01" step="0.01" min="0.01">
+                    </div>
+                    <div class="form-group">
+                        <label>Entry</label>
+                        <input type="number" id="journal-entry" step="0.00001" placeholder="1.12345">
+                    </div>
+                    <div class="form-group">
+                        <label>Stop Loss</label>
+                        <input type="number" id="journal-sl" step="0.00001" placeholder="1.12000">
+                    </div>
+                    <div class="form-group">
+                        <label>Take Profit</label>
+                        <input type="number" id="journal-tp" step="0.00001" placeholder="1.13000">
+                    </div>
+                </div>
+                <div class="form-group" style="margin-top: 0.5rem;">
+                    <label>Notes</label>
+                    <input type="text" id="journal-notes" placeholder="Trade notes...">
+                </div>
+                <button onclick="addJournalTrade()" style="width: 100%; margin-top: 0.75rem;">📝 Add Trade</button>
+            </div>
+            
+            <h3 style="margin: 1rem 0 0.75rem;">📋 Open Trades</h3>
+            <div id="journal-open-trades">
+                <div class="loading"><div class="spinner"></div>Loading...</div>
+            </div>
+            
+            <h3 style="margin: 1.5rem 0 0.75rem;">📜 Trade History</h3>
+            <div id="journal-closed-trades">
+                <div class="loading"><div class="spinner"></div>Loading...</div>
+            </div>
+        </div>
+        
+        <!-- Performance Tab -->
+        <div class="tab-content" id="tab-performance">
+            <h2 style="margin-bottom: 1rem; font-size: 1.1rem;">📈 Performance Stats</h2>
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; margin-bottom: 1rem;">
+                <div class="result-card">
+                    <div class="value" id="perf-total-trades">0</div>
+                    <div class="label">Total Trades</div>
+                </div>
+                <div class="result-card">
+                    <div class="value" id="perf-win-rate">0%</div>
+                    <div class="label">Win Rate</div>
+                </div>
+                <div class="result-card">
+                    <div class="value" id="perf-total-pips">0</div>
+                    <div class="label">Total Pips</div>
+                </div>
+                <div class="result-card">
+                    <div class="value" id="perf-profit-factor">0</div>
+                    <div class="label">Profit Factor</div>
+                </div>
+            </div>
+            <div class="card">
+                <h3>Detailed Stats</h3>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; font-size: 0.85rem;">
+                    <div>Wins: <span id="perf-wins" style="color: var(--accent-green);">0</span></div>
+                    <div>Losses: <span id="perf-losses" style="color: var(--accent-red);">0</span></div>
+                    <div>Best: <span id="perf-best" style="color: var(--accent-green);">0</span></div>
+                    <div>Worst: <span id="perf-worst" style="color: var(--accent-red);">0</span></div>
+                    <div>Avg Win: <span id="perf-avg-win">0</span></div>
+                    <div>Avg Loss: <span id="perf-avg-loss">0</span></div>
+                </div>
+            </div>
+            <div class="card">
+                <h3>Performance by Pair</h3>
+                <div id="perf-by-pair">
+                    <p style="color: var(--text-muted);">No trade data yet</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Backtest Tab -->
+        <div class="tab-content" id="tab-backtest">
+            <h2 style="margin-bottom: 1rem; font-size: 1.1rem;">🧪 Backtesting</h2>
+            <div class="backtest-config">
+                <div class="form-group">
+                    <label>Pair</label>
+                    <select id="backtest-pair">
+                        <option value="EUR/USD">EUR/USD</option>
+                        <option value="GBP/USD">GBP/USD</option>
+                        <option value="USD/JPY">USD/JPY</option>
+                        <option value="AUD/USD">AUD/USD</option>
+                        <option value="EUR/GBP">EUR/GBP</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Period</label>
+                    <select id="backtest-days">
+                        <option value="14">14 Days</option>
+                        <option value="30" selected>30 Days</option>
+                        <option value="60">60 Days</option>
+                        <option value="90">90 Days</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Min Score</label>
+                    <select id="backtest-score">
+                        <option value="50">50+</option>
+                        <option value="60" selected>60+</option>
+                        <option value="70">70+</option>
+                        <option value="80">80+</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Min Stars</label>
+                    <select id="backtest-stars">
+                        <option value="2">2+</option>
+                        <option value="3" selected>3+</option>
+                        <option value="4">4+</option>
+                    </select>
+                </div>
+            </div>
+            <button onclick="runBacktest()" style="width: 100%; margin-bottom: 1rem;">▶️ Run Backtest</button>
+            <div id="backtest-results">
+                <p style="color: var(--text-secondary); text-align: center;">Configure parameters and run backtest</p>
+            </div>
+        </div>
+        
+        <!-- Positioning Tab -->
+        <div class="tab-content" id="tab-positioning">
+            <h2 style="margin-bottom: 0.5rem; font-size: 1.1rem;">👥 Retail Positioning</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 0.8rem;">
+                Contrarian: When retail is heavily long → consider selling. Heavily short → consider buying.
+            </p>
+            <div id="positioning-container">
+                <div class="loading"><div class="spinner"></div>Loading...</div>
+            </div>
+        </div>
+        
+        <!-- News Tab -->
+        <div class="tab-content" id="tab-news">
+            <h2 style="margin-bottom: 1rem; font-size: 1.1rem;">📰 Forex News</h2>
+            <div id="news-container">
+                <div class="loading"><div class="spinner"></div>Loading...</div>
+            </div>
+        </div>
+        
+        <!-- Calendar Tab -->
+        <div class="tab-content" id="tab-calendar">
+            <h2 style="margin-bottom: 0.75rem; font-size: 1.1rem;">📅 Economic Calendar</h2>
+            <div class="filters-bar">
+                <select id="calendar-currency">
+                    <option value="all">All Currencies</option>
+                    <option value="USD">🇺🇸 USD</option>
+                    <option value="EUR">🇪🇺 EUR</option>
+                    <option value="GBP">🇬🇧 GBP</option>
+                    <option value="JPY">🇯🇵 JPY</option>
+                    <option value="AUD">🇦🇺 AUD</option>
+                </select>
+                <select id="calendar-impact">
+                    <option value="all">All Impact</option>
+                    <option value="high">🔴 High</option>
+                    <option value="medium">🟡 Medium+</option>
+                </select>
+            </div>
+            <div id="calendar-container">
+                <div class="loading"><div class="spinner"></div>Loading...</div>
+            </div>
+        </div>
+        
+        <!-- Weights Tab -->
+        <div class="tab-content" id="tab-weights">
+            <h2 style="margin-bottom: 1rem; font-size: 1.1rem;">⚖️ Factor Weights</h2>
+            <div class="card" id="weights-editor">
+                <div class="loading"><div class="spinner"></div>Loading...</div>
+            </div>
+        </div>
+        
+        <!-- Audit Tab -->
+        <div class="tab-content" id="tab-audit">
+            <h2 style="margin-bottom: 1rem; font-size: 1.1rem;">🔍 System Audit</h2>
+            <button onclick="runAudit()" style="width: 100%; margin-bottom: 1rem;">▶️ Run Audit</button>
+            <div id="audit-container">
+                <p style="color: var(--text-secondary); text-align: center;">Click Run Audit to check system health</p>
+            </div>
+        </div>
+    </main>
+    
+    <!-- PWA Install Banner -->
+    <div class="install-banner" id="install-banner">
+        <div class="install-banner-content">
+            <button class="install-dismiss" onclick="dismissInstall()">×</button>
+            <div>
+                <h3>📱 Install MEGA FOREX</h3>
+                <p>Get the full app experience</p>
+            </div>
+            <button class="install-btn" onclick="installApp()">Install</button>
+        </div>
+    </div>
+    <script>
+        // ═══════════════════════════════════════════════════════════════════════════
+        // MEGA FOREX v8.2 PRO - PWA Dashboard JavaScript
+        // ═══════════════════════════════════════════════════════════════════════════
+        
+        // API Configuration - CHANGE THIS TO YOUR DEPLOYED BACKEND URL
+        const API_BASE = window.location.origin;
+        
+        // State
+        let signalsData = [];
+        let countdown = 120;
+        let isOnline = navigator.onLine;
+        let deferredPrompt = null;
+        
+        // ═══════════════════════════════════════════════════════════════════════════
+        // PWA & OFFLINE HANDLING
+        // ═══════════════════════════════════════════════════════════════════════════
+        
+        // Register Service Worker
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js')
+                .then(reg => console.log('✅ Service Worker registered'))
+                .catch(err => console.log('❌ SW registration failed:', err));
+        }
+        
+        // Online/Offline detection
+        window.addEventListener('online', () => {
+            isOnline = true;
+            document.getElementById('offline-banner').classList.remove('show');
+            document.getElementById('status-dot').classList.remove('offline');
+            loadSignals();
+        });
+        
+        window.addEventListener('offline', () => {
+            isOnline = false;
+            document.getElementById('offline-banner').classList.add('show');
+            document.getElementById('status-dot').classList.add('offline');
+        });
+        
+        // PWA Install Prompt
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            // Show install banner after 3 seconds
+            setTimeout(() => {
+                if (!localStorage.getItem('pwa-installed')) {
+                    document.getElementById('install-banner').classList.add('show');
+                }
+            }, 3000);
+        });
+        
+        async function installApp() {
+            if (!deferredPrompt) return;
+            deferredPrompt.prompt();
+            const result = await deferredPrompt.userChoice;
+            if (result.outcome === 'accepted') {
+                localStorage.setItem('pwa-installed', 'true');
+            }
+            deferredPrompt = null;
+            document.getElementById('install-banner').classList.remove('show');
+        }
+        
+        function dismissInstall() {
+            document.getElementById('install-banner').classList.remove('show');
+            localStorage.setItem('pwa-dismissed', Date.now());
+        }
+        
+        // ═══════════════════════════════════════════════════════════════════════════
+        // TAB NAVIGATION
+        // ═══════════════════════════════════════════════════════════════════════════
+        
+        document.querySelectorAll('.nav-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                // Update active tab
+                document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                
+                // Show corresponding content
+                const tabId = tab.dataset.tab;
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                document.getElementById(`tab-${tabId}`).classList.add('active');
+                
+                // Load tab-specific data
+                if (tabId === 'rates') loadRates();
+                else if (tabId === 'news') loadNews();
+                else if (tabId === 'calendar') loadCalendar();
+                else if (tabId === 'positioning') loadPositioning();
+                else if (tabId === 'weights') loadWeights();
+                else if (tabId === 'analyzer') loadAnalyzerPairs();
+                else if (tabId === 'journal') loadJournal();
+                else if (tabId === 'performance') loadPerformance();
+                else if (tabId === 'signals') renderTopSignals();
+            });
+        });
+        
+        // ═══════════════════════════════════════════════════════════════════════════
+        // SIGNALS FUNCTIONS
+        // ═══════════════════════════════════════════════════════════════════════════
+        
+        async function loadSignals() {
+            const container = document.getElementById('signals-container');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading signals...</div>';
+            
+            try {
+                const response = await fetch(`${API_BASE}/signals`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    signalsData = data.signals || [];
+                    document.getElementById('active-signals').textContent = signalsData.filter(s => Math.abs(s.composite_score) >= 50).length;
+                    renderSignals();
+                } else {
+                    container.innerHTML = '<p style="color: var(--accent-red); text-align: center;">Error loading signals</p>';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                container.innerHTML = `<p style="color: var(--accent-red); text-align: center;">
+                    ${isOnline ? 'Connection error' : 'You are offline'}
+                </p>`;
+            }
+        }
+        
+        function renderSignals() {
+            const container = document.getElementById('signals-container');
+            const categoryFilter = document.getElementById('filter-category').value;
+            const directionFilter = document.getElementById('filter-direction').value;
+            const scoreFilter = parseInt(document.getElementById('filter-score').value);
+            
+            let filtered = signalsData.filter(s => {
+                if (categoryFilter !== 'all' && s.category?.toLowerCase() !== categoryFilter) return false;
+                if (directionFilter === 'long' && s.direction !== 'LONG') return false;
+                if (directionFilter === 'short' && s.direction !== 'SHORT') return false;
+                if (Math.abs(s.composite_score) < scoreFilter) return false;
+                return true;
+            });
+            
+            // Sort by absolute score
+            filtered.sort((a, b) => Math.abs(b.composite_score) - Math.abs(a.composite_score));
+            
+            if (filtered.length === 0) {
+                container.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 2rem;">No signals match your filters</p>';
+                return;
+            }
+            
+            container.innerHTML = filtered.map(signal => createSignalCard(signal)).join('');
+        }
+        
+        function createSignalCard(s) {
+            const score = s.composite_score || 0;
+            const absScore = Math.abs(score);
+            const scoreClass = score > 0 ? 'bullish' : score < 0 ? 'bearish' : 'neutral';
+            const direction = s.direction || 'NEUTRAL';
+            const dirClass = direction === 'LONG' ? 'long' : direction === 'SHORT' ? 'short' : 'neutral';
+            const stars = '★'.repeat(s.signal_stars || 0) + '☆'.repeat(5 - (s.signal_stars || 0));
+            const category = (s.category || 'UNKNOWN').toLowerCase();
+            
+            const factors = s.factors || {};
+            const factorNames = ['technical', 'fundamental', 'sentiment', 'intermarket', 'quantitative', 'mtf', 'structure', 'calendar', 'confluence'];
+            
+            const trade = s.trade_setup || {};
+            
+            return `
+                <div class="signal-card">
+                    <div class="card-header">
+                        <div class="pair-info">
+                            <span class="pair-name">${s.pair}</span>
+                            <span class="category-badge ${category}">${category}</span>
+                        </div>
+                        <div class="composite-score">
+                            <div class="score-value ${scoreClass}">${score > 0 ? '+' : ''}${score.toFixed(1)}</div>
+                            <div class="stars">${stars}</div>
+                        </div>
+                    </div>
+                    
+                    <span class="direction-badge ${dirClass}">${direction === 'LONG' ? '↑ LONG' : direction === 'SHORT' ? '↓ SHORT' : '• NEUTRAL'}</span>
+                    
+                    <div class="stats-row">
+                        <div class="stat-box">
+                            <div class="value">${s.bid?.toFixed(s.bid > 10 ? 2 : 5) || '--'}</div>
+                            <div class="label">Bid</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="value">${s.ask?.toFixed(s.ask > 10 ? 2 : 5) || '--'}</div>
+                            <div class="label">Ask</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="value">${s.spread?.toFixed(1) || '--'}</div>
+                            <div class="label">Spread</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="value">${s.atr?.toFixed(4) || '--'}</div>
+                            <div class="label">ATR</div>
+                        </div>
+                    </div>
+                    
+                    <div class="factor-grid">
+                        ${factorNames.map(f => {
+                            const val = factors[f] || 0;
+                            const fClass = val > 5 ? 'bullish' : val < -5 ? 'bearish' : 'neutral';
+                            return `<div class="factor-item ${fClass}">${f.slice(0,3).toUpperCase()}<br>${val > 0 ? '+' : ''}${val.toFixed(0)}</div>`;
+                        }).join('')}
+                    </div>
+                    
+                    ${trade.entry ? `
+                        <div class="trade-setup">
+                            <div class="setup-title">📌 Trade Setup</div>
+                            <div class="setup-grid">
+                                <div class="setup-item entry">
+                                    <div class="label">Entry</div>
+                                    <div class="value">${trade.entry?.toFixed(5) || '--'}</div>
+                                </div>
+                                <div class="setup-item sl">
+                                    <div class="label">SL</div>
+                                    <div class="value">${trade.stop_loss?.toFixed(5) || '--'}</div>
+                                </div>
+                                <div class="setup-item tp">
+                                    <div class="label">TP</div>
+                                    <div class="value">${trade.take_profit?.toFixed(5) || '--'}</div>
+                                </div>
+                                <div class="setup-item">
+                                    <div class="label">R:R</div>
+                                    <div class="value" style="color: var(--accent-purple);">${trade.risk_reward?.toFixed(1) || '--'}</div>
+                                </div>
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+        
+        function renderTopSignals() {
+            const container = document.getElementById('top-signals-container');
+            const top10 = [...signalsData]
+                .sort((a, b) => Math.abs(b.composite_score) - Math.abs(a.composite_score))
+                .slice(0, 10);
+            
+            if (top10.length === 0) {
+                container.innerHTML = '<p style="color: var(--text-secondary); text-align: center;">No signals available</p>';
+                return;
+            }
+            
+            container.innerHTML = top10.map(s => createSignalCard(s)).join('');
+        }
+        
+        // ═══════════════════════════════════════════════════════════════════════════
+        // RATES FUNCTIONS
+        // ═══════════════════════════════════════════════════════════════════════════
+        
+        async function loadRates() {
+            const tbody = document.getElementById('rates-body');
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Loading...</td></tr>';
+            
+            try {
+                const response = await fetch(`${API_BASE}/rates`);
+                const data = await response.json();
+                
+                if (data.success && data.rates) {
+                    const category = document.getElementById('rates-category').value;
+                    let rates = data.rates;
+                    
+                    if (category !== 'all') {
+                        rates = rates.filter(r => r.category?.toLowerCase() === category);
+                    }
+                    
+                    tbody.innerHTML = rates.map(r => `
+                        <tr>
+                            <td style="font-weight: 600;">${r.pair}</td>
+                            <td>${r.bid?.toFixed(r.bid > 10 ? 2 : 5) || '--'}</td>
+                            <td>${r.ask?.toFixed(r.ask > 10 ? 2 : 5) || '--'}</td>
+                            <td>${r.spread?.toFixed(1) || '--'}</td>
+                            <td style="font-size: 0.7rem; color: var(--text-muted);">${r.source || '--'}</td>
+                        </tr>
+                    `).join('');
+                }
+            } catch (error) {
+                tbody.innerHTML = '<tr><td colspan="5" style="color: var(--accent-red);">Error loading rates</td></tr>';
+            }
+        }
+        
+        // ═══════════════════════════════════════════════════════════════════════════
+        // NEWS FUNCTIONS
+        // ═══════════════════════════════════════════════════════════════════════════
+        
+        async function loadNews() {
+            const container = document.getElementById('news-container');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading...</div>';
+            
+            try {
+                const response = await fetch(`${API_BASE}/news`);
+                const data = await response.json();
+                
+                if (data.success && data.articles) {
+                    container.innerHTML = data.articles.slice(0, 20).map(n => `
+                        <div class="news-item">
+                            <div class="news-headline">${n.headline || n.title}</div>
+                            <div class="news-meta">
+                                ${n.source || 'Forex News'} • ${n.datetime ? new Date(n.datetime * 1000).toLocaleString() : ''}
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    container.innerHTML = '<p style="color: var(--text-muted);">No news available</p>';
+                }
+            } catch (error) {
+                container.innerHTML = '<p style="color: var(--accent-red);">Error loading news</p>';
+            }
+        }
+        
+        // ═══════════════════════════════════════════════════════════════════════════
+        // CALENDAR FUNCTIONS
+        // ═══════════════════════════════════════════════════════════════════════════
+        
+        async function loadCalendar() {
+            const container = document.getElementById('calendar-container');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading...</div>';
+            
+            try {
+                const response = await fetch(`${API_BASE}/calendar`);
+                const data = await response.json();
+                
+                if (data.success && data.events) {
+                    const currency = document.getElementById('calendar-currency').value;
+                    const impact = document.getElementById('calendar-impact').value;
+                    
+                    let events = data.events;
+                    if (currency !== 'all') events = events.filter(e => e.country === currency);
+                    if (impact === 'high') events = events.filter(e => e.impact === 'high');
+                    if (impact === 'medium') events = events.filter(e => e.impact === 'high' || e.impact === 'medium');
+                    
+                    if (events.length === 0) {
+                        container.innerHTML = '<p style="color: var(--text-muted);">No events match your filters</p>';
+                        return;
+                    }
+                    
+                    container.innerHTML = events.slice(0, 30).map(e => `
+                        <div class="event-card ${e.impact || 'low'}">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <strong>${e.event}</strong>
+                                <span style="font-size: 0.75rem; color: var(--text-muted);">${e.country || ''}</span>
+                            </div>
+                            <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.3rem;">
+                                ${e.time || ''} ${e.date || ''}
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            } catch (error) {
+                container.innerHTML = '<p style="color: var(--accent-red);">Error loading calendar</p>';
+            }
+        }
+        
+        // ═══════════════════════════════════════════════════════════════════════════
+        // POSITIONING FUNCTIONS
+        // ═══════════════════════════════════════════════════════════════════════════
+        
+        async function loadPositioning() {
+            const container = document.getElementById('positioning-container');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading...</div>';
+            
+            try {
+                const response = await fetch(`${API_BASE}/positioning`);
+                const data = await response.json();
+                
+                if (data.success && data.data) {
+                    container.innerHTML = data.data.map(p => {
+                        const longPct = parseFloat(p.long_percentage) || 50;
+                        const shortPct = parseFloat(p.short_percentage) || 50;
+                        
+                        return `
+                            <div class="card" style="margin-bottom: 0.5rem;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem;">
+                                    <strong>${p.pair}</strong>
+                                    <span style="font-size: 0.75rem; padding: 0.2rem 0.5rem; border-radius: 0.25rem; 
+                                        background: ${p.contrarian_signal === 'SELL' ? 'rgba(239,68,68,0.2)' : p.contrarian_signal === 'BUY' ? 'rgba(16,185,129,0.2)' : 'var(--bg-hover)'};
+                                        color: ${p.contrarian_signal === 'SELL' ? 'var(--accent-red)' : p.contrarian_signal === 'BUY' ? 'var(--accent-green)' : 'var(--text-muted)'};">
+                                        ${p.contrarian_signal || 'NEUTRAL'}
+                                    </span>
+                                </div>
+                                <div class="position-bar">
+                                    <div class="position-long" style="width: ${longPct}%">${longPct.toFixed(0)}%</div>
+                                    <div class="position-short" style="width: ${shortPct}%">${shortPct.toFixed(0)}%</div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                }
+            } catch (error) {
+                container.innerHTML = '<p style="color: var(--accent-red);">Error loading positioning data</p>';
+            }
+        }
+        
+        // ═══════════════════════════════════════════════════════════════════════════
+        // WEIGHTS FUNCTIONS
+        // ═══════════════════════════════════════════════════════════════════════════
+        
+        async function loadWeights() {
+            const container = document.getElementById('weights-editor');
+            
+            try {
+                const response = await fetch(`${API_BASE}/weights`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const weights = data.weights;
+                    container.innerHTML = `
+                        ${Object.entries(weights).map(([key, val]) => `
+                            <div class="weight-row">
+                                <span class="weight-label">${key.charAt(0).toUpperCase() + key.slice(1)}</span>
+                                <input type="range" class="weight-slider" id="weight-${key}" 
+                                    min="0" max="30" value="${val}" 
+                                    oninput="updateWeightDisplay('${key}', this.value)">
+                                <span class="weight-value" id="weight-val-${key}">${val}%</span>
+                            </div>
+                        `).join('')}
+                        <div style="margin-top: 1rem; padding: 0.75rem; background: var(--bg-secondary); border-radius: 0.5rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span>Total:</span>
+                                <strong id="weights-total">${Object.values(weights).reduce((a, b) => a + b, 0)}%</strong>
+                            </div>
+                        </div>
+                        <button onclick="saveWeights()" style="width: 100%; margin-top: 1rem;">💾 Save Weights</button>
+                    `;
+                }
+            } catch (error) {
+                container.innerHTML = '<p style="color: var(--accent-red);">Error loading weights</p>';
+            }
+        }
+        
+        function updateWeightDisplay(key, value) {
+            document.getElementById(`weight-val-${key}`).textContent = value + '%';
+            updateWeightsTotal();
+        }
+        
+        function updateWeightsTotal() {
+            const sliders = document.querySelectorAll('.weight-slider');
+            let total = 0;
+            sliders.forEach(s => total += parseInt(s.value));
+            document.getElementById('weights-total').textContent = total + '%';
+        }
+        
+        async function saveWeights() {
+            const sliders = document.querySelectorAll('.weight-slider');
+            const weights = {};
+            sliders.forEach(s => {
+                const key = s.id.replace('weight-', '');
+                weights[key] = parseInt(s.value);
+            });
+            
+            try {
+                await fetch(`${API_BASE}/weights`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(weights)
+                });
+                alert('Weights saved!');
+                loadSignals();
+            } catch (error) {
+                alert('Error saving weights');
+            }
+        }
+        
+        // ═══════════════════════════════════════════════════════════════════════════
+        // ANALYZER FUNCTIONS
+        // ═══════════════════════════════════════════════════════════════════════════
+        
+        function loadAnalyzerPairs() {
+            const container = document.getElementById('analyzer-pairs');
+            container.innerHTML = signalsData.map(s => `
+                <div class="pair-list-item" onclick="analyzePair('${s.pair}')">
+                    <span>${s.pair}</span>
+                    <span style="color: ${s.composite_score > 0 ? 'var(--accent-green)' : s.composite_score < 0 ? 'var(--accent-red)' : 'var(--text-muted)'}">
+                        ${s.composite_score > 0 ? '+' : ''}${s.composite_score?.toFixed(1) || '0'}
+                    </span>
+                </div>
+            `).join('');
+        }
+        
+        async function analyzePair(pair) {
+            const detail = document.getElementById('analyzer-detail');
+            detail.innerHTML = '<div class="loading"><div class="spinner"></div>Analyzing...</div>';
+            
+            const signal = signalsData.find(s => s.pair === pair);
+            if (!signal) {
+                detail.innerHTML = '<p>Pair not found</p>';
+                return;
+            }
+            
+            detail.innerHTML = createSignalCard(signal);
+        }
+        
+        // ═══════════════════════════════════════════════════════════════════════════
+        // JOURNAL FUNCTIONS
+        // ═══════════════════════════════════════════════════════════════════════════
+        
+        async function loadJournal() {
+            try {
+                const openRes = await fetch(`${API_BASE}/journal?status=OPEN`);
+                const openData = await openRes.json();
+                
+                const closedRes = await fetch(`${API_BASE}/journal?status=CLOSED&limit=20`);
+                const closedData = await closedRes.json();
+                
+                renderJournalTrades('journal-open-trades', openData.trades || [], true);
+                renderJournalTrades('journal-closed-trades', closedData.trades || [], false);
+            } catch (error) {
+                console.error('Error loading journal:', error);
+            }
+        }
+        
+        function renderJournalTrades(containerId, trades, isOpen) {
+            const container = document.getElementById(containerId);
+            
+            if (trades.length === 0) {
+                container.innerHTML = '<p style="color: var(--text-muted); text-align: center;">No trades</p>';
+                return;
+            }
+            
+            container.innerHTML = trades.map(t => `
+                <div class="card" style="margin-bottom: 0.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <strong>${t.pair}</strong>
+                        <span class="direction-badge ${t.direction === 'LONG' ? 'long' : 'short'}" style="font-size: 0.7rem; padding: 0.2rem 0.5rem;">
+                            ${t.direction}
+                        </span>
+                    </div>
+                    <div style="font-size: 0.8rem; color: var(--text-secondary); margin: 0.3rem 0;">
+                        Entry: ${t.entry_price} | Lots: ${t.lot_size}
+                    </div>
+                    ${t.pnl_pips !== undefined ? `
+                        <div style="font-weight: 600; color: ${t.pnl_pips >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'}">
+                            P/L: ${t.pnl_pips >= 0 ? '+' : ''}${t.pnl_pips?.toFixed(1)} pips
+                        </div>
+                    ` : ''}
+                    ${isOpen ? `
+                        <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+                            <input type="number" id="exit-${t.id}" placeholder="Exit price" step="0.00001" style="flex: 1;">
+                            <button onclick="closeTrade(${t.id})" class="secondary" style="padding: 0.4rem 0.8rem;">Close</button>
+                        </div>
+                    ` : ''}
+                </div>
+            `).join('');
+        }
+        
+        async function addJournalTrade() {
+            const trade = {
+                pair: document.getElementById('journal-pair').value,
+                direction: document.getElementById('journal-direction').value,
+                lot_size: parseFloat(document.getElementById('journal-lots').value),
+                entry_price: parseFloat(document.getElementById('journal-entry').value),
+                sl_price: parseFloat(document.getElementById('journal-sl').value) || null,
+                tp_price: parseFloat(document.getElementById('journal-tp').value) || null,
+                notes: document.getElementById('journal-notes').value
+            };
+            
+            if (!trade.entry_price) {
+                alert('Please enter an entry price');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/journal/add`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(trade)
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('Trade added!');
+                    document.getElementById('journal-entry').value = '';
+                    document.getElementById('journal-sl').value = '';
+                    document.getElementById('journal-tp').value = '';
+                    document.getElementById('journal-notes').value = '';
+                    loadJournal();
+                }
+            } catch (error) {
+                alert('Error adding trade');
+            }
+        }
+        
+        async function closeTrade(tradeId) {
+            const exitPrice = parseFloat(document.getElementById(`exit-${tradeId}`).value);
+            if (!exitPrice) {
+                alert('Please enter exit price');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/journal/close/${tradeId}`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ exit_price: exitPrice })
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(`Trade closed! P/L: ${data.pnl_pips?.toFixed(1)} pips`);
+                    loadJournal();
+                    loadPerformance();
+                }
+            } catch (error) {
+                alert('Error closing trade');
+            }
+        }
+        
+        // ═══════════════════════════════════════════════════════════════════════════
+        // PERFORMANCE FUNCTIONS
+        // ═══════════════════════════════════════════════════════════════════════════
+        
+        async function loadPerformance() {
+            try {
+                const response = await fetch(`${API_BASE}/performance`);
+                const data = await response.json();
+                
+                if (data.success && data.overall) {
+                    const o = data.overall;
+                    document.getElementById('perf-total-trades').textContent = o.total_trades || 0;
+                    document.getElementById('perf-win-rate').textContent = (o.win_rate || 0).toFixed(1) + '%';
+                    document.getElementById('perf-total-pips').textContent = (o.total_pips || 0).toFixed(1);
+                    document.getElementById('perf-profit-factor').textContent = (o.profit_factor || 0).toFixed(2);
+                    document.getElementById('perf-wins').textContent = o.wins || 0;
+                    document.getElementById('perf-losses').textContent = o.losses || 0;
+                    document.getElementById('perf-best').textContent = (o.best_trade || 0).toFixed(1);
+                    document.getElementById('perf-worst').textContent = (o.worst_trade || 0).toFixed(1);
+                    document.getElementById('perf-avg-win').textContent = (o.avg_win || 0).toFixed(1);
+                    document.getElementById('perf-avg-loss').textContent = (o.avg_loss || 0).toFixed(1);
+                }
+            } catch (error) {
+                console.error('Error loading performance:', error);
+            }
+        }
+        
+        // ═══════════════════════════════════════════════════════════════════════════
+        // BACKTEST FUNCTIONS
+        // ═══════════════════════════════════════════════════════════════════════════
+        
+        async function runBacktest() {
+            const container = document.getElementById('backtest-results');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div>Running backtest...</div>';
+            
+            const params = new URLSearchParams({
+                pair: document.getElementById('backtest-pair').value,
+                days: document.getElementById('backtest-days').value,
+                min_score: document.getElementById('backtest-score').value,
+                min_stars: document.getElementById('backtest-stars').value
+            });
+            
+            try {
+                const response = await fetch(`${API_BASE}/backtest?${params}`);
+                const data = await response.json();
+                
+                if (data.success && data.results) {
+                    const r = data.results;
+                    container.innerHTML = `
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem;">
+                            <div class="result-card">
+                                <div class="value">${r.total_trades}</div>
+                                <div class="label">Trades</div>
+                            </div>
+                            <div class="result-card">
+                                <div class="value" style="color: ${r.win_rate >= 50 ? 'var(--accent-green)' : 'var(--accent-red)'}">
+                                    ${r.win_rate?.toFixed(1)}%
+                                </div>
+                                <div class="label">Win Rate</div>
+                            </div>
+                            <div class="result-card">
+                                <div class="value" style="color: ${r.total_pips >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'}">
+                                    ${r.total_pips >= 0 ? '+' : ''}${r.total_pips?.toFixed(1)}
+                                </div>
+                                <div class="label">Total Pips</div>
+                            </div>
+                            <div class="result-card">
+                                <div class="value">${r.profit_factor?.toFixed(2)}</div>
+                                <div class="label">Profit Factor</div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    container.innerHTML = '<p style="color: var(--accent-red);">Backtest failed</p>';
+                }
+            } catch (error) {
+                container.innerHTML = '<p style="color: var(--accent-red);">Error running backtest</p>';
+            }
+        }
+        
+        // ═══════════════════════════════════════════════════════════════════════════
+        // AUDIT FUNCTIONS
+        // ═══════════════════════════════════════════════════════════════════════════
+        
+        async function runAudit() {
+            const container = document.getElementById('audit-container');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div>Running audit...</div>';
+            
+            try {
+                const response = await fetch(`${API_BASE}/audit`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    container.innerHTML = `
+                        <div class="audit-section">
+                            <h3>🔌 API Status</h3>
+                            ${Object.entries(data.api_status || {}).map(([name, info]) => `
+                                <div style="display: flex; justify-content: space-between; padding: 0.4rem 0; border-bottom: 1px solid var(--border-color);">
+                                    <span style="text-transform: capitalize;">${name}</span>
+                                    <span class="status-badge ${info.status === 'OK' ? 'ok' : info.status === 'LIMITED' ? 'limited' : 'error'}">${info.status}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                        
+                        <div class="audit-section">
+                            <h3>📊 Data Quality</h3>
+                            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem;">
+                                <div class="result-card">
+                                    <div class="value">${data.data_quality?.pairs_with_rates || 0}/${data.data_quality?.total_pairs || 45}</div>
+                                    <div class="label">Rates</div>
+                                </div>
+                                <div class="result-card">
+                                    <div class="value">${data.data_quality?.coverage || 0}%</div>
+                                    <div class="label">Coverage</div>
+                                </div>
+                                <div class="result-card">
+                                    <div class="value">${Object.keys(data.data_quality?.sources || {}).length}</div>
+                                    <div class="label">Sources</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                container.innerHTML = '<p style="color: var(--accent-red);">Error running audit</p>';
+            }
+        }
+        
+        // ═══════════════════════════════════════════════════════════════════════════
+        // FILTER LISTENERS & COUNTDOWN
+        // ═══════════════════════════════════════════════════════════════════════════
+        
+        document.getElementById('filter-category').addEventListener('change', renderSignals);
+        document.getElementById('filter-direction').addEventListener('change', renderSignals);
+        document.getElementById('filter-score').addEventListener('change', renderSignals);
+        document.getElementById('rates-category').addEventListener('change', loadRates);
+        document.getElementById('calendar-currency').addEventListener('change', loadCalendar);
+        document.getElementById('calendar-impact').addEventListener('change', loadCalendar);
+        
+        function updateCountdown() {
+            countdown--;
+            if (countdown <= 0) {
+                countdown = 120;
+                if (isOnline) loadSignals();
+            }
+            document.getElementById('refresh-countdown').textContent = `${countdown}s`;
+        }
+        
+        // ═══════════════════════════════════════════════════════════════════════════
+        // INITIALIZE
+        // ═══════════════════════════════════════════════════════════════════════════
+        
+        loadSignals();
+        setInterval(updateCountdown, 1000);
+        
+        // Check initial online status
+        if (!navigator.onLine) {
+            document.getElementById('offline-banner').classList.add('show');
+            document.getElementById('status-dot').classList.add('offline');
+        }
+    </script>
+</body>
+</html>
