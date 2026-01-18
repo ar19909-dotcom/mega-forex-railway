@@ -22,7 +22,7 @@ import math
 import random
 import sqlite3
 from datetime import datetime, timedelta
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError as FuturesTimeoutError
 from functools import lru_cache, wraps
 from dotenv import load_dotenv
 import numpy as np
@@ -2633,34 +2633,50 @@ def get_signals():
                     'signals': cached_signals
                 })
         
-        # Generate fresh signals
+        # Generate fresh signals with longer timeout and graceful handling
         signals = []
+        completed = 0
+        failed = 0
         
-        with ThreadPoolExecutor(max_workers=10) as executor:
+        with ThreadPoolExecutor(max_workers=5) as executor:  # Reduced workers for stability
             future_to_pair = {executor.submit(generate_signal, pair): pair for pair in FOREX_PAIRS}
             
-            for future in as_completed(future_to_pair, timeout=45):
-                try:
-                    signal = future.result(timeout=10)
-                    if signal:
-                        signals.append(signal)
-                except Exception as e:
-                    logger.warning(f"Signal generation timeout: {e}")
+            try:
+                for future in as_completed(future_to_pair, timeout=90):  # Increased timeout
+                    try:
+                        signal = future.result(timeout=15)
+                        if signal:
+                            signals.append(signal)
+                            completed += 1
+                    except Exception as e:
+                        failed += 1
+                        logger.warning(f"Signal generation error: {e}")
+            except FuturesTimeoutError:
+                # Timeout occurred - collect whatever signals we have
+                logger.warning(f"Timeout: Got {len(signals)} signals before timeout")
         
-        signals.sort(key=lambda x: x['composite_score'], reverse=True)
-        
-        # Cache the results using existing cache structure
-        cache['signals']['data'] = signals
-        cache['signals']['timestamp'] = datetime.now()
-        
-        return jsonify({
-            'success': True,
-            'count': len(signals),
-            'timestamp': datetime.now().isoformat(),
-            'version': '8.2',
-            'cached': False,
-            'signals': signals
-        })
+        # If we have at least some signals, return them
+        if signals:
+            signals.sort(key=lambda x: x['composite_score'], reverse=True)
+            
+            # Cache the results
+            cache['signals']['data'] = signals
+            cache['signals']['timestamp'] = datetime.now()
+            
+            return jsonify({
+                'success': True,
+                'count': len(signals),
+                'total_pairs': len(FOREX_PAIRS),
+                'timestamp': datetime.now().isoformat(),
+                'version': '8.2',
+                'cached': False,
+                'signals': signals
+            })
+        else:
+            return jsonify({
+                'success': False, 
+                'error': 'Could not generate any signals. Server may be overloaded.'
+            }), 503
     
     except Exception as e:
         logger.error(f"Signals endpoint error: {e}")
