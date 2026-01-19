@@ -1152,93 +1152,49 @@
             });
         });
         
-        // Load Signals - Optimized for Render free tier with timeout and retry
+        // Load Signals - Full featured with timeout handling for Render
         async function loadSignals() {
             const container = document.getElementById('signals-container');
-            container.innerHTML = '<div class="loading"><div class="spinner"></div>Connecting to server...</div>';
-            
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 sec timeout
+            container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading signals...</div>';
             
             try {
-                // First try fast /top-signals endpoint
-                let response = await fetch(`${API_BASE}/top-signals?limit=45`, {
-                    signal: controller.signal
-                });
-                clearTimeout(timeoutId);
-                
-                let data = await response.json();
+                // Try /signals endpoint (uses cache if available)
+                const response = await fetch(`${API_BASE}/signals`);
+                const data = await response.json();
                 
                 if (data.success && data.signals && data.signals.length > 0) {
                     signalsData = data.signals;
                     renderSignals();
                     updateStats();
                     document.getElementById('connection-dot').style.background = 'var(--accent-green)';
-                    document.getElementById('connection-text').textContent = 'Connected';
-                    
-                    // If still loading real data, show indicator and retry
-                    if (data.loading) {
-                        document.getElementById('connection-text').textContent = 'Loading...';
-                        setTimeout(() => {
-                            fetch(`${API_BASE}/signals`).then(r => r.json()).then(fullData => {
-                                if (fullData.success && fullData.signals) {
-                                    signalsData = fullData.signals;
-                                    renderSignals();
-                                    updateStats();
-                                    document.getElementById('connection-text').textContent = 'Connected';
-                                }
-                            }).catch(() => {});
-                        }, 3000);
-                    }
+                    document.getElementById('connection-text').textContent = data.cached ? 'Cached' : 'Live';
                     return;
                 }
                 
-                // Fallback to regular /signals
-                response = await fetch(`${API_BASE}/signals`);
-                data = await response.json();
+                // If no signals, show message
+                container.innerHTML = '<div class="loading">No signals available. Server may be starting up...</div>';
+                document.getElementById('connection-dot').style.background = 'var(--accent-yellow)';
+                document.getElementById('connection-text').textContent = 'Loading...';
                 
-                if (data.success && data.signals) {
-                    signalsData = data.signals;
-                    renderSignals();
-                    updateStats();
-                    document.getElementById('connection-dot').style.background = 'var(--accent-green)';
-                    document.getElementById('connection-text').textContent = 'Connected';
-                }
+                // Retry after 5 seconds
+                setTimeout(loadSignals, 5000);
+                
             } catch (error) {
-                clearTimeout(timeoutId);
+                console.error('Error loading signals:', error);
+                container.innerHTML = `
+                    <div class="loading" style="text-align: center;">
+                        <div style="color: var(--accent-yellow); margin-bottom: 10px;">Server is waking up...</div>
+                        <div style="font-size: 0.8rem; color: var(--text-muted);">Free hosting takes ~30-60 seconds to start</div>
+                        <button onclick="loadSignals()" style="margin-top: 15px; padding: 10px 25px; background: var(--accent-blue); border: none; border-radius: 5px; color: white; cursor: pointer; font-weight: 600;">
+                            🔄 Retry
+                        </button>
+                    </div>
+                `;
+                document.getElementById('connection-dot').style.background = 'var(--accent-red)';
+                document.getElementById('connection-text').textContent = 'Disconnected';
                 
-                if (error.name === 'AbortError') {
-                    // Timeout - server is waking up, show friendly message and retry
-                    container.innerHTML = `
-                        <div class="loading" style="text-align: center;">
-                            <div class="spinner"></div>
-                            <div style="margin-top: 10px;">Server is waking up...</div>
-                            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 5px;">
-                                Free hosting spins down after inactivity. Please wait ~30 seconds.
-                            </div>
-                            <button onclick="loadSignals()" style="margin-top: 15px; padding: 8px 20px; background: var(--accent-blue); border: none; border-radius: 5px; color: white; cursor: pointer;">
-                                Retry Now
-                            </button>
-                        </div>
-                    `;
-                    document.getElementById('connection-dot').style.background = 'var(--accent-yellow)';
-                    document.getElementById('connection-text').textContent = 'Waking up...';
-                    
-                    // Auto-retry after 5 seconds
-                    setTimeout(loadSignals, 5000);
-                } else {
-                    console.error('Error loading signals:', error);
-                    container.innerHTML = `
-                        <div class="loading" style="color: var(--accent-red); text-align: center;">
-                            <div>Connection failed</div>
-                            <button onclick="loadSignals()" style="margin-top: 15px; padding: 8px 20px; background: var(--accent-blue); border: none; border-radius: 5px; color: white; cursor: pointer;">
-                                Retry
-                            </button>
-                        </div>
-                    `;
-                    document.getElementById('connection-dot').style.background = 'var(--accent-red)';
-                    document.getElementById('connection-text').textContent = 'Disconnected';
-                }
+                // Auto-retry after 10 seconds
+                setTimeout(loadSignals, 10000);
             }
         }
         
