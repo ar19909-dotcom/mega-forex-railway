@@ -21,11 +21,6 @@ import json
 import math
 import random
 import sqlite3
-import threading
-import time as time_module
-import xml.etree.ElementTree as ET
-import hashlib
-import re
 from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import lru_cache, wraps
@@ -43,30 +38,28 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-app = Flask(__name__, static_folder='static', template_folder='templates')
+app = Flask(__name__, template_folder='templates', static_folder='static')
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# PWA ROUTES - For Mobile App
+# PWA ROUTES FOR RENDER
 # ═══════════════════════════════════════════════════════════════════════════════
 @app.route('/')
-def index():
-    """Serve the main dashboard"""
+def serve_dashboard():
+    """Serve the dashboard HTML"""
     return render_template('index.html')
 
+@app.route('/health')
+def health_check():
+    """Health check for Render"""
+    return jsonify({'status': 'healthy', 'version': '8.2'})
+
 @app.route('/manifest.json')
-def manifest():
-    """Serve PWA manifest"""
+def serve_manifest():
     return send_from_directory('static', 'manifest.json')
 
 @app.route('/sw.js')
-def service_worker():
-    """Serve service worker"""
+def serve_sw():
     return send_from_directory('static', 'sw.js')
-
-@app.route('/health')
-def health():
-    """Health check endpoint for Render"""
-    return jsonify({'status': 'healthy', 'version': '8.2 PRO'})
 
 # Manual CORS handling (no flask_cors needed)
 def add_cors_headers(response):
@@ -252,70 +245,6 @@ def is_cache_valid(cache_type, custom_ttl=None):
     elapsed = (datetime.now() - cache[cache_type]['timestamp']).total_seconds()
     ttl = custom_ttl if custom_ttl else CACHE_TTL.get(cache_type, 300)
     return elapsed < ttl
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# BACKGROUND SIGNAL GENERATION - Pre-generates signals for instant loading
-# ═══════════════════════════════════════════════════════════════════════════════
-signal_lock = threading.Lock()
-background_signals = {'data': [], 'timestamp': None, 'loading': False}
-
-def generate_signals_background():
-    """Background thread to pre-generate signals for instant loading"""
-    global background_signals
-    
-    # Generate immediately on first run (no delay)
-    first_run = True
-    
-    while True:
-        try:
-            with signal_lock:
-                if not first_run and background_signals['timestamp']:
-                    elapsed = (datetime.now() - background_signals['timestamp']).total_seconds()
-                    if elapsed < 120:  # Refresh every 2 minutes
-                        time_module.sleep(15)
-                        continue
-                background_signals['loading'] = True
-            
-            first_run = False
-            logger.info("🔄 Generating signals...")
-            signals = []
-            
-            # Use more workers for faster generation
-            with ThreadPoolExecutor(max_workers=15) as executor:
-                future_to_pair = {executor.submit(generate_signal, pair): pair for pair in FOREX_PAIRS}
-                for future in as_completed(future_to_pair, timeout=60):
-                    try:
-                        signal = future.result(timeout=10)
-                        if signal:
-                            signals.append(signal)
-                    except Exception as e:
-                        pass
-            
-            signals.sort(key=lambda x: x['composite_score'], reverse=True)
-            
-            with signal_lock:
-                background_signals['data'] = signals
-                background_signals['timestamp'] = datetime.now()
-                background_signals['loading'] = False
-            
-            logger.info(f"✅ {len(signals)} signals ready")
-            
-        except Exception as e:
-            logger.error(f"Background error: {e}")
-            with signal_lock:
-                background_signals['loading'] = False
-        
-        time_module.sleep(30)
-
-background_thread = None
-
-def start_background_thread():
-    """Start the background signal generation thread"""
-    global background_thread
-    if background_thread is None or not background_thread.is_alive():
-        background_thread = threading.Thread(target=generate_signals_background, daemon=True)
-        background_thread.start()
-        logger.info("🚀 Background thread started")
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # SQLITE DATABASE - TRADE JOURNAL & SIGNAL HISTORY
@@ -1389,142 +1318,40 @@ def get_technical_indicators(pair):
     }
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# NEWS & SENTIMENT - Multi-Source Aggregation
+# NEWS & SENTIMENT
 # ═══════════════════════════════════════════════════════════════════════════════
-
-def get_rss_forex_news():
-    """Fetch news from free RSS feeds - ForexLive, FXStreet, Investing.com"""
-    articles = []
-    
-    rss_feeds = [
-        ('https://www.forexlive.com/feed/', 'ForexLive'),
-        ('https://www.fxstreet.com/rss/news', 'FXStreet'),
-        ('https://www.investing.com/rss/news_14.rss', 'Investing.com'),
-    ]
-    
-    for feed_url, source_name in rss_feeds:
-        try:
-            resp = req_lib.get(feed_url, timeout=5, headers={
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-            })
-            
-            if resp.status_code == 200:
-                try:
-                    root = ET.fromstring(resp.content)
-                    items = root.findall('.//item')
-                    
-                    for item in items[:10]:
-                        title = item.find('title')
-                        desc = item.find('description')
-                        link = item.find('link')
-                        pub_date = item.find('pubDate')
-                        
-                        headline = title.text if title is not None else ''
-                        summary = desc.text if desc is not None else ''
-                        
-                        # Clean HTML from summary
-                        if summary:
-                            summary = re.sub(r'<[^>]+>', '', summary)[:250]
-                        
-                        # Parse datetime
-                        dt = int(datetime.now().timestamp())
-                        if pub_date is not None and pub_date.text:
-                            try:
-                                from email.utils import parsedate_to_datetime
-                                dt = int(parsedate_to_datetime(pub_date.text).timestamp())
-                            except:
-                                pass
-                        
-                        if headline:
-                            articles.append({
-                                'headline': headline,
-                                'summary': summary,
-                                'source': source_name,
-                                'url': link.text if link is not None else '',
-                                'datetime': dt,
-                                'provider': 'rss'
-                            })
-                except ET.ParseError:
-                    pass
-        except Exception as e:
-            logger.debug(f"RSS feed {source_name} error: {e}")
-            continue
-    
-    return articles
-
 def get_finnhub_news():
-    """Fetch forex news from Finnhub + RSS sources for comprehensive coverage"""
+    """Fetch forex news from Finnhub"""
+    if not FINNHUB_API_KEY:
+        return {'articles': [], 'count': 0}
+    
     if is_cache_valid('news') and cache['news']['data']:
         return cache['news']['data']
     
-    all_articles = []
-    sources_status = {}
-    
-    # Source 1: Finnhub (multiple categories)
-    if FINNHUB_API_KEY:
-        for category in ['forex', 'general']:
-            try:
-                url = "https://finnhub.io/api/v1/news"
-                params = {'category': category, 'token': FINNHUB_API_KEY}
-                resp = req_lib.get(url, params=params, timeout=8)
-                
-                if resp.status_code == 200:
-                    data = resp.json()[:20]
-                    forex_keywords = ['forex', 'currency', 'dollar', 'euro', 'yen', 'pound', 
-                                     'fed', 'ecb', 'boj', 'boe', 'central bank', 'interest rate',
-                                     'usd', 'eur', 'gbp', 'jpy', 'aud', 'cad', 'chf', 'nzd']
-                    
-                    for a in data:
-                        headline = a.get('headline', '')
-                        summary = a.get('summary', '')
-                        text_lower = (headline + ' ' + summary).lower()
-                        
-                        # Accept forex category or general with forex keywords
-                        if category == 'forex' or any(kw in text_lower for kw in forex_keywords):
-                            all_articles.append({
-                                'headline': headline,
-                                'summary': summary[:300] if summary else '',
-                                'source': a.get('source', 'Finnhub'),
-                                'url': a.get('url', ''),
-                                'datetime': a.get('datetime', 0),
-                                'provider': 'finnhub'
-                            })
-                    sources_status['finnhub'] = {'status': 'OK', 'count': len(data)}
-            except Exception as e:
-                sources_status['finnhub'] = {'status': 'ERROR', 'error': str(e)}
-    else:
-        sources_status['finnhub'] = {'status': 'NOT_CONFIGURED', 'count': 0}
-    
-    # Source 2: RSS Feeds (always available, no API key needed)
     try:
-        rss_articles = get_rss_forex_news()
-        all_articles.extend(rss_articles)
-        sources_status['rss'] = {'status': 'OK', 'count': len(rss_articles)}
+        url = "https://finnhub.io/api/v1/news"
+        params = {'category': 'forex', 'token': FINNHUB_API_KEY}
+        resp = req_lib.get(url, params=params, timeout=10)
+        
+        if resp.status_code == 200:
+            articles = resp.json()[:30]
+            result = {
+                'articles': [{
+                    'headline': a.get('headline', ''),
+                    'summary': a.get('summary', ''),
+                    'source': a.get('source', ''),
+                    'url': a.get('url', ''),
+                    'datetime': a.get('datetime', 0)
+                } for a in articles],
+                'count': len(articles)
+            }
+            cache['news']['data'] = result
+            cache['news']['timestamp'] = datetime.now()
+            return result
     except Exception as e:
-        sources_status['rss'] = {'status': 'ERROR', 'error': str(e)}
+        logger.debug(f"Finnhub news fetch failed: {e}")
     
-    # Deduplicate by headline hash
-    seen = set()
-    unique_articles = []
-    for article in all_articles:
-        key = hashlib.md5(article['headline'].lower()[:40].encode()).hexdigest()[:8]
-        if key not in seen:
-            seen.add(key)
-            unique_articles.append(article)
-    
-    # Sort by datetime (newest first)
-    unique_articles.sort(key=lambda x: x.get('datetime', 0), reverse=True)
-    unique_articles = unique_articles[:50]
-    
-    result = {
-        'articles': unique_articles,
-        'count': len(unique_articles),
-        'sources': sources_status
-    }
-    
-    cache['news']['data'] = result
-    cache['news']['timestamp'] = datetime.now()
-    return result
+    return {'articles': [], 'count': 0}
 
 def analyze_sentiment(pair):
     """
@@ -2753,9 +2580,8 @@ def run_system_audit():
 
 @app.route('/api-info')
 def api_info():
-    """API info endpoint (moved from / to avoid conflict with PWA)"""
     return jsonify({
-        'name': 'MEGA FOREX v8.2 PRO',
+        'name': 'MEGA FOREX v8.2',
         'version': '8.2',
         'status': 'operational',
         'pairs': len(FOREX_PAIRS),
@@ -2767,9 +2593,7 @@ def api_info():
             'REAL IG Sentiment + Intermarket',
             'Complete Backtesting',
             'Dynamic Weights Editor',
-            'System Audit',
-            'Fast Top Signals (Background Cache)',
-            'Multi-Source News (Finnhub + RSS)'
+            'System Audit'
         ]
     })
 
@@ -2783,80 +2607,9 @@ def get_rates_endpoint():
         'rates': rates
     })
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# FAST TOP SIGNALS ENDPOINT - Returns cached signals instantly
-# ═══════════════════════════════════════════════════════════════════════════════
-@app.route('/top-signals')
-def get_top_signals():
-    """Fast endpoint that returns cached signals"""
-    try:
-        limit = int(request.args.get('limit', 15))
-        limit = min(45, max(1, limit))
-        
-        # Return cached signals (up to 10 min old)
-        with signal_lock:
-            if background_signals['data'] and background_signals['timestamp']:
-                elapsed = (datetime.now() - background_signals['timestamp']).total_seconds()
-                if elapsed < 600:  # 10 minute cache
-                    signals = background_signals['data'][:limit]
-                    return jsonify({
-                        'success': True,
-                        'count': len(signals),
-                        'timestamp': background_signals['timestamp'].isoformat(),
-                        'version': '8.2',
-                        'signals': signals,
-                        'cached': True,
-                        'age_seconds': int(elapsed)
-                    })
-        
-        # No cache yet - generate for major pairs only (fast)
-        major_pairs = ['EUR/USD', 'GBP/USD', 'USD/JPY', 'USD/CHF', 'AUD/USD', 'USD/CAD', 'NZD/USD']
-        signals = []
-        
-        with ThreadPoolExecutor(max_workers=7) as executor:
-            futures = {executor.submit(generate_signal, pair): pair for pair in major_pairs}
-            for future in as_completed(futures, timeout=30):
-                try:
-                    signal = future.result(timeout=5)
-                    if signal:
-                        signals.append(signal)
-                except:
-                    pass
-        
-        signals.sort(key=lambda x: x['composite_score'], reverse=True)
-        
-        return jsonify({
-            'success': True,
-            'count': len(signals),
-            'timestamp': datetime.now().isoformat(),
-            'version': '8.2',
-            'signals': signals[:limit]
-        })
-    
-    except Exception as e:
-        logger.error(f"Top signals error: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
 @app.route('/signals')
 def get_signals():
-    """Full signals endpoint - returns cached data instantly"""
     try:
-        # Return cached signals (up to 10 min old)
-        with signal_lock:
-            if background_signals['data'] and background_signals['timestamp']:
-                elapsed = (datetime.now() - background_signals['timestamp']).total_seconds()
-                if elapsed < 600:  # 10 minute cache
-                    return jsonify({
-                        'success': True,
-                        'count': len(background_signals['data']),
-                        'timestamp': background_signals['timestamp'].isoformat(),
-                        'version': '8.2',
-                        'signals': background_signals['data'],
-                        'cached': True,
-                        'age_seconds': int(elapsed)
-                    })
-        
-        # Generate fresh if no valid cache
         signals = []
         
         with ThreadPoolExecutor(max_workers=10) as executor:
@@ -2873,9 +2626,8 @@ def get_signals():
             'success': True,
             'count': len(signals),
             'timestamp': datetime.now().isoformat(),
-            'version': '8.2',
-            'signals': signals,
-            'cached': False
+            'version': '8.1',
+            'signals': signals
         })
     
     except Exception as e:
@@ -3401,14 +3153,6 @@ def is_port_available(port):
         except OSError:
             return False
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# INITIALIZATION FOR GUNICORN (Render deployment)
-# ═══════════════════════════════════════════════════════════════════════════════
-# This runs when gunicorn imports the module
-init_database()
-start_background_thread()
-logger.info("🚀 MEGA FOREX v8.2 PRO initialized for production")
-
 if __name__ == '__main__':
     print("=" * 70)
     print("         MEGA FOREX v8.2 PRO - PRODUCTION TRADING SYSTEM")
@@ -3431,23 +3175,15 @@ if __name__ == '__main__':
     print("    ✨ Smart Dynamic SL/TP (Variable ATR)")
     print("    ✨ REAL IG Client Sentiment + Intermarket")
     print("    ✨ Complete Backtesting Module")
-    print("    ✨ [NEW] Fast Top Signals (Background Caching)")
-    print("    ✨ [NEW] Multi-Source News (Finnhub + RSS)")
     print("=" * 70)
-    
-    # Initialize database
-    init_database()
-    
-    # Start background signal generation
-    start_background_thread()
-    print("  🚀 Background signal generator started")
     
     # Check if port 5000 is available
     port = 5000
     if not is_port_available(port):
         print(f"  ⚠️  Port {port} is in use. Attempting to free it...")
         kill_port_5000()
-        time_module.sleep(1)
+        import time
+        time.sleep(1)
         
         if not is_port_available(port):
             # Try alternative port
