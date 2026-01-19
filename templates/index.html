@@ -4,16 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGA FOREX v8.2 PRO - Professional Trading Dashboard</title>
-    
-    <!-- PWA Meta Tags -->
-    <meta name="theme-color" content="#3b82f6">
-    <meta name="description" content="Professional 45-Pair Forex Trading Dashboard">
-    <link rel="manifest" href="/manifest.json">
-    <link rel="apple-touch-icon" href="/icon-192.png">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="MEGA FOREX">
-    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
@@ -726,6 +716,7 @@
             <button class="nav-tab" data-tab="calendar">📅 Calendar</button>
             <button class="nav-tab" data-tab="weights">⚖️ Weights</button>
             <button class="nav-tab" data-tab="audit">🔍 Audit</button>
+            <button class="nav-tab" data-tab="api-status">⚙️ API Status</button>
         </div>
     </nav>
     
@@ -1112,14 +1103,30 @@
     </main>
 
     <script>
-        // Configuration - Auto-detect API base URL
-        const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-            ? 'http://localhost:5000'
+        // Configuration - Dynamic API_BASE for Render/Local
+        const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+            ? 'http://localhost:5000' 
             : window.location.origin;
-        
         let signalsData = [];
         let refreshInterval;
         let countdown = 120;
+        
+        // All 45 Forex Pairs for Pair Analyzer
+        const ALL_PAIRS = [
+            // Majors (7)
+            'EUR/USD', 'GBP/USD', 'USD/JPY', 'USD/CHF', 'AUD/USD', 'USD/CAD', 'NZD/USD',
+            // Crosses (21)
+            'EUR/GBP', 'EUR/JPY', 'EUR/CHF', 'EUR/AUD', 'EUR/CAD', 'EUR/NZD',
+            'GBP/JPY', 'GBP/CHF', 'GBP/AUD', 'GBP/CAD', 'GBP/NZD',
+            'AUD/JPY', 'AUD/NZD', 'AUD/CAD', 'AUD/CHF',
+            'NZD/JPY', 'NZD/CAD', 'NZD/CHF',
+            'CAD/JPY', 'CAD/CHF', 'CHF/JPY',
+            // Exotics (17)
+            'USD/SGD', 'USD/HKD', 'USD/MXN', 'USD/ZAR', 'USD/TRY', 
+            'USD/NOK', 'USD/SEK', 'USD/DKK', 'USD/PLN',
+            'EUR/TRY', 'EUR/PLN', 'EUR/NOK', 'EUR/SEK', 'EUR/HUF', 'EUR/CZK',
+            'SGD/JPY', 'HKD/JPY'
+        ];
         
         // Tab Navigation
         document.querySelectorAll('.nav-tab').forEach(tab => {
@@ -1141,17 +1148,43 @@
                 else if (tabName === 'weights') loadWeights();
                 else if (tabName === 'journal') loadJournal();
                 else if (tabName === 'performance') loadPerformance();
+                else if (tabName === 'api-status') loadApiStatus();
             });
         });
         
-        // Load Signals
+        // Load Signals - Uses /top-signals for instant loading, then full list
         async function loadSignals() {
             const container = document.getElementById('signals-container');
             container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading signals...</div>';
             
             try {
-                const response = await fetch(`${API_BASE}/signals`);
-                const data = await response.json();
+                // First try fast /top-signals endpoint for instant display
+                let response = await fetch(`${API_BASE}/top-signals?limit=20`);
+                let data = await response.json();
+                
+                if (data.success && data.signals && data.signals.length > 0) {
+                    signalsData = data.signals;
+                    renderSignals();
+                    updateStats();
+                    document.getElementById('connection-dot').style.background = 'var(--accent-green)';
+                    document.getElementById('connection-text').textContent = 'Connected';
+                    
+                    // Load full list in background if we don't have all pairs
+                    if (data.signals.length < 45) {
+                        fetch(`${API_BASE}/signals`).then(r => r.json()).then(fullData => {
+                            if (fullData.success && fullData.signals && fullData.signals.length > signalsData.length) {
+                                signalsData = fullData.signals;
+                                renderSignals();
+                                updateStats();
+                            }
+                        }).catch(() => {});
+                    }
+                    return;
+                }
+                
+                // Fallback to regular /signals if /top-signals fails
+                response = await fetch(`${API_BASE}/signals`);
+                data = await response.json();
                 
                 if (data.success && data.signals) {
                     signalsData = data.signals;
@@ -1191,25 +1224,16 @@
         }
         
         // Create Signal Card
-        // Create Signal Card
         function createSignalCard(signal) {
             const scoreClass = signal.composite_score >= 60 ? 'bullish' : signal.composite_score <= 40 ? 'bearish' : 'neutral';
             const dirClass = signal.direction.toLowerCase();
             const stars = '★'.repeat(signal.stars) + '☆'.repeat(5 - signal.stars);
             
-            // Factor grid with proper value display
-            const factorGrid = Object.entries(signal.factor_grid || {}).map(([key, value]) => {
-                const valueClass = typeof value === 'string' ? value.toLowerCase() : 'neutral';
-                return `<div class="factor-item ${valueClass}">${key}<br><small style="opacity:0.7">${value || '--'}</small></div>`;
-            }).join('');
+            const factorGrid = Object.entries(signal.factor_grid || {}).map(([key, value]) => 
+                `<div class="factor-item ${value}">${key}</div>`
+            ).join('');
             
             const stats = signal.statistics || {};
-            const rate = signal.rate || {};
-            const tech = signal.technical || {};
-            const setup = signal.trade_setup || {};
-            
-            // Calculate spread in pips
-            const spread = rate.ask && rate.bid ? ((rate.ask - rate.bid) * 10000).toFixed(1) : '--';
             
             return `
                 <div class="signal-card" onclick="analyzeSignal('${signal.pair}')">
@@ -1219,70 +1243,69 @@
                             <span class="category-badge ${signal.category.toLowerCase()}">${signal.category}</span>
                         </div>
                         <div class="composite-score">
-                            <div class="score-value ${scoreClass}">${signal.composite_score >= 0 ? '+' : ''}${signal.composite_score.toFixed(1)}</div>
+                            <div class="score-value ${scoreClass}">${signal.composite_score}</div>
                             <div class="stars">${stars}</div>
                         </div>
                     </div>
                     
                     <span class="direction-badge ${dirClass}">${signal.direction}</span>
                     
-                    <!-- Price Info Row -->
                     <div class="stats-row">
                         <div class="stat-box">
-                            <div class="value">${rate.bid ? rate.bid.toFixed(5) : '--'}</div>
-                            <div class="label">BID</div>
+                            <div class="value">${(stats.win_rate || 50).toFixed(0)}%</div>
+                            <div class="label">WIN%</div>
                         </div>
                         <div class="stat-box">
-                            <div class="value">${rate.ask ? rate.ask.toFixed(5) : '--'}</div>
-                            <div class="label">ASK</div>
+                            <div class="value">${(stats.expectancy || 50).toFixed(0)}%</div>
+                            <div class="label">EXP%</div>
                         </div>
                         <div class="stat-box">
-                            <div class="value">${spread}</div>
-                            <div class="label">SPREAD</div>
+                            <div class="value">${stats.hold_days || 3}D</div>
+                            <div class="label">HOLD</div>
                         </div>
                         <div class="stat-box">
-                            <div class="value">${tech.atr ? tech.atr.toFixed(5) : '--'}</div>
-                            <div class="label">ATR</div>
+                            <div class="value">${(stats.profit_factor || 1).toFixed(1)}</div>
+                            <div class="label">PF</div>
                         </div>
                     </div>
                     
                     <div class="factor-grid">${factorGrid}</div>
                     
                     <div class="trade-setup">
-                        <div class="setup-title">✈ Trade Setup ${setup.trade_quality ? `<span style="color: ${setup.trade_quality === 'A+' ? '#00ff88' : setup.trade_quality === 'A' ? '#00cc66' : setup.trade_quality === 'B' ? '#ffaa00' : '#ff6666'}; margin-left: 0.5rem;">[${setup.trade_quality}]</span>` : ''}</div>
+                        <div class="setup-title">TRADE SETUP ${signal.trade_setup?.trade_quality ? `<span style="color: ${signal.trade_setup.trade_quality === 'A+' ? '#00ff88' : signal.trade_setup.trade_quality === 'A' ? '#00cc66' : signal.trade_setup.trade_quality === 'B' ? '#ffaa00' : '#ff6666'}; margin-left: 0.5rem;">[${signal.trade_setup.trade_quality}]</span>` : ''}</div>
                         <div class="setup-grid">
                             <div class="setup-item entry">
-                                <div class="label">Entry</div>
-                                <div class="value">${setup.entry ? setup.entry.toFixed(5) : (rate.mid ? rate.mid.toFixed(5) : '--')}</div>
+                                <div class="label">ENTRY</div>
+                                <div class="value">${signal.trade_setup?.entry?.toFixed(5) || 'N/A'}</div>
                             </div>
                             <div class="setup-item sl">
-                                <div class="label">SL</div>
-                                <div class="value" style="color: #ef4444;">${setup.sl ? setup.sl.toFixed(5) : '--'}</div>
+                                <div class="label">SL (${signal.trade_setup?.sl_pips?.toFixed(0) || 0}p)</div>
+                                <div class="value">${signal.trade_setup?.sl?.toFixed(5) || 'N/A'}</div>
                             </div>
                             <div class="setup-item tp">
-                                <div class="label">TP</div>
-                                <div class="value" style="color: #10b981;">${setup.tp1 ? setup.tp1.toFixed(5) : '--'}</div>
+                                <div class="label">TP1 (${signal.trade_setup?.tp1_pips?.toFixed(0) || 0}p)</div>
+                                <div class="value">${signal.trade_setup?.tp1?.toFixed(5) || 'N/A'}</div>
                             </div>
-                            <div class="setup-item">
+                            <div class="setup-item tp">
                                 <div class="label">R:R</div>
-                                <div class="value">1:${setup.risk_reward_1 ? setup.risk_reward_1.toFixed(1) : (setup.risk_reward ? setup.risk_reward.toFixed(1) : '--')}</div>
+                                <div class="value">1:${signal.trade_setup?.risk_reward_1?.toFixed(1) || signal.trade_setup?.risk_reward?.toFixed(1) || '1.5'}</div>
                             </div>
                         </div>
-                        ${setup.market_context ? `
+                        ${signal.trade_setup?.market_context ? `
                         <div style="margin-top: 0.5rem; font-size: 0.7rem; color: var(--text-muted); display: flex; gap: 0.5rem; justify-content: center;">
-                            <span>Vol: ${setup.market_context.volatility}</span>
+                            <span>Vol: ${signal.trade_setup.market_context.volatility}</span>
                             <span>|</span>
-                            <span>Trend: ${setup.market_context.trend}</span>
+                            <span>Trend: ${signal.trade_setup.market_context.trend}</span>
                             <span>|</span>
-                            <span>Conf: ${setup.market_context.confidence}</span>
+                            <span>Conf: ${signal.trade_setup.market_context.confidence}</span>
                         </div>
                         ` : ''}
                         ${signal.patterns && signal.patterns.patterns && signal.patterns.patterns.length > 0 ? `
-                        <div style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid var(--border-color);">
-                            <div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.3rem;">🕯️ PATTERNS</div>
+                        <div style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid var(--border);">
+                            <div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.3rem;">🕯️ PATTERNS DETECTED</div>
                             <div style="display: flex; flex-wrap: wrap; gap: 0.3rem; justify-content: center;">
                                 ${signal.patterns.patterns.slice(0, 3).map(p => `
-                                    <span style="font-size: 0.65rem; padding: 0.2rem 0.4rem; border-radius: 0.2rem; background: ${p.signal === 'BULLISH' ? 'rgba(0,255,136,0.2)' : p.signal === 'BEARISH' ? 'rgba(255,102,102,0.2)' : 'rgba(255,255,255,0.1)'}; color: ${p.signal === 'BULLISH' ? '#00ff88' : p.signal === 'BEARISH' ? '#ff6666' : '#999'};">${p.name.replace(/_/g, ' ')}</span>
+                                    <span style="font-size: 0.65rem; padding: 0.2rem 0.4rem; border-radius: 0.2rem; background: ${p.signal === 'BULLISH' ? 'rgba(0,255,136,0.2)' : p.signal === 'BEARISH' ? 'rgba(255,102,102,0.2)' : 'rgba(255,255,255,0.1)'}; color: ${p.signal === 'BULLISH' ? '#00ff88' : p.signal === 'BEARISH' ? '#ff6666' : '#999'};">${p.name.replace('_', ' ')}</span>
                                 `).join('')}
                             </div>
                         </div>
@@ -1329,14 +1352,21 @@
         // Load Analyzer Pairs
         function loadAnalyzerPairs() {
             const container = document.getElementById('analyzer-pairs');
-            container.innerHTML = signalsData.map(s => `
-                <div class="pair-list-item" onclick="analyzeSignal('${s.pair}')">
-                    <span>${s.pair}</span>
-                    <span style="color: ${s.direction === 'LONG' ? 'var(--accent-green)' : s.direction === 'SHORT' ? 'var(--accent-red)' : 'var(--text-secondary)'}">
-                        ${s.composite_score}
-                    </span>
-                </div>
-            `).join('');
+            
+            // Show ALL 45 pairs, with score from signalsData if available
+            container.innerHTML = ALL_PAIRS.map(pair => {
+                const signal = signalsData.find(s => s.pair === pair);
+                const score = signal ? signal.composite_score : '--';
+                const direction = signal ? signal.direction : 'NEUTRAL';
+                const color = direction === 'LONG' ? 'var(--accent-green)' : direction === 'SHORT' ? 'var(--accent-red)' : 'var(--text-secondary)';
+                
+                return `
+                    <div class="pair-list-item" onclick="analyzeSignal('${pair}')">
+                        <span>${pair}</span>
+                        <span style="color: ${color}">${score}</span>
+                    </div>
+                `;
+            }).join('');
         }
         
         // Analyze Signal
@@ -2250,13 +2280,6 @@
                 loadSignals();
             }
             document.getElementById('refresh-countdown').textContent = `${countdown}s`;
-        }
-        
-        // Register Service Worker for PWA
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js')
-                .then(reg => console.log('Service Worker registered'))
-                .catch(err => console.log('Service Worker registration failed:', err));
         }
         
         // Initialize
