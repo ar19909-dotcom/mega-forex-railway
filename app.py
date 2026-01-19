@@ -2784,49 +2784,49 @@ def get_rates_endpoint():
 # ═══════════════════════════════════════════════════════════════════════════════
 @app.route('/top-signals')
 def get_top_signals():
-    """Fast endpoint that returns top signals from background cache"""
+    """Fast endpoint that returns top signals from background cache or generates fresh"""
     try:
         limit = int(request.args.get('limit', 15))
         limit = min(45, max(1, limit))
         
+        # Try background cache first
         with signal_lock:
-            if background_signals['data']:
-                signals = background_signals['data'][:limit]
-                timestamp = background_signals['timestamp']
-                loading = background_signals['loading']
-                
-                return jsonify({
-                    'success': True,
-                    'count': len(signals),
-                    'timestamp': timestamp.isoformat() if timestamp else datetime.now().isoformat(),
-                    'loading': loading,
-                    'version': '8.2',
-                    'signals': signals
-                })
+            if background_signals['data'] and background_signals['timestamp']:
+                elapsed = (datetime.now() - background_signals['timestamp']).total_seconds()
+                if elapsed < 300:  # 5 minute cache
+                    signals = background_signals['data'][:limit]
+                    return jsonify({
+                        'success': True,
+                        'count': len(signals),
+                        'timestamp': background_signals['timestamp'].isoformat(),
+                        'version': '8.2',
+                        'signals': signals,
+                        'cached': True
+                    })
         
-        # If no background signals, return quick placeholder with majors
-        # This prevents long wait on first load
-        quick_signals = []
-        major_pairs = ['EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'USD/CAD']
+        # No cache - generate real signals for major pairs (fast)
+        major_pairs = ['EUR/USD', 'GBP/USD', 'USD/JPY', 'USD/CHF', 'AUD/USD', 'USD/CAD', 'NZD/USD']
+        signals = []
         
-        for pair in major_pairs[:limit]:
-            quick_signals.append({
-                'pair': pair,
-                'direction': 'NEUTRAL',
-                'composite_score': 50,
-                'star_rating': 2,
-                'category': 'MAJOR',
-                'loading': True
-            })
+        with ThreadPoolExecutor(max_workers=7) as executor:
+            futures = {executor.submit(generate_signal, pair): pair for pair in major_pairs}
+            for future in as_completed(futures):
+                try:
+                    signal = future.result()
+                    if signal:
+                        signals.append(signal)
+                except Exception as e:
+                    logger.debug(f"Signal generation error: {e}")
+        
+        signals.sort(key=lambda x: x['composite_score'], reverse=True)
         
         return jsonify({
             'success': True,
-            'count': len(quick_signals),
+            'count': len(signals),
             'timestamp': datetime.now().isoformat(),
-            'loading': True,
             'version': '8.2',
-            'signals': quick_signals,
-            'message': 'Loading real data...'
+            'signals': signals[:limit],
+            'cached': False
         })
     
     except Exception as e:
