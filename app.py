@@ -2747,11 +2747,12 @@ def run_system_audit():
 # API ROUTES
 # ═══════════════════════════════════════════════════════════════════════════════
 
-@app.route('/')
-def index():
+@app.route('/api-info')
+def api_info():
+    """API info endpoint (moved from / to avoid conflict with PWA)"""
     return jsonify({
-        'name': 'MEGA FOREX v8.1',
-        'version': '8.1',
+        'name': 'MEGA FOREX v8.2 PRO',
+        'version': '8.2',
         'status': 'operational',
         'pairs': len(FOREX_PAIRS),
         'factors': len(FACTOR_WEIGHTS),
@@ -2762,7 +2763,9 @@ def index():
             'REAL IG Sentiment + Intermarket',
             'Complete Backtesting',
             'Dynamic Weights Editor',
-            'System Audit'
+            'System Audit',
+            'Fast Top Signals (Background Cache)',
+            'Multi-Source News (Finnhub + RSS)'
         ]
     })
 
