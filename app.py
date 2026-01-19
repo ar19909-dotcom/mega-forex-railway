@@ -254,7 +254,7 @@ def is_cache_valid(cache_type, custom_ttl=None):
     return elapsed < ttl
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# BACKGROUND SIGNAL GENERATION - For Fast Top Signals Loading
+# BACKGROUND SIGNAL GENERATION - Pre-generates signals for instant loading
 # ═══════════════════════════════════════════════════════════════════════════════
 signal_lock = threading.Lock()
 background_signals = {'data': [], 'timestamp': None, 'loading': False}
@@ -263,25 +263,29 @@ def generate_signals_background():
     """Background thread to pre-generate signals for instant loading"""
     global background_signals
     
+    # Generate immediately on first run (no delay)
+    first_run = True
+    
     while True:
         try:
-            # Check if we need to regenerate (every 45 seconds)
             with signal_lock:
-                if background_signals['timestamp']:
+                if not first_run and background_signals['timestamp']:
                     elapsed = (datetime.now() - background_signals['timestamp']).total_seconds()
-                    if elapsed < 40:
-                        time_module.sleep(10)
+                    if elapsed < 120:  # Refresh every 2 minutes
+                        time_module.sleep(15)
                         continue
                 background_signals['loading'] = True
             
-            logger.info("🔄 Background signal generation starting...")
+            first_run = False
+            logger.info("🔄 Generating signals...")
             signals = []
             
-            with ThreadPoolExecutor(max_workers=8) as executor:
+            # Use more workers for faster generation
+            with ThreadPoolExecutor(max_workers=15) as executor:
                 future_to_pair = {executor.submit(generate_signal, pair): pair for pair in FOREX_PAIRS}
-                for future in as_completed(future_to_pair):
+                for future in as_completed(future_to_pair, timeout=60):
                     try:
-                        signal = future.result()
+                        signal = future.result(timeout=10)
                         if signal:
                             signals.append(signal)
                     except Exception as e:
@@ -294,10 +298,10 @@ def generate_signals_background():
                 background_signals['timestamp'] = datetime.now()
                 background_signals['loading'] = False
             
-            logger.info(f"✅ Background signals ready: {len(signals)} signals cached")
+            logger.info(f"✅ {len(signals)} signals ready")
             
         except Exception as e:
-            logger.error(f"Background signal error: {e}")
+            logger.error(f"Background error: {e}")
             with signal_lock:
                 background_signals['loading'] = False
         
@@ -311,7 +315,7 @@ def start_background_thread():
     if background_thread is None or not background_thread.is_alive():
         background_thread = threading.Thread(target=generate_signals_background, daemon=True)
         background_thread.start()
-        logger.info("🚀 Background signal thread started")
+        logger.info("🚀 Background thread started")
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # SQLITE DATABASE - TRADE JOURNAL & SIGNAL HISTORY
@@ -2784,16 +2788,16 @@ def get_rates_endpoint():
 # ═══════════════════════════════════════════════════════════════════════════════
 @app.route('/top-signals')
 def get_top_signals():
-    """Fast endpoint that returns top signals from background cache or generates fresh"""
+    """Fast endpoint that returns cached signals"""
     try:
         limit = int(request.args.get('limit', 15))
         limit = min(45, max(1, limit))
         
-        # Try background cache first
+        # Return cached signals (up to 10 min old)
         with signal_lock:
             if background_signals['data'] and background_signals['timestamp']:
                 elapsed = (datetime.now() - background_signals['timestamp']).total_seconds()
-                if elapsed < 300:  # 5 minute cache
+                if elapsed < 600:  # 10 minute cache
                     signals = background_signals['data'][:limit]
                     return jsonify({
                         'success': True,
@@ -2801,22 +2805,23 @@ def get_top_signals():
                         'timestamp': background_signals['timestamp'].isoformat(),
                         'version': '8.2',
                         'signals': signals,
-                        'cached': True
+                        'cached': True,
+                        'age_seconds': int(elapsed)
                     })
         
-        # No cache - generate real signals for major pairs (fast)
+        # No cache yet - generate for major pairs only (fast)
         major_pairs = ['EUR/USD', 'GBP/USD', 'USD/JPY', 'USD/CHF', 'AUD/USD', 'USD/CAD', 'NZD/USD']
         signals = []
         
         with ThreadPoolExecutor(max_workers=7) as executor:
             futures = {executor.submit(generate_signal, pair): pair for pair in major_pairs}
-            for future in as_completed(futures):
+            for future in as_completed(futures, timeout=30):
                 try:
-                    signal = future.result()
+                    signal = future.result(timeout=5)
                     if signal:
                         signals.append(signal)
-                except Exception as e:
-                    logger.debug(f"Signal generation error: {e}")
+                except:
+                    pass
         
         signals.sort(key=lambda x: x['composite_score'], reverse=True)
         
@@ -2825,8 +2830,7 @@ def get_top_signals():
             'count': len(signals),
             'timestamp': datetime.now().isoformat(),
             'version': '8.2',
-            'signals': signals[:limit],
-            'cached': False
+            'signals': signals[:limit]
         })
     
     except Exception as e:
@@ -2835,20 +2839,21 @@ def get_top_signals():
 
 @app.route('/signals')
 def get_signals():
-    """Full signals - uses background cache when available for instant response"""
+    """Full signals endpoint - returns cached data instantly"""
     try:
-        # Try background signals first for speed - use 5 minute cache
+        # Return cached signals (up to 10 min old)
         with signal_lock:
             if background_signals['data'] and background_signals['timestamp']:
                 elapsed = (datetime.now() - background_signals['timestamp']).total_seconds()
-                if elapsed < 300:  # 5 minute cache for Render
+                if elapsed < 600:  # 10 minute cache
                     return jsonify({
                         'success': True,
                         'count': len(background_signals['data']),
                         'timestamp': background_signals['timestamp'].isoformat(),
                         'version': '8.2',
                         'signals': background_signals['data'],
-                        'cached': True
+                        'cached': True,
+                        'age_seconds': int(elapsed)
                     })
         
         # Generate fresh if no valid cache
