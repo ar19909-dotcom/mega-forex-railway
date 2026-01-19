@@ -1152,14 +1152,21 @@
             });
         });
         
-        // Load Signals - Uses /top-signals for instant loading, then full list
+        // Load Signals - Optimized for Render free tier with timeout and retry
         async function loadSignals() {
             const container = document.getElementById('signals-container');
-            container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading signals...</div>';
+            container.innerHTML = '<div class="loading"><div class="spinner"></div>Connecting to server...</div>';
+            
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 sec timeout
             
             try {
-                // First try fast /top-signals endpoint for instant display
-                let response = await fetch(`${API_BASE}/top-signals?limit=20`);
+                // First try fast /top-signals endpoint
+                let response = await fetch(`${API_BASE}/top-signals?limit=45`, {
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+                
                 let data = await response.json();
                 
                 if (data.success && data.signals && data.signals.length > 0) {
@@ -1169,20 +1176,24 @@
                     document.getElementById('connection-dot').style.background = 'var(--accent-green)';
                     document.getElementById('connection-text').textContent = 'Connected';
                     
-                    // Load full list in background if we don't have all pairs
-                    if (data.signals.length < 45) {
-                        fetch(`${API_BASE}/signals`).then(r => r.json()).then(fullData => {
-                            if (fullData.success && fullData.signals && fullData.signals.length > signalsData.length) {
-                                signalsData = fullData.signals;
-                                renderSignals();
-                                updateStats();
-                            }
-                        }).catch(() => {});
+                    // If still loading real data, show indicator and retry
+                    if (data.loading) {
+                        document.getElementById('connection-text').textContent = 'Loading...';
+                        setTimeout(() => {
+                            fetch(`${API_BASE}/signals`).then(r => r.json()).then(fullData => {
+                                if (fullData.success && fullData.signals) {
+                                    signalsData = fullData.signals;
+                                    renderSignals();
+                                    updateStats();
+                                    document.getElementById('connection-text').textContent = 'Connected';
+                                }
+                            }).catch(() => {});
+                        }, 3000);
                     }
                     return;
                 }
                 
-                // Fallback to regular /signals if /top-signals fails
+                // Fallback to regular /signals
                 response = await fetch(`${API_BASE}/signals`);
                 data = await response.json();
                 
@@ -1194,10 +1205,40 @@
                     document.getElementById('connection-text').textContent = 'Connected';
                 }
             } catch (error) {
-                console.error('Error loading signals:', error);
-                container.innerHTML = '<div class="loading" style="color: var(--accent-red);">Failed to load signals. Is backend running?</div>';
-                document.getElementById('connection-dot').style.background = 'var(--accent-red)';
-                document.getElementById('connection-text').textContent = 'Disconnected';
+                clearTimeout(timeoutId);
+                
+                if (error.name === 'AbortError') {
+                    // Timeout - server is waking up, show friendly message and retry
+                    container.innerHTML = `
+                        <div class="loading" style="text-align: center;">
+                            <div class="spinner"></div>
+                            <div style="margin-top: 10px;">Server is waking up...</div>
+                            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 5px;">
+                                Free hosting spins down after inactivity. Please wait ~30 seconds.
+                            </div>
+                            <button onclick="loadSignals()" style="margin-top: 15px; padding: 8px 20px; background: var(--accent-blue); border: none; border-radius: 5px; color: white; cursor: pointer;">
+                                Retry Now
+                            </button>
+                        </div>
+                    `;
+                    document.getElementById('connection-dot').style.background = 'var(--accent-yellow)';
+                    document.getElementById('connection-text').textContent = 'Waking up...';
+                    
+                    // Auto-retry after 5 seconds
+                    setTimeout(loadSignals, 5000);
+                } else {
+                    console.error('Error loading signals:', error);
+                    container.innerHTML = `
+                        <div class="loading" style="color: var(--accent-red); text-align: center;">
+                            <div>Connection failed</div>
+                            <button onclick="loadSignals()" style="margin-top: 15px; padding: 8px 20px; background: var(--accent-blue); border: none; border-radius: 5px; color: white; cursor: pointer;">
+                                Retry
+                            </button>
+                        </div>
+                    `;
+                    document.getElementById('connection-dot').style.background = 'var(--accent-red)';
+                    document.getElementById('connection-text').textContent = 'Disconnected';
+                }
             }
         }
         
