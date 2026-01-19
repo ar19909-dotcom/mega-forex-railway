@@ -2794,36 +2794,39 @@ def get_top_signals():
                 signals = background_signals['data'][:limit]
                 timestamp = background_signals['timestamp']
                 loading = background_signals['loading']
-            else:
-                signals = []
-                timestamp = None
-                loading = True
+                
+                return jsonify({
+                    'success': True,
+                    'count': len(signals),
+                    'timestamp': timestamp.isoformat() if timestamp else datetime.now().isoformat(),
+                    'loading': loading,
+                    'version': '8.2',
+                    'signals': signals
+                })
         
-        # If no background signals yet, quickly generate majors only
-        if not signals:
-            quick_pairs = PAIR_CATEGORIES['MAJOR']
-            signals = []
-            
-            with ThreadPoolExecutor(max_workers=5) as executor:
-                futures = {executor.submit(generate_signal, pair): pair for pair in quick_pairs}
-                for future in as_completed(futures):
-                    try:
-                        signal = future.result()
-                        if signal:
-                            signals.append(signal)
-                    except:
-                        pass
-            
-            signals.sort(key=lambda x: x['composite_score'], reverse=True)
-            signals = signals[:limit]
+        # If no background signals, return quick placeholder with majors
+        # This prevents long wait on first load
+        quick_signals = []
+        major_pairs = ['EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'USD/CAD']
+        
+        for pair in major_pairs[:limit]:
+            quick_signals.append({
+                'pair': pair,
+                'direction': 'NEUTRAL',
+                'composite_score': 50,
+                'star_rating': 2,
+                'category': 'MAJOR',
+                'loading': True
+            })
         
         return jsonify({
             'success': True,
-            'count': len(signals),
-            'timestamp': timestamp.isoformat() if timestamp else datetime.now().isoformat(),
-            'loading': loading,
+            'count': len(quick_signals),
+            'timestamp': datetime.now().isoformat(),
+            'loading': True,
             'version': '8.2',
-            'signals': signals
+            'signals': quick_signals,
+            'message': 'Loading real data...'
         })
     
     except Exception as e:
@@ -2834,11 +2837,11 @@ def get_top_signals():
 def get_signals():
     """Full signals - uses background cache when available for instant response"""
     try:
-        # Try background signals first for speed
+        # Try background signals first for speed - use 5 minute cache
         with signal_lock:
             if background_signals['data'] and background_signals['timestamp']:
                 elapsed = (datetime.now() - background_signals['timestamp']).total_seconds()
-                if elapsed < 90:  # Use cache if less than 90 seconds old
+                if elapsed < 300:  # 5 minute cache for Render
                     return jsonify({
                         'success': True,
                         'count': len(background_signals['data']),
