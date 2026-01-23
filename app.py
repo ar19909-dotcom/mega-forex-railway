@@ -5391,10 +5391,11 @@ def clear_cache_endpoint():
 
 @app.route('/clear-calendar-cache')
 def clear_calendar_cache():
-    """Clear only calendar cache to force fresh calendar fetch"""
+    """Clear only calendar cache to force fresh calendar fetch (thread-safe)"""
     global cache
-    cache['calendar'] = {'data': None, 'timestamp': None}
-    
+    with cache_lock:
+        cache['calendar'] = {'data': None, 'timestamp': None}
+
     # Immediately fetch fresh calendar
     fresh_calendar = get_economic_calendar()
     
