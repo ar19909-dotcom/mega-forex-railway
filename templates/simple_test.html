@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Simple Calendar Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #0a0e17;
+            color: #f3f4f6;
+            padding: 40px;
+            line-height: 1.6;
+        }
+        .box {
+            background: #1a1f2e;
+            padding: 30px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .success { border-left: 5px solid #10b981; }
+        .error { border-left: 5px solid #ef4444; }
+        h1 { color: #3b82f6; }
+        h2 { color: #10b981; margin-top: 0; }
+        .data {
+            background: #0a0e17;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            margin: 10px 0;
+        }
+        .event {
+            padding: 10px;
+            margin: 5px 0;
+            background: #111827;
+            border-radius: 5px;
+        }
+        .high { border-left: 3px solid #ef4444; }
+        .medium { border-left: 3px solid #f59e0b; }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover { background: #2563eb; }
+    </style>
+</head>
+<body>
+    <h1>🔬 Mega Forex Calendar - Simple Test</h1>
+
+    <div class="box">
+        <p><strong>This page tests if the backend is working.</strong></p>
+        <p>Click the button below to fetch calendar data with NO CACHE.</p>
+        <button onclick="testCalendar()">🔄 Fetch Fresh Calendar Data</button>
+        <button onclick="location.reload()">🔁 Reload Page</button>
+    </div>
+
+    <div id="result"></div>
+
+    <script>
+        function testCalendar() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<div class="box"><h2>⏳ Loading...</h2></div>';
+
+            // Add random number to URL to bypass ALL caching
+            const timestamp = new Date().getTime();
+            const random = Math.random();
+            const url = `http://localhost:5000/calendar?refresh=true&t=${timestamp}&r=${random}`;
+
+            console.log('Fetching from:', url);
+
+            fetch(url, {
+                method: 'GET',
+                cache: 'no-store',
+                headers: {
+                    'Cache-Control': 'no-cache',
+                    'Pragma': 'no-cache'
+                }
+            })
+            .then(response => {
+                console.log('Response status:', response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log('Data received:', data);
+
+                const quality = data.data_quality || 'UNKNOWN';
+                const source = data.source || 'UNKNOWN';
+                const count = data.count || 0;
+                const events = data.events || [];
+
+                let statusClass = 'error';
+                let statusTitle = '❌ ERROR';
+                let statusMessage = 'Unknown status';
+
+                if (quality === 'SCHEDULED' || quality === 'LIVE SCHEDULE') {
+                    statusClass = 'success';
+                    statusTitle = '✅ SUCCESS - Backend is Working!';
+                    statusMessage = 'The backend is returning SCHEDULED data correctly.';
+                } else if (quality === 'FALLBACK') {
+                    statusClass = 'error';
+                    statusTitle = '❌ PROBLEM - Still showing FALLBACK';
+                    statusMessage = 'Backend is not working correctly.';
+                } else if (quality === 'REAL') {
+                    statusClass = 'success';
+                    statusTitle = '✅ SUCCESS - Using REAL API Data!';
+                    statusMessage = 'Backend is connected to live APIs.';
+                }
+
+                let html = `
+                    <div class="box ${statusClass}">
+                        <h2>${statusTitle}</h2>
+                        <p>${statusMessage}</p>
+
+                        <div class="data">
+                            <strong>📊 Backend Response:</strong><br>
+                            Data Quality: <strong style="color: ${quality === 'SCHEDULED' ? '#10b981' : quality === 'FALLBACK' ? '#ef4444' : '#f59e0b'}">${quality}</strong><br>
+                            Source: <strong>${source}</strong><br>
+                            Event Count: <strong>${count}</strong><br>
+                            Success: <strong>${data.success}</strong><br>
+                            Cache TTL: <strong>${data.cache_ttl_seconds || 'N/A'} seconds</strong>
+                        </div>
+                `;
+
+                if (events.length > 0) {
+                    html += `
+                        <h3>📅 First 10 Events:</h3>
+                        ${events.slice(0, 10).map(e => `
+                            <div class="event ${e.impact}">
+                                <strong>[${e.country}]</strong> ${e.event}
+                                <br><small>Impact: ${e.impact.toUpperCase()} | Time: ${new Date(e.time).toLocaleString()}</small>
+                            </div>
+                        `).join('')}
+                    `;
+                }
+
+                html += `
+                        <h3>🔍 Raw JSON Response:</h3>
+                        <div class="data">
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </div>
+                    </div>
+                `;
+
+                resultDiv.innerHTML = html;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                resultDiv.innerHTML = `
+                    <div class="box error">
+                        <h2>❌ FETCH ERROR</h2>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                        <p>Make sure the server is running on localhost:5000</p>
+                        <div class="data">
+                            <strong>Check:</strong><br>
+                            1. Is Python server running? (python app.py)<br>
+                            2. Can you access http://localhost:5000/health ?<br>
+                            3. Check console for CORS errors
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        // Auto-run on page load
+        window.onload = function() {
+            console.log('Page loaded - ready to test');
+        };
+    </script>
+</body>
+</html>

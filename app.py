@@ -67,6 +67,11 @@ def test_calendar():
     """Test page to verify calendar is working (bypasses browser cache)"""
     return render_template('test_calendar.html')
 
+@app.route('/simple-test')
+def simple_test():
+    """Simple test page with button to fetch calendar"""
+    return render_template('simple_test.html')
+
 @app.route('/health')
 def health_check():
     """Health check endpoint"""
