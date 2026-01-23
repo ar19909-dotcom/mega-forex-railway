@@ -2160,7 +2160,7 @@
                                     <div class="label">Data Coverage</div>
                                 </div>
                                 <div class="result-card">
-                                    <div class="value">${Object.keys(data.api_status || {}).filter(k => data.api_status[k].status === 'OK').length}/${Object.keys(data.api_status || {}).length}</div>
+                                    <div class="value">${Object.keys(data.api_status || {}).filter(k => ['OK', 'LIMITED', 'SCHEDULED'].includes(data.api_status[k].status)).length}/${Object.keys(data.api_status || {}).filter(k => data.api_status[k].status !== 'NOT_CONFIGURED').length}</div>
                                     <div class="label">APIs Online</div>
                                 </div>
                             </div>

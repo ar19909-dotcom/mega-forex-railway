@@ -1241,13 +1241,20 @@ def get_multi_timeframe_data(pair):
             candles = get_polygon_candles(pair, tf_api, count)
             
             if candles and len(candles) >= 20:
-                closes = [c['close'] for c in candles]
-                
-                # For H4, aggregate hourly candles
-                if tf_name == 'H4' and tf_api == 'hour':
-                    # Simple aggregation - take every 4th close
-                    closes = closes[::4] if len(closes) >= 80 else closes
-                
+                # For H4, properly aggregate 4 hourly candles into 1 H4 candle
+                if tf_name == 'H4' and tf_api == 'hour' and len(candles) >= 80:
+                    h4_candles = []
+                    for i in range(0, len(candles) - 3, 4):
+                        # Proper OHLC aggregation: O=first, H=max, L=min, C=last
+                        h4_open = candles[i]['open']
+                        h4_high = max(candles[i+j]['high'] for j in range(4) if i+j < len(candles))
+                        h4_low = min(candles[i+j]['low'] for j in range(4) if i+j < len(candles))
+                        h4_close = candles[i+3]['close'] if i+3 < len(candles) else candles[-1]['close']
+                        h4_candles.append({'open': h4_open, 'high': h4_high, 'low': h4_low, 'close': h4_close})
+                    closes = [c['close'] for c in h4_candles]
+                else:
+                    closes = [c['close'] for c in candles]
+
                 # Calculate EMAs
                 ema_fast = calculate_ema(closes, 8)
                 ema_slow = calculate_ema(closes, 21)
@@ -3328,11 +3335,12 @@ def calculate_factor_scores(pair):
     cal_score = 100 - calendar['risk_score']
     cal_score = max(20, min(90, cal_score))  # Ensure proper range
     
-    # If calendar data is from fallback, reduce confidence
+    # If calendar data is from fallback, slightly reduce confidence
     cal_data_quality = calendar.get('data_quality', 'UNKNOWN')
     if cal_data_quality == 'FALLBACK':
-        # Push score toward neutral when using fake calendar data
-        cal_score = 50 + (cal_score - 50) * 0.5
+        # Slightly compress score toward neutral (0.8 multiplier instead of 0.5)
+        # This preserves more of the risk signal while still indicating lower confidence
+        cal_score = 50 + (cal_score - 50) * 0.8
     
     factors['calendar'] = {
         'score': round(cal_score, 1),
