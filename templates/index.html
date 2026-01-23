@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MEGA FOREX v8.1 - Professional Trading Dashboard</title>
+    <title>MEGA FOREX v8.3 PRO - Professional Trading Dashboard</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
@@ -206,10 +206,38 @@
             border: 1px solid var(--border-color);
             padding: 1.25rem;
             transition: all 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        /* BULLISH CARD - Green left border and subtle green glow */
+        .signal-card.bullish-card {
+            border-left: 4px solid var(--accent-green);
+            box-shadow: inset 4px 0 20px rgba(16, 185, 129, 0.1);
+        }
+        
+        .signal-card.bullish-card:hover {
+            border-color: var(--accent-green);
+            box-shadow: 0 4px 20px rgba(16, 185, 129, 0.2), inset 4px 0 20px rgba(16, 185, 129, 0.15);
+        }
+        
+        /* BEARISH CARD - Red left border and subtle red glow */
+        .signal-card.bearish-card {
+            border-left: 4px solid var(--accent-red);
+            box-shadow: inset 4px 0 20px rgba(239, 68, 68, 0.1);
+        }
+        
+        .signal-card.bearish-card:hover {
+            border-color: var(--accent-red);
+            box-shadow: 0 4px 20px rgba(239, 68, 68, 0.2), inset 4px 0 20px rgba(239, 68, 68, 0.15);
+        }
+        
+        /* NEUTRAL CARD - Default styling */
+        .signal-card.neutral-card {
+            border-left: 4px solid var(--text-muted);
         }
         
         .signal-card:hover {
-            border-color: var(--accent-blue);
             transform: translateY(-2px);
         }
         
@@ -658,20 +686,342 @@
             color: var(--text-secondary);
         }
         
-        /* Responsive */
+        /* ═══════════════════════════════════════════════════════════════════════════
+           MOBILE RESPONSIVE DESIGN - App-like experience
+           ═══════════════════════════════════════════════════════════════════════════ */
+        
+        /* Mobile First - Base styles for small screens */
         @media (max-width: 768px) {
-            .header { flex-direction: column; gap: 1rem; }
-            .header-stats { flex-wrap: wrap; justify-content: center; }
-            .signals-grid { grid-template-columns: 1fr; }
-            .analyzer-container { grid-template-columns: 1fr; }
-            .main-content { padding: 1rem; }
+            /* Header - Compact mobile header */
+            .header {
+                flex-direction: column;
+                gap: 0.75rem;
+                padding: 0.75rem 1rem;
+                position: sticky;
+                top: 0;
+                z-index: 100;
+            }
+            
+            .logo {
+                font-size: 1.25rem;
+            }
+            
+            .header-stats {
+                display: grid;
+                grid-template-columns: repeat(4, 1fr);
+                gap: 0.5rem;
+                width: 100%;
+            }
+            
+            .stat-item {
+                background: var(--bg-card);
+                padding: 0.5rem;
+                border-radius: 0.5rem;
+            }
+            
+            .stat-value {
+                font-size: 1rem;
+            }
+            
+            .stat-label {
+                font-size: 0.65rem;
+            }
+            
+            .connection-status {
+                padding: 0.4rem 0.75rem;
+                font-size: 0.75rem;
+            }
+            
+            .refresh-timer {
+                font-size: 0.75rem;
+            }
+            
+            /* Navigation - Horizontal scroll on mobile */
+            .nav-container {
+                padding: 0.5rem;
+                position: sticky;
+                top: 120px;
+                z-index: 99;
+                -webkit-overflow-scrolling: touch;
+            }
+            
+            .nav-tabs {
+                gap: 0.25rem;
+                padding-bottom: 0.25rem;
+            }
+            
+            .nav-tab {
+                padding: 0.6rem 0.75rem;
+                font-size: 0.75rem;
+                min-width: fit-content;
+            }
+            
+            /* Main Content - Full width on mobile */
+            .main-content {
+                padding: 0.75rem;
+            }
+            
+            /* Filters - Stack vertically on mobile */
+            .filters-bar {
+                flex-direction: column;
+                gap: 0.75rem;
+            }
+            
+            .filter-group {
+                width: 100%;
+                justify-content: space-between;
+            }
+            
+            .filter-group select {
+                flex: 1;
+                min-width: 0;
+            }
+            
+            /* Signal Cards - Single column, touch optimized */
+            .signals-grid {
+                grid-template-columns: 1fr;
+                gap: 0.75rem;
+            }
+            
+            .signal-card {
+                padding: 1rem;
+                touch-action: manipulation;
+            }
+            
+            .signal-header {
+                flex-wrap: wrap;
+                gap: 0.5rem;
+            }
+            
+            .pair-name {
+                font-size: 1.1rem;
+            }
+            
+            .direction-badge {
+                padding: 0.3rem 0.6rem;
+                font-size: 0.7rem;
+            }
+            
+            .score-circle {
+                width: 50px;
+                height: 50px;
+                font-size: 1rem;
+            }
+            
+            .signal-details {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0.5rem;
+            }
+            
+            .detail-item {
+                padding: 0.5rem;
+            }
+            
+            .detail-value {
+                font-size: 0.85rem;
+            }
+            
+            .detail-label {
+                font-size: 0.65rem;
+            }
+            
+            /* Factors Grid - 3 columns on mobile */
+            .factors-grid {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 0.25rem;
+            }
+            
+            .factor-item {
+                padding: 0.4rem;
+                font-size: 0.65rem;
+            }
+            
+            .factor-score {
+                font-size: 0.75rem;
+            }
+            
+            /* Tables - Responsive scroll */
+            .data-table {
+                display: block;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                font-size: 0.8rem;
+            }
+            
+            .data-table th,
+            .data-table td {
+                padding: 0.5rem;
+                white-space: nowrap;
+            }
+            
+            /* Analyzer - Stack vertically */
+            .analyzer-container {
+                grid-template-columns: 1fr;
+                gap: 0.75rem;
+            }
+            
+            /* Result Cards - 2 columns */
+            .backtest-results {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0.5rem;
+            }
+            
+            .result-card {
+                padding: 0.75rem;
+            }
+            
+            .result-card .value {
+                font-size: 1.1rem;
+            }
+            
+            .result-card .label {
+                font-size: 0.65rem;
+            }
+            
+            /* Journal Form - Stack inputs */
+            .journal-form {
+                grid-template-columns: 1fr;
+            }
+            
+            /* Buttons - Touch friendly */
+            button {
+                padding: 0.75rem 1rem;
+                font-size: 0.9rem;
+                min-height: 44px;
+            }
+            
+            select, input {
+                padding: 0.75rem;
+                font-size: 0.9rem;
+                min-height: 44px;
+            }
+            
+            /* Audit Section */
+            .audit-section {
+                padding: 0.75rem;
+                margin-bottom: 0.75rem;
+            }
+            
+            .audit-section h3 {
+                font-size: 1rem;
+                margin-bottom: 0.75rem;
+            }
+            
+            /* Charts */
+            canvas {
+                max-width: 100%;
+                height: auto !important;
+            }
+            
+            /* Modal/Overlay adjustments */
+            .loading {
+                padding: 2rem 1rem;
+            }
+            
+            .spinner {
+                width: 32px;
+                height: 32px;
+            }
+        }
+        
+        /* Extra small screens (phones in portrait) */
+        @media (max-width: 480px) {
+            .header-stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .nav-tab {
+                padding: 0.5rem 0.6rem;
+                font-size: 0.7rem;
+            }
+            
+            .signal-details {
+                grid-template-columns: 1fr;
+            }
+            
+            .factors-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            
+            .backtest-results {
+                grid-template-columns: 1fr;
+            }
+            
+            h2 {
+                font-size: 1.1rem;
+            }
+        }
+        
+        /* Tablet landscape */
+        @media (min-width: 769px) and (max-width: 1024px) {
+            .signals-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .header-stats {
+                gap: 1.5rem;
+            }
+        }
+        
+        /* Touch device optimizations */
+        @media (hover: none) and (pointer: coarse) {
+            .signal-card:active {
+                transform: scale(0.98);
+                transition: transform 0.1s;
+            }
+            
+            .nav-tab:active {
+                transform: scale(0.95);
+            }
+            
+            button:active {
+                transform: scale(0.95);
+            }
+            
+            /* Larger touch targets */
+            .nav-tab {
+                min-height: 44px;
+            }
+            
+            /* Remove hover effects on touch */
+            .signal-card:hover {
+                transform: none;
+            }
+        }
+        
+        /* Safe area for notched phones */
+        @supports (padding: max(0px)) {
+            .header {
+                padding-left: max(1rem, env(safe-area-inset-left));
+                padding-right: max(1rem, env(safe-area-inset-right));
+            }
+            
+            .main-content {
+                padding-left: max(0.75rem, env(safe-area-inset-left));
+                padding-right: max(0.75rem, env(safe-area-inset-right));
+                padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+            }
+        }
+        
+        /* PWA Standalone mode */
+        @media (display-mode: standalone) {
+            .header {
+                padding-top: max(0.75rem, env(safe-area-inset-top));
+            }
+        }
+        
+        /* Dark mode enhancements for OLED screens */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-primary: #000000;
+            }
         }
     </style>
 </head>
 <body>
     <!-- Header -->
     <header class="header">
-        <div class="logo">MEGA<span>FOREX</span> v8.1</div>
+        <div class="logo">MEGA<span>FOREX</span> v8.3</div>
         <div class="header-stats">
             <div class="stat-item">
                 <div class="stat-value" id="total-pairs">45</div>
@@ -704,12 +1054,8 @@
     <nav class="nav-container">
         <div class="nav-tabs">
             <button class="nav-tab active" data-tab="overview">📊 Overview</button>
-            <button class="nav-tab" data-tab="signals">🎯 Top Signals</button>
             <button class="nav-tab" data-tab="rates">💹 Live Rates</button>
             <button class="nav-tab" data-tab="analyzer">🔬 Pair Analyzer</button>
-            <button class="nav-tab" data-tab="journal">📔 Journal</button>
-            <button class="nav-tab" data-tab="performance">📊 Performance</button>
-            <button class="nav-tab" data-tab="backtest">📈 Backtesting</button>
             <button class="nav-tab" data-tab="technical">📉 Technical</button>
             <button class="nav-tab" data-tab="positioning">👥 Positioning</button>
             <button class="nav-tab" data-tab="news">📰 News</button>
@@ -761,14 +1107,6 @@
             </div>
         </div>
         
-        <!-- Top Signals Tab -->
-        <div class="tab-content" id="tab-signals">
-            <h2 style="margin-bottom: 1rem;">🎯 Top 10 Trading Signals</h2>
-            <div id="top-signals-container">
-                <div class="loading"><div class="spinner"></div>Loading...</div>
-            </div>
-        </div>
-        
         <!-- Live Rates Tab -->
         <div class="tab-content" id="tab-rates">
             <h2 style="margin-bottom: 1rem;">💹 Live Forex Rates</h2>
@@ -813,176 +1151,6 @@
         </div>
         
         <!-- Trade Journal Tab -->
-        <div class="tab-content" id="tab-journal">
-            <h2 style="margin-bottom: 1rem;">📔 Trade Journal</h2>
-            
-            <!-- Add Trade Form -->
-            <div class="card" style="margin-bottom: 1.5rem;">
-                <h3 style="margin-bottom: 1rem;">➕ Add New Trade</h3>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
-                    <div>
-                        <label style="display: block; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.3rem;">Pair</label>
-                        <select id="journal-pair" style="width: 100%; padding: 0.5rem; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 0.3rem; color: var(--text-primary);">
-                            <option value="EUR/USD">EUR/USD</option>
-                            <option value="GBP/USD">GBP/USD</option>
-                            <option value="USD/JPY">USD/JPY</option>
-                            <option value="AUD/USD">AUD/USD</option>
-                            <option value="USD/CAD">USD/CAD</option>
-                            <option value="EUR/GBP">EUR/GBP</option>
-                            <option value="EUR/JPY">EUR/JPY</option>
-                            <option value="GBP/JPY">GBP/JPY</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label style="display: block; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.3rem;">Direction</label>
-                        <select id="journal-direction" style="width: 100%; padding: 0.5rem; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 0.3rem; color: var(--text-primary);">
-                            <option value="LONG">LONG</option>
-                            <option value="SHORT">SHORT</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label style="display: block; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.3rem;">Lot Size</label>
-                        <input type="number" id="journal-lots" value="0.01" step="0.01" min="0.01" style="width: 100%; padding: 0.5rem; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 0.3rem; color: var(--text-primary);">
-                    </div>
-                    <div>
-                        <label style="display: block; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.3rem;">Entry Price</label>
-                        <input type="number" id="journal-entry" step="0.00001" style="width: 100%; padding: 0.5rem; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 0.3rem; color: var(--text-primary);">
-                    </div>
-                    <div>
-                        <label style="display: block; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.3rem;">Stop Loss</label>
-                        <input type="number" id="journal-sl" step="0.00001" style="width: 100%; padding: 0.5rem; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 0.3rem; color: var(--text-primary);">
-                    </div>
-                    <div>
-                        <label style="display: block; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.3rem;">Take Profit</label>
-                        <input type="number" id="journal-tp" step="0.00001" style="width: 100%; padding: 0.5rem; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 0.3rem; color: var(--text-primary);">
-                    </div>
-                </div>
-                <div style="margin-top: 1rem;">
-                    <label style="display: block; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.3rem;">Notes</label>
-                    <textarea id="journal-notes" rows="2" style="width: 100%; padding: 0.5rem; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 0.3rem; color: var(--text-primary); resize: vertical;"></textarea>
-                </div>
-                <button onclick="addTrade()" style="margin-top: 1rem; padding: 0.75rem 1.5rem; background: var(--accent); color: white; border: none; border-radius: 0.3rem; cursor: pointer; font-weight: 600;">Add Trade</button>
-            </div>
-            
-            <!-- Open Trades -->
-            <div class="card" style="margin-bottom: 1.5rem;">
-                <h3 style="margin-bottom: 1rem;">🔓 Open Trades</h3>
-                <div id="open-trades-list">
-                    <p style="color: var(--text-muted);">Loading...</p>
-                </div>
-            </div>
-            
-            <!-- Trade History -->
-            <div class="card">
-                <h3 style="margin-bottom: 1rem;">📜 Trade History</h3>
-                <div id="closed-trades-list">
-                    <p style="color: var(--text-muted);">Loading...</p>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Performance Tab -->
-        <div class="tab-content" id="tab-performance">
-            <h2 style="margin-bottom: 1rem;">📊 Performance Analytics</h2>
-            
-            <!-- Overall Stats -->
-            <div class="stats-grid" style="margin-bottom: 1.5rem;">
-                <div class="stat-card">
-                    <div class="stat-value" id="perf-total-trades">0</div>
-                    <div class="stat-label">Total Trades</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="perf-win-rate">0%</div>
-                    <div class="stat-label">Win Rate</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="perf-total-pips">0</div>
-                    <div class="stat-label">Total Pips</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="perf-profit-factor">0</div>
-                    <div class="stat-label">Profit Factor</div>
-                </div>
-            </div>
-            
-            <!-- Detailed Stats -->
-            <div class="card" style="margin-bottom: 1.5rem;">
-                <h3 style="margin-bottom: 1rem;">📈 Detailed Statistics</h3>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
-                    <div>
-                        <div style="font-size: 0.8rem; color: var(--text-muted);">Wins / Losses</div>
-                        <div style="font-size: 1.2rem; font-weight: 600;"><span id="perf-wins" style="color: #00ff88;">0</span> / <span id="perf-losses" style="color: #ff6666;">0</span></div>
-                    </div>
-                    <div>
-                        <div style="font-size: 0.8rem; color: var(--text-muted);">Best Trade</div>
-                        <div style="font-size: 1.2rem; font-weight: 600; color: #00ff88;" id="perf-best">0 pips</div>
-                    </div>
-                    <div>
-                        <div style="font-size: 0.8rem; color: var(--text-muted);">Worst Trade</div>
-                        <div style="font-size: 1.2rem; font-weight: 600; color: #ff6666;" id="perf-worst">0 pips</div>
-                    </div>
-                    <div>
-                        <div style="font-size: 0.8rem; color: var(--text-muted);">Avg Win / Avg Loss</div>
-                        <div style="font-size: 1.2rem; font-weight: 600;"><span id="perf-avg-win" style="color: #00ff88;">0</span> / <span id="perf-avg-loss" style="color: #ff6666;">0</span> pips</div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Performance by Pair -->
-            <div class="card">
-                <h3 style="margin-bottom: 1rem;">💱 Performance by Pair</h3>
-                <div id="perf-by-pair">
-                    <p style="color: var(--text-muted);">No trade data yet</p>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Backtesting Tab -->
-        <div class="tab-content" id="tab-backtest">
-            <h2 style="margin-bottom: 1rem;">📈 Strategy Backtesting</h2>
-            <div class="backtest-config">
-                <div class="filter-group">
-                    <span class="filter-label">Pair:</span>
-                    <select id="backtest-pair">
-                        <option value="EUR/USD">EUR/USD</option>
-                        <option value="GBP/USD">GBP/USD</option>
-                        <option value="USD/JPY">USD/JPY</option>
-                        <option value="AUD/USD">AUD/USD</option>
-                        <option value="EUR/GBP">EUR/GBP</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <span class="filter-label">Period:</span>
-                    <select id="backtest-days">
-                        <option value="14">14 Days</option>
-                        <option value="30" selected>30 Days</option>
-                        <option value="60">60 Days</option>
-                        <option value="90">90 Days</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <span class="filter-label">Min Score:</span>
-                    <select id="backtest-score">
-                        <option value="50">50+</option>
-                        <option value="60" selected>60+</option>
-                        <option value="70">70+</option>
-                        <option value="80">80+</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <span class="filter-label">Min Stars:</span>
-                    <select id="backtest-stars">
-                        <option value="2">2+</option>
-                        <option value="3" selected>3+</option>
-                        <option value="4">4+</option>
-                    </select>
-                </div>
-                <button onclick="runBacktest()">▶️ Run Backtest</button>
-            </div>
-            <div id="backtest-results">
-                <p style="color: var(--text-secondary); text-align: center;">Configure parameters and click Run Backtest</p>
-            </div>
-        </div>
         
         <!-- Technical Tab -->
         <div class="tab-content" id="tab-technical">
@@ -1086,10 +1254,11 @@
         
         <!-- Audit Tab -->
         <div class="tab-content" id="tab-audit">
-            <h2 style="margin-bottom: 1rem;">🔍 System Audit</h2>
-            <button onclick="runAudit()" style="margin-bottom: 1rem;">▶️ Run Audit</button>
+            <h2 style="margin-bottom: 1rem;">🔍 System Audit & Scoring Methodology</h2>
+            <button onclick="runAudit()" style="margin-bottom: 1rem; margin-right: 0.5rem;">▶️ Run Full Audit</button>
+            <button onclick="showMethodology()" style="margin-bottom: 1rem;">📖 View Scoring Methodology</button>
             <div id="audit-container">
-                <p style="color: var(--text-secondary);">Click Run Audit to check system health</p>
+                <p style="color: var(--text-secondary);">Click Run Audit to check system health or View Methodology to see scoring details</p>
             </div>
         </div>
         
@@ -1103,7 +1272,8 @@
     </main>
 
     <script>
-        // Configuration - Works on localhost AND Render
+        // Configuration
+        // Dynamic API_BASE - works on localhost and Railway
         const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
             ? 'http://localhost:5000'
             : window.location.origin;
@@ -1113,13 +1283,16 @@
         
         // All 45 Forex Pairs for Pair Analyzer
         const ALL_PAIRS = [
+            // Majors (7)
             'EUR/USD', 'GBP/USD', 'USD/JPY', 'USD/CHF', 'AUD/USD', 'USD/CAD', 'NZD/USD',
+            // Crosses (21)
             'EUR/GBP', 'EUR/JPY', 'EUR/CHF', 'EUR/AUD', 'EUR/CAD', 'EUR/NZD',
             'GBP/JPY', 'GBP/CHF', 'GBP/AUD', 'GBP/CAD', 'GBP/NZD',
             'AUD/JPY', 'AUD/NZD', 'AUD/CAD', 'AUD/CHF',
             'NZD/JPY', 'NZD/CAD', 'NZD/CHF',
             'CAD/JPY', 'CAD/CHF', 'CHF/JPY',
-            'USD/SGD', 'USD/HKD', 'USD/MXN', 'USD/ZAR', 'USD/TRY',
+            // Exotics (17)
+            'USD/SGD', 'USD/HKD', 'USD/MXN', 'USD/ZAR', 'USD/TRY', 
             'USD/NOK', 'USD/SEK', 'USD/DKK', 'USD/PLN',
             'EUR/TRY', 'EUR/PLN', 'EUR/NOK', 'EUR/SEK', 'EUR/HUF', 'EUR/CZK',
             'SGD/JPY', 'HKD/JPY'
@@ -1143,13 +1316,11 @@
                 else if (tabName === 'news') loadNews();
                 else if (tabName === 'calendar') loadCalendar();
                 else if (tabName === 'weights') loadWeights();
-                else if (tabName === 'journal') loadJournal();
-                else if (tabName === 'performance') loadPerformance();
                 else if (tabName === 'api-status') loadApiStatus();
             });
         });
         
-        // Load Signals
+        // Load Signals - Uses /signals endpoint
         async function loadSignals() {
             const container = document.getElementById('signals-container');
             container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading signals...</div>';
@@ -1164,6 +1335,8 @@
                     updateStats();
                     document.getElementById('connection-dot').style.background = 'var(--accent-green)';
                     document.getElementById('connection-text').textContent = 'Connected';
+                } else {
+                    throw new Error('No signals data');
                 }
             } catch (error) {
                 console.error('Error loading signals:', error);
@@ -1187,6 +1360,10 @@
                 return true;
             });
             
+            // Sort by SIGNAL STRENGTH (best trades first regardless of direction)
+            // Strongest signals = furthest from 50 (neutral)
+            filtered.sort((a, b) => Math.abs(b.composite_score - 50) - Math.abs(a.composite_score - 50));
+            
             if (filtered.length === 0) {
                 container.innerHTML = '<div class="loading">No signals match your filters</div>';
                 return;
@@ -1199,7 +1376,15 @@
         function createSignalCard(signal) {
             const scoreClass = signal.composite_score >= 60 ? 'bullish' : signal.composite_score <= 40 ? 'bearish' : 'neutral';
             const dirClass = signal.direction.toLowerCase();
+            const cardClass = signal.direction === 'LONG' ? 'bullish-card' : signal.direction === 'SHORT' ? 'bearish-card' : 'neutral-card';
             const stars = '★'.repeat(signal.stars) + '☆'.repeat(5 - signal.stars);
+            
+            // Data quality indicator
+            const dataQuality = signal.data_quality || signal.rate?.source || 'ESTIMATED';
+            const isRealData = dataQuality === 'POLYGON' || dataQuality === 'HIGH' || dataQuality === 'REAL';
+            const qualityBadge = isRealData 
+                ? '<span style="background: rgba(0,255,136,0.2); color: #00ff88; padding: 2px 6px; border-radius: 4px; font-size: 0.6rem; margin-left: 4px;">✓ LIVE</span>'
+                : '<span style="background: rgba(255,170,0,0.2); color: #ffaa00; padding: 2px 6px; border-radius: 4px; font-size: 0.6rem; margin-left: 4px;">~ EST</span>';
             
             const factorGrid = Object.entries(signal.factor_grid || {}).map(([key, value]) => 
                 `<div class="factor-item ${value}">${key}</div>`
@@ -1208,11 +1393,12 @@
             const stats = signal.statistics || {};
             
             return `
-                <div class="signal-card" onclick="analyzeSignal('${signal.pair}')">
+                <div class="signal-card ${cardClass}" onclick="analyzeSignal('${signal.pair}')">
                     <div class="card-header">
                         <div class="pair-info">
                             <span class="pair-name">${signal.pair}</span>
                             <span class="category-badge ${signal.category.toLowerCase()}">${signal.category}</span>
+                            ${qualityBadge}
                         </div>
                         <div class="composite-score">
                             <div class="score-value ${scoreClass}">${signal.composite_score}</div>
@@ -1245,7 +1431,7 @@
                     
                     <div class="trade-setup">
                         <div class="setup-title">TRADE SETUP ${signal.trade_setup?.trade_quality ? `<span style="color: ${signal.trade_setup.trade_quality === 'A+' ? '#00ff88' : signal.trade_setup.trade_quality === 'A' ? '#00cc66' : signal.trade_setup.trade_quality === 'B' ? '#ffaa00' : '#ff6666'}; margin-left: 0.5rem;">[${signal.trade_setup.trade_quality}]</span>` : ''}</div>
-                        <div class="setup-grid">
+                        <div class="setup-grid" style="grid-template-columns: repeat(5, 1fr);">
                             <div class="setup-item entry">
                                 <div class="label">ENTRY</div>
                                 <div class="value">${signal.trade_setup?.entry?.toFixed(5) || 'N/A'}</div>
@@ -1262,7 +1448,20 @@
                                 <div class="label">R:R</div>
                                 <div class="value">1:${signal.trade_setup?.risk_reward_1?.toFixed(1) || signal.trade_setup?.risk_reward?.toFixed(1) || '1.5'}</div>
                             </div>
+                            <div class="setup-item" style="background: linear-gradient(135deg, rgba(139, 92, 246, 0.3), rgba(59, 130, 246, 0.3)); border: 1px solid rgba(139, 92, 246, 0.5);">
+                                <div class="label">⏱️ HOLD</div>
+                                <div class="value" style="color: #a78bfa;">${signal.holding_period?.range_text || signal.statistics?.hold_days + 'D' || '3-5D'}</div>
+                            </div>
                         </div>
+                        ${signal.holding_period ? `
+                        <div style="margin-top: 0.5rem; padding: 0.4rem 0.6rem; background: rgba(139, 92, 246, 0.15); border-radius: 0.3rem; border: 1px solid rgba(139, 92, 246, 0.3);">
+                            <div style="font-size: 0.7rem; color: #a78bfa; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                                <span>📅 ${signal.holding_period.timeframe}</span>
+                                <span>|</span>
+                                <span>Entry Window: ${signal.holding_period.entry_window}</span>
+                            </div>
+                        </div>
+                        ` : ''}
                         ${signal.trade_setup?.market_context ? `
                         <div style="margin-top: 0.5rem; font-size: 0.7rem; color: var(--text-muted); display: flex; gap: 0.5rem; justify-content: center;">
                             <span>Vol: ${signal.trade_setup.market_context.volatility}</span>
@@ -1321,14 +1520,17 @@
             }
         }
         
-        // Load Analyzer Pairs - Shows ALL 45 pairs
+        // Load Analyzer Pairs
         function loadAnalyzerPairs() {
             const container = document.getElementById('analyzer-pairs');
+            
+            // Show ALL 45 pairs, with score from signalsData if available
             container.innerHTML = ALL_PAIRS.map(pair => {
                 const signal = signalsData.find(s => s.pair === pair);
                 const score = signal ? signal.composite_score : '--';
                 const direction = signal ? signal.direction : 'NEUTRAL';
                 const color = direction === 'LONG' ? 'var(--accent-green)' : direction === 'SHORT' ? 'var(--accent-red)' : 'var(--text-secondary)';
+                
                 return `
                     <div class="pair-list-item" onclick="analyzeSignal('${pair}')">
                         <span>${pair}</span>
@@ -1452,6 +1654,55 @@
                                 <div class="setup-item" style="background: var(--bg-secondary);">
                                     <div class="label">R:R</div>
                                     <div class="value" style="color: ${(signal.trade_setup?.risk_reward_1 || 1.5) >= 2 ? '#00ff88' : (signal.trade_setup?.risk_reward_1 || 1.5) >= 1.5 ? '#00cc66' : '#ffaa00'};">1:${signal.trade_setup?.risk_reward_1?.toFixed(1) || '1.5'}</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Holding Period Section -->
+                        <h4 style="margin: 1.5rem 0 0.5rem;">⏱️ Recommended Holding Period</h4>
+                        <div style="background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(59, 130, 246, 0.2)); border: 1px solid rgba(139, 92, 246, 0.4); border-radius: 0.75rem; padding: 1rem; margin-bottom: 1rem;">
+                            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1rem;">
+                                <div style="text-align: center; padding: 0.75rem; background: rgba(0,0,0,0.2); border-radius: 0.5rem;">
+                                    <div style="font-size: 1.5rem; font-weight: 700; color: #a78bfa;">${signal.holding_period?.recommended_days || signal.statistics?.hold_days || 3}</div>
+                                    <div style="font-size: 0.7rem; color: var(--text-muted);">RECOMMENDED DAYS</div>
+                                </div>
+                                <div style="text-align: center; padding: 0.75rem; background: rgba(0,0,0,0.2); border-radius: 0.5rem;">
+                                    <div style="font-size: 1.5rem; font-weight: 700; color: #60a5fa;">${signal.holding_period?.range_text || '2-5 days'}</div>
+                                    <div style="font-size: 0.7rem; color: var(--text-muted);">HOLDING RANGE</div>
+                                </div>
+                                <div style="text-align: center; padding: 0.75rem; background: rgba(0,0,0,0.2); border-radius: 0.5rem;">
+                                    <div style="font-size: 1rem; font-weight: 700; color: #34d399;">${signal.holding_period?.timeframe || 'SWING'}</div>
+                                    <div style="font-size: 0.7rem; color: var(--text-muted);">TRADE TYPE</div>
+                                </div>
+                                <div style="text-align: center; padding: 0.75rem; background: rgba(0,0,0,0.2); border-radius: 0.5rem;">
+                                    <div style="font-size: 1rem; font-weight: 700; color: #fbbf24;">${signal.holding_period?.entry_window || '1-2 days'}</div>
+                                    <div style="font-size: 0.7rem; color: var(--text-muted);">ENTRY WINDOW</div>
+                                </div>
+                            </div>
+                            
+                            ${signal.holding_period?.factors_considered ? `
+                            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; padding-top: 0.75rem; border-top: 1px solid rgba(139, 92, 246, 0.3);">
+                                <span style="font-size: 0.75rem; padding: 0.3rem 0.6rem; background: rgba(0,0,0,0.3); border-radius: 1rem; color: var(--text-secondary);">
+                                    📊 Category: <strong style="color: #a78bfa;">${signal.holding_period.factors_considered.category}</strong>
+                                </span>
+                                <span style="font-size: 0.75rem; padding: 0.3rem 0.6rem; background: rgba(0,0,0,0.3); border-radius: 1rem; color: var(--text-secondary);">
+                                    📈 Volatility: <strong style="color: ${signal.holding_period.factors_considered.volatility === 'HIGH' ? '#ef4444' : signal.holding_period.factors_considered.volatility === 'LOW' ? '#60a5fa' : '#34d399'};">${signal.holding_period.factors_considered.volatility}</strong>
+                                </span>
+                                <span style="font-size: 0.75rem; padding: 0.3rem 0.6rem; background: rgba(0,0,0,0.3); border-radius: 1rem; color: var(--text-secondary);">
+                                    💪 Trend: <strong style="color: ${signal.holding_period.factors_considered.trend_strength === 'STRONG' ? '#34d399' : signal.holding_period.factors_considered.trend_strength === 'WEAK' ? '#fbbf24' : '#60a5fa'};">${signal.holding_period.factors_considered.trend_strength}</strong>
+                                </span>
+                                <span style="font-size: 0.75rem; padding: 0.3rem 0.6rem; background: rgba(0,0,0,0.3); border-radius: 1rem; color: var(--text-secondary);">
+                                    🎯 Signal: <strong style="color: #a78bfa;">${signal.holding_period.factors_considered.signal_strength}</strong>
+                                </span>
+                                <span style="font-size: 0.75rem; padding: 0.3rem 0.6rem; background: rgba(0,0,0,0.3); border-radius: 1rem; color: var(--text-secondary);">
+                                    📅 MTF Aligned: <strong style="color: ${signal.holding_period.factors_considered.mtf_aligned ? '#34d399' : '#ef4444'};">${signal.holding_period.factors_considered.mtf_aligned ? 'YES' : 'NO'}</strong>
+                                </span>
+                            </div>
+                            ` : ''}
+                            
+                            <div style="margin-top: 1rem; padding: 0.75rem; background: rgba(0,0,0,0.3); border-radius: 0.5rem; text-align: center;">
+                                <div style="font-size: 0.85rem; color: #a78bfa; font-weight: 600;">
+                                    💡 ${signal.holding_period?.recommendation || 'Hold for ' + (signal.statistics?.hold_days || 3) + ' days'}
                                 </div>
                             </div>
                         </div>
@@ -1629,6 +1880,23 @@
                             return flags[country.toUpperCase()] || '🌐';
                         };
                         
+                        // Data source indicator
+                        const dataQuality = data.data_quality || 'UNKNOWN';
+                        const dataSource = data.source || 'UNKNOWN';
+                        const qualityColor = dataQuality === 'REAL' ? 'var(--accent-green)' : 
+                                           dataQuality === 'FALLBACK' ? 'var(--accent-red)' : '#f59e0b';
+                        const qualityIcon = dataQuality === 'REAL' ? '✓' : dataQuality === 'FALLBACK' ? '⚠' : '~';
+                        
+                        const dataSourceBadge = `
+                            <div style="margin-bottom: 1rem; padding: 0.5rem 1rem; background: var(--bg-tertiary); border-radius: 8px; display: inline-flex; align-items: center; gap: 0.5rem;">
+                                <span style="color: ${qualityColor}; font-weight: 600;">${qualityIcon} ${dataQuality}</span>
+                                <span style="color: var(--text-muted);">|</span>
+                                <span style="color: var(--text-secondary);">Source: ${dataSource}</span>
+                                <span style="color: var(--text-muted);">|</span>
+                                <span style="color: var(--text-secondary);">${events.length} events</span>
+                            </div>
+                        `;
+                        
                         const getImpactDots = (impact) => {
                             if (impact === 'high') return '<span style="color: #ef4444;">●●●</span>';
                             if (impact === 'medium') return '<span style="color: #f59e0b;">●●</span><span style="color: #374151;">●</span>';
@@ -1670,6 +1938,7 @@
                         };
                         
                         container.innerHTML = `
+                            ${dataSourceBadge}
                             <table class="data-table" style="width: 100%;">
                                 <thead>
                                     <tr>
@@ -1712,11 +1981,29 @@
                             </table>
                         `;
                     } else {
+                        // Show data source even when no events match filters
+                        const dataQuality = data.data_quality || 'UNKNOWN';
+                        const dataSource = data.source || 'UNKNOWN';
+                        const totalEvents = data.count || 0;
+                        
                         container.innerHTML = `
                             <div style="text-align: center; padding: 3rem; color: var(--text-secondary);">
                                 <div style="font-size: 3rem; margin-bottom: 1rem;">📅</div>
-                                <p>No events match your filters.</p>
-                                <p style="font-size: 0.875rem; margin-top: 0.5rem;">Try selecting "All" for Impact and Currency filters.</p>
+                                ${totalEvents > 0 ? `
+                                    <p>No events match your filters.</p>
+                                    <p style="font-size: 0.875rem; margin-top: 0.5rem;">Try selecting "All" for Impact and Currency filters.</p>
+                                    <p style="font-size: 0.75rem; margin-top: 1rem; color: var(--text-muted);">
+                                        Data: ${dataQuality} | Source: ${dataSource} | ${totalEvents} total events loaded
+                                    </p>
+                                ` : `
+                                    <p>No economic events available.</p>
+                                    <p style="font-size: 0.875rem; margin-top: 0.5rem; color: ${dataQuality === 'FALLBACK' ? 'var(--accent-red)' : 'var(--text-muted)'};">
+                                        Data Source: ${dataSource} (${dataQuality})
+                                    </p>
+                                    <p style="font-size: 0.75rem; margin-top: 0.5rem;">
+                                        ${dataQuality === 'FALLBACK' ? 'Calendar APIs unavailable - showing placeholder data' : 'Check API Status tab for connectivity issues'}
+                                    </p>
+                                `}
                             </div>
                         `;
                     }
@@ -1828,322 +2115,10 @@
             }
         }
         
-        // Run Backtest
-        async function runBacktest() {
-            const container = document.getElementById('backtest-results');
-            container.innerHTML = '<div class="loading"><div class="spinner"></div>Running backtest...</div>';
-            
-            const pair = document.getElementById('backtest-pair').value;
-            const days = document.getElementById('backtest-days').value;
-            const minScore = document.getElementById('backtest-score').value;
-            const minStars = document.getElementById('backtest-stars').value;
-            
-            try {
-                const response = await fetch(`${API_BASE}/backtest?pair=${encodeURIComponent(pair)}&days=${days}&min_score=${minScore}&min_stars=${minStars}`);
-                const data = await response.json();
-                
-                if (data.success) {
-                    container.innerHTML = `
-                        <div class="backtest-results">
-                            <div class="result-card">
-                                <div class="value" style="color: ${data.total_pnl >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'}">
-                                    $${data.total_pnl?.toFixed(2) || 0}
-                                </div>
-                                <div class="label">Total P&L</div>
-                            </div>
-                            <div class="result-card">
-                                <div class="value">${data.win_rate?.toFixed(1) || 0}%</div>
-                                <div class="label">Win Rate</div>
-                            </div>
-                            <div class="result-card">
-                                <div class="value">${data.profit_factor?.toFixed(2) || 0}</div>
-                                <div class="label">Profit Factor</div>
-                            </div>
-                            <div class="result-card">
-                                <div class="value">${data.total_trades || 0}</div>
-                                <div class="label">Total Trades</div>
-                            </div>
-                            <div class="result-card">
-                                <div class="value" style="color: var(--accent-red)">-${data.max_drawdown?.toFixed(1) || 0}%</div>
-                                <div class="label">Max Drawdown</div>
-                            </div>
-                            <div class="result-card">
-                                <div class="value">$${data.expectancy?.toFixed(2) || 0}</div>
-                                <div class="label">Expectancy</div>
-                            </div>
-                        </div>
-                        
-                        <div class="chart-container">
-                            <canvas id="equity-chart"></canvas>
-                        </div>
-                        
-                        <h4 style="margin: 1.5rem 0 1rem;">Recent Trades</h4>
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>Date</th>
-                                    <th>Direction</th>
-                                    <th>Entry</th>
-                                    <th>Exit</th>
-                                    <th>Pips</th>
-                                    <th>P&L</th>
-                                    <th>Result</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${(data.trades || []).map(t => `
-                                    <tr>
-                                        <td>${t.date}</td>
-                                        <td style="color: ${t.direction === 'LONG' ? 'var(--accent-green)' : 'var(--accent-red)'}">${t.direction}</td>
-                                        <td>${t.entry}</td>
-                                        <td>${t.exit}</td>
-                                        <td style="color: ${t.pips >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'}">${t.pips >= 0 ? '+' : ''}${t.pips}</td>
-                                        <td style="color: ${t.pnl >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'}">$${t.pnl}</td>
-                                        <td><span class="status-badge ${t.result === 'WIN' ? 'ok' : 'error'}">${t.result}</span></td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    `;
-                    
-                    // Draw equity curve
-                    const ctx = document.getElementById('equity-chart').getContext('2d');
-                    new Chart(ctx, {
-                        type: 'line',
-                        data: {
-                            labels: data.equity_curve.map((_, i) => i + 1),
-                            datasets: [{
-                                label: 'Equity',
-                                data: data.equity_curve,
-                                borderColor: '#10b981',
-                                backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                                fill: true,
-                                tension: 0.4
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            plugins: {
-                                legend: { display: false }
-                            },
-                            scales: {
-                                y: { grid: { color: '#374151' } },
-                                x: { grid: { color: '#374151' } }
-                            }
-                        }
-                    });
-                } else {
-                    container.innerHTML = `<p style="color: var(--accent-red);">Backtest failed: ${data.error}</p>`;
-                }
-            } catch (error) {
-                container.innerHTML = `<p style="color: var(--accent-red);">Error running backtest</p>`;
-            }
-        }
-        
-        // ═══════════════════════════════════════════════════════════════════════════
-        // TRADE JOURNAL FUNCTIONS
-        // ═══════════════════════════════════════════════════════════════════════════
-        
-        async function loadJournal() {
-            // Load open trades
-            const openContainer = document.getElementById('open-trades-list');
-            const closedContainer = document.getElementById('closed-trades-list');
-            
-            try {
-                // Open trades
-                const openResp = await fetch(`${API_BASE}/journal?status=OPEN`);
-                const openData = await openResp.json();
-                
-                if (openData.trades && openData.trades.length > 0) {
-                    openContainer.innerHTML = openData.trades.map(t => `
-                        <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 0.5rem; margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
-                            <div>
-                                <strong style="color: ${t.direction === 'LONG' ? '#00ff88' : '#ff6666'};">${t.direction}</strong>
-                                <span style="font-weight: 600;">${t.pair}</span>
-                                <span style="color: var(--text-muted); font-size: 0.85rem;">@ ${t.entry_price}</span>
-                                <span style="color: var(--text-muted); font-size: 0.85rem; margin-left: 0.5rem;">(${t.lot_size} lots)</span>
-                            </div>
-                            <div style="display: flex; gap: 0.5rem; align-items: center;">
-                                <input type="number" id="exit-price-${t.id}" placeholder="Exit Price" step="0.00001" style="padding: 0.3rem; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 0.3rem; color: var(--text-primary); width: 100px;">
-                                <button onclick="closeTrade(${t.id}, 'WIN')" style="padding: 0.3rem 0.6rem; background: #00aa55; color: white; border: none; border-radius: 0.3rem; cursor: pointer; font-size: 0.8rem;">WIN</button>
-                                <button onclick="closeTrade(${t.id}, 'LOSS')" style="padding: 0.3rem 0.6rem; background: #cc3333; color: white; border: none; border-radius: 0.3rem; cursor: pointer; font-size: 0.8rem;">LOSS</button>
-                                <button onclick="closeTrade(${t.id}, 'BREAKEVEN')" style="padding: 0.3rem 0.6rem; background: #666; color: white; border: none; border-radius: 0.3rem; cursor: pointer; font-size: 0.8rem;">BE</button>
-                            </div>
-                        </div>
-                    `).join('');
-                } else {
-                    openContainer.innerHTML = '<p style="color: var(--text-muted);">No open trades</p>';
-                }
-                
-                // Closed trades
-                const closedResp = await fetch(`${API_BASE}/journal?status=CLOSED&limit=20`);
-                const closedData = await closedResp.json();
-                
-                if (closedData.trades && closedData.trades.length > 0) {
-                    closedContainer.innerHTML = `
-                        <table class="data-table" style="width: 100%;">
-                            <thead>
-                                <tr>
-                                    <th>Date</th>
-                                    <th>Pair</th>
-                                    <th>Direction</th>
-                                    <th>Entry</th>
-                                    <th>Exit</th>
-                                    <th>P/L (pips)</th>
-                                    <th>Outcome</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${closedData.trades.map(t => `
-                                    <tr>
-                                        <td>${new Date(t.timestamp_open).toLocaleDateString()}</td>
-                                        <td>${t.pair}</td>
-                                        <td style="color: ${t.direction === 'LONG' ? '#00ff88' : '#ff6666'};">${t.direction}</td>
-                                        <td>${t.entry_price?.toFixed(5)}</td>
-                                        <td>${t.exit_price?.toFixed(5)}</td>
-                                        <td style="color: ${t.pnl_pips >= 0 ? '#00ff88' : '#ff6666'}; font-weight: 600;">${t.pnl_pips >= 0 ? '+' : ''}${t.pnl_pips?.toFixed(1)}</td>
-                                        <td><span class="status-badge ${t.outcome === 'WIN' ? 'ok' : t.outcome === 'LOSS' ? 'error' : 'limited'}">${t.outcome}</span></td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    `;
-                } else {
-                    closedContainer.innerHTML = '<p style="color: var(--text-muted);">No closed trades yet</p>';
-                }
-            } catch (error) {
-                console.error('Error loading journal:', error);
-                openContainer.innerHTML = '<p style="color: var(--accent-red);">Error loading trades</p>';
-            }
-        }
-        
-        async function addTrade() {
-            const tradeData = {
-                pair: document.getElementById('journal-pair').value,
-                direction: document.getElementById('journal-direction').value,
-                lot_size: parseFloat(document.getElementById('journal-lots').value),
-                entry_price: parseFloat(document.getElementById('journal-entry').value),
-                sl_price: parseFloat(document.getElementById('journal-sl').value) || null,
-                tp_price: parseFloat(document.getElementById('journal-tp').value) || null,
-                notes: document.getElementById('journal-notes').value
-            };
-            
-            if (!tradeData.entry_price) {
-                alert('Please enter an entry price');
-                return;
-            }
-            
-            try {
-                const response = await fetch(`${API_BASE}/journal/add`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(tradeData)
-                });
-                const data = await response.json();
-                
-                if (data.success) {
-                    alert('Trade added successfully!');
-                    document.getElementById('journal-entry').value = '';
-                    document.getElementById('journal-sl').value = '';
-                    document.getElementById('journal-tp').value = '';
-                    document.getElementById('journal-notes').value = '';
-                    loadJournal();
-                } else {
-                    alert('Error: ' + data.error);
-                }
-            } catch (error) {
-                alert('Error adding trade: ' + error.message);
-            }
-        }
-        
-        async function closeTrade(tradeId, outcome) {
-            const exitPrice = document.getElementById(`exit-price-${tradeId}`).value;
-            
-            if (!exitPrice) {
-                alert('Please enter an exit price');
-                return;
-            }
-            
-            try {
-                const response = await fetch(`${API_BASE}/journal/close/${tradeId}`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        exit_price: parseFloat(exitPrice),
-                        outcome: outcome
-                    })
-                });
-                const data = await response.json();
-                
-                if (data.success) {
-                    alert(`Trade closed! P/L: ${data.pnl_pips} pips`);
-                    loadJournal();
-                    loadPerformance();
-                } else {
-                    alert('Error: ' + data.error);
-                }
-            } catch (error) {
-                alert('Error closing trade: ' + error.message);
-            }
-        }
-        
-        // ═══════════════════════════════════════════════════════════════════════════
-        // PERFORMANCE FUNCTIONS
-        // ═══════════════════════════════════════════════════════════════════════════
-        
-        async function loadPerformance() {
-            try {
-                const response = await fetch(`${API_BASE}/performance`);
-                const data = await response.json();
-                
-                if (data.success && data.overall) {
-                    const o = data.overall;
-                    
-                    document.getElementById('perf-total-trades').textContent = o.total_trades || 0;
-                    document.getElementById('perf-win-rate').textContent = (o.win_rate || 0).toFixed(1) + '%';
-                    document.getElementById('perf-total-pips').textContent = (o.total_pips || 0).toFixed(1);
-                    document.getElementById('perf-profit-factor').textContent = (o.profit_factor || 0).toFixed(2);
-                    
-                    document.getElementById('perf-wins').textContent = o.wins || 0;
-                    document.getElementById('perf-losses').textContent = o.losses || 0;
-                    document.getElementById('perf-best').textContent = (o.best_trade || 0).toFixed(1) + ' pips';
-                    document.getElementById('perf-worst').textContent = (o.worst_trade || 0).toFixed(1) + ' pips';
-                    document.getElementById('perf-avg-win').textContent = (o.avg_win || 0).toFixed(1);
-                    document.getElementById('perf-avg-loss').textContent = (o.avg_loss || 0).toFixed(1);
-                    
-                    // Performance by pair
-                    const byPairContainer = document.getElementById('perf-by-pair');
-                    if (data.by_pair && data.by_pair.length > 0) {
-                        byPairContainer.innerHTML = `
-                            <table class="data-table" style="width: 100%;">
-                                <thead>
-                                    <tr><th>Pair</th><th>Trades</th><th>Wins</th><th>Pips</th></tr>
-                                </thead>
-                                <tbody>
-                                    ${data.by_pair.map(p => `
-                                        <tr>
-                                            <td>${p.pair}</td>
-                                            <td>${p.trades}</td>
-                                            <td>${p.wins}</td>
-                                            <td style="color: ${p.pips >= 0 ? '#00ff88' : '#ff6666'}; font-weight: 600;">${p.pips >= 0 ? '+' : ''}${p.pips?.toFixed(1)}</td>
-                                        </tr>
-                                    `).join('')}
-                                </tbody>
-                            </table>
-                        `;
-                    } else {
-                        byPairContainer.innerHTML = '<p style="color: var(--text-muted);">No trade data yet</p>';
-                    }
-                }
-            } catch (error) {
-                console.error('Error loading performance:', error);
-            }
-        }
-        
         // Run Audit
         async function runAudit() {
             const container = document.getElementById('audit-container');
-            container.innerHTML = '<div class="loading"><div class="spinner"></div>Running audit...</div>';
+            container.innerHTML = '<div class="loading"><div class="spinner"></div>Running comprehensive audit...</div>';
             
             try {
                 const response = await fetch(`${API_BASE}/audit`);
@@ -2152,17 +2127,40 @@
                 if (data.success) {
                     container.innerHTML = `
                         <div class="audit-section">
+                            <h3>📊 System Info - v${data.version || '8.3'}</h3>
+                            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1rem;">
+                                <div class="result-card">
+                                    <div class="value">${data.system_info?.total_pairs || 45}</div>
+                                    <div class="label">Forex Pairs</div>
+                                </div>
+                                <div class="result-card">
+                                    <div class="value">${data.system_info?.total_factors || 9}</div>
+                                    <div class="label">Scoring Factors</div>
+                                </div>
+                                <div class="result-card">
+                                    <div class="value">${data.data_quality?.coverage || 0}%</div>
+                                    <div class="label">Data Coverage</div>
+                                </div>
+                                <div class="result-card">
+                                    <div class="value">${Object.keys(data.api_status || {}).filter(k => data.api_status[k].status === 'OK').length}/${Object.keys(data.api_status || {}).length}</div>
+                                    <div class="label">APIs Online</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="audit-section">
                             <h3>🔌 API Status</h3>
                             <table class="data-table">
                                 <thead>
-                                    <tr><th>API</th><th>Status</th><th>Details</th></tr>
+                                    <tr><th>API</th><th>Status</th><th>Purpose</th><th>Details</th></tr>
                                 </thead>
                                 <tbody>
                                     ${Object.entries(data.api_status || {}).map(([name, info]) => `
                                         <tr>
-                                            <td style="text-transform: capitalize;">${name}</td>
+                                            <td style="text-transform: capitalize; font-weight: 600;">${name.replace('_', ' ')}</td>
                                             <td><span class="status-badge ${info.status === 'OK' ? 'ok' : info.status === 'LIMITED' ? 'limited' : 'error'}">${info.status}</span></td>
-                                            <td>${info.test_rate || info.test_value || info.articles || info.error || '-'}</td>
+                                            <td style="font-size: 0.85rem; color: var(--text-secondary);">${info.purpose || '-'}</td>
+                                            <td>${info.test_rate || info.test_value || info.articles || info.sources?.join(', ') || info.error || '-'}</td>
                                         </tr>
                                     `).join('')}
                                 </tbody>
@@ -2170,37 +2168,298 @@
                         </div>
                         
                         <div class="audit-section">
-                            <h3>📊 Data Quality</h3>
-                            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+                            <h3>✅ Score Validation (EUR/USD Test)</h3>
+                            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1rem;">
                                 <div class="result-card">
-                                    <div class="value">${data.data_quality?.pairs_with_rates || 0}/${data.data_quality?.total_pairs || 45}</div>
-                                    <div class="label">Pairs with Rates</div>
+                                    <div class="value" style="color: ${data.score_validation?.composite_score >= 65 ? 'var(--accent-green)' : data.score_validation?.composite_score <= 35 ? 'var(--accent-red)' : 'var(--text-primary)'};">${data.score_validation?.composite_score || 'N/A'}</div>
+                                    <div class="label">Composite Score</div>
                                 </div>
                                 <div class="result-card">
-                                    <div class="value">${data.data_quality?.coverage || 0}%</div>
-                                    <div class="label">Coverage</div>
+                                    <div class="value">${data.score_validation?.direction || 'N/A'}</div>
+                                    <div class="label">Direction</div>
                                 </div>
                                 <div class="result-card">
-                                    <div class="value">${Object.keys(data.data_quality?.sources || {}).length}</div>
-                                    <div class="label">Data Sources</div>
+                                    <div class="value">${'⭐'.repeat(data.score_validation?.stars || 0)}</div>
+                                    <div class="label">Signal Strength</div>
                                 </div>
+                                <div class="result-card">
+                                    <div class="value">${data.score_validation?.strength_label || 'N/A'}</div>
+                                    <div class="label">Strength Label</div>
+                                </div>
+                            </div>
+                            <h4 style="margin-top: 1rem;">Factor Scores:</h4>
+                            <table class="data-table">
+                                <thead>
+                                    <tr><th>Factor</th><th>Weight</th><th>Score</th><th>Signal</th><th>Data Source</th></tr>
+                                </thead>
+                                <tbody>
+                                    ${Object.entries(data.score_validation?.factor_scores || {}).map(([name, f]) => {
+                                        const quality = data.score_validation?.factor_data_quality?.[name] || f.data_quality || 'UNKNOWN';
+                                        const qualityColor = quality === 'REAL' || quality === 'HIGH' ? 'var(--accent-green)' : 
+                                                           quality === 'MEDIUM' || quality === 'CALCULATED' ? '#f59e0b' : 
+                                                           quality === 'FALLBACK' || quality === 'NO_DATA' ? 'var(--accent-red)' : 'var(--text-muted)';
+                                        const qualityIcon = quality === 'REAL' || quality === 'HIGH' ? '✓' : 
+                                                          quality === 'MEDIUM' || quality === 'CALCULATED' ? '~' : '⚠';
+                                        return `
+                                        <tr>
+                                            <td style="text-transform: capitalize;">${name}</td>
+                                            <td>${data.system_info?.factor_weights?.[name] || '-'}%</td>
+                                            <td style="color: ${f.score >= 58 ? 'var(--accent-green)' : f.score <= 42 ? 'var(--accent-red)' : 'var(--text-primary)'}; font-weight: 600;">${f.score}</td>
+                                            <td><span class="status-badge ${f.signal === 'BULLISH' ? 'ok' : f.signal === 'BEARISH' ? 'error' : 'limited'}">${f.signal}</span></td>
+                                            <td style="color: ${qualityColor}; font-weight: 500;">${qualityIcon} ${quality}</td>
+                                        </tr>`;
+                                    }).join('')}
+                                </tbody>
+                            </table>
+                            <div style="margin-top: 0.75rem; padding: 0.5rem; background: var(--bg-tertiary); border-radius: 6px; font-size: 0.8rem;">
+                                <strong>Data Quality Legend:</strong> 
+                                <span style="color: var(--accent-green);">✓ REAL</span> = Live API data | 
+                                <span style="color: #f59e0b;">~ MEDIUM</span> = Partial data | 
+                                <span style="color: var(--accent-red);">⚠ FALLBACK</span> = Static/estimated
+                            </div>
+                            <div style="margin-top: 1rem; padding: 0.75rem; background: var(--bg-tertiary); border-radius: 8px;">
+                                <strong>Conviction:</strong> 
+                                ${data.score_validation?.conviction?.bullish_factors || 0} Bullish, 
+                                ${data.score_validation?.conviction?.bearish_factors || 0} Bearish | 
+                                <strong>Extreme Factors:</strong> 
+                                ${data.score_validation?.conviction?.extreme_bullish || 0} Bullish, 
+                                ${data.score_validation?.conviction?.extreme_bearish || 0} Bearish | 
+                                <strong>Pattern Boost:</strong> ${data.score_validation?.conviction?.pattern_boost || 0}
                             </div>
                         </div>
                         
                         <div class="audit-section">
-                            <h3>✅ Score Validation</h3>
-                            <p>Test Pair: ${data.score_validation?.test_pair || 'N/A'}</p>
-                            <p>Composite Score: ${data.score_validation?.composite_score || 'N/A'}</p>
-                            <p>Direction: ${data.score_validation?.direction || 'N/A'}</p>
-                            <p>Factors Available: ${data.score_validation?.factors_available || 0}</p>
-                            <p>Trade Setup Valid: ${data.score_validation?.trade_setup_valid ? '✅ Yes' : '❌ No'}</p>
+                            <h3>⚙️ Scoring Methodology Summary</h3>
+                            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+                                <div class="result-card">
+                                    <div class="value">${data.scoring_methodology?.score_range?.min || 5} - ${data.scoring_methodology?.score_range?.max || 95}</div>
+                                    <div class="label">Score Range</div>
+                                </div>
+                                <div class="result-card">
+                                    <div class="value">≥${data.scoring_methodology?.score_range?.bullish_threshold || 65}</div>
+                                    <div class="label">LONG Threshold</div>
+                                </div>
+                                <div class="result-card">
+                                    <div class="value">≤${data.scoring_methodology?.score_range?.bearish_threshold || 35}</div>
+                                    <div class="label">SHORT Threshold</div>
+                                </div>
+                            </div>
+                            <p style="margin-top: 1rem; color: var(--text-secondary);">
+                                <strong>Conviction Multiplier:</strong> When factors agree, scores are amplified (up to 1.6x for 7+ agreeing factors).
+                                <br><strong>Extreme Bonus:</strong> +5 points when 3+ factors have extreme scores.
+                                <br><strong>Pattern Boost:</strong> Candlestick patterns add additional confirmation.
+                            </p>
+                            <button onclick="showMethodology()" style="margin-top: 1rem;">📖 View Full Methodology Details</button>
+                        </div>
+                        
+                        <div class="audit-section" style="border: 2px solid ${data.scoring_quality?.quality_status === 'EXCELLENT' ? 'var(--accent-green)' : data.scoring_quality?.quality_status === 'GOOD' ? 'var(--accent-blue)' : 'var(--accent-yellow)'};">
+                            <h3>🔬 Scoring Quality Validation (REAL DATA CHECK)</h3>
+                            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1rem;">
+                                <div class="result-card">
+                                    <div class="value" style="color: ${data.scoring_quality?.quality_score >= 90 ? 'var(--accent-green)' : data.scoring_quality?.quality_score >= 70 ? 'var(--accent-blue)' : 'var(--accent-yellow)'};">${data.scoring_quality?.quality_score || 0}%</div>
+                                    <div class="label">Quality Score</div>
+                                </div>
+                                <div class="result-card">
+                                    <div class="value">${data.scoring_quality?.quality_status || 'N/A'}</div>
+                                    <div class="label">Status</div>
+                                </div>
+                                <div class="result-card">
+                                    <div class="value">${data.scoring_quality?.score_statistics?.range || 0}</div>
+                                    <div class="label">Score Range</div>
+                                </div>
+                                <div class="result-card">
+                                    <div class="value">${data.scoring_quality?.score_statistics?.std_dev || 0}</div>
+                                    <div class="label">Std Dev</div>
+                                </div>
+                            </div>
+                            
+                            <h4 style="margin-top: 1rem; margin-bottom: 0.5rem;">Multi-Pair Test Results:</h4>
+                            <table class="data-table">
+                                <thead><tr><th>Pair</th><th>Score</th><th>Direction</th><th>Factors</th></tr></thead>
+                                <tbody>
+                                    ${(data.scoring_quality?.test_pairs || []).map(p => `
+                                        <tr>
+                                            <td>${p.pair}</td>
+                                            <td style="color: ${p.score >= 65 ? 'var(--accent-green)' : p.score <= 35 ? 'var(--accent-red)' : 'var(--text-primary)'}; font-weight: 600;">${p.score || p.error || 'N/A'}</td>
+                                            <td><span class="status-badge ${p.direction === 'LONG' ? 'ok' : p.direction === 'SHORT' ? 'error' : 'limited'}">${p.direction || '-'}</span></td>
+                                            <td>${p.factors_count || 0}/9</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                            
+                            <h4 style="margin-top: 1rem; margin-bottom: 0.5rem;">Quality Checks:</h4>
+                            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                                ${Object.entries(data.scoring_quality?.quality_checks || {}).map(([check, passed]) => `
+                                    <span style="background: ${passed ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)'}; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.85rem;">
+                                        ${passed ? '✅' : '❌'} ${check.replace(/_/g, ' ')}
+                                    </span>
+                                `).join('')}
+                            </div>
+                            
+                            <div style="margin-top: 0.75rem; padding: 0.5rem 0.75rem; background: ${data.scoring_quality?.signal_status?.has_directional_signals ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)'}; border-radius: 8px; border-left: 3px solid ${data.scoring_quality?.signal_status?.has_directional_signals ? 'var(--accent-green)' : '#f59e0b'};">
+                                <strong>${data.scoring_quality?.signal_status?.has_directional_signals ? '📈 Directional Signals:' : '📊 Market Status:'}</strong>
+                                <span style="margin-left: 0.5rem; color: var(--text-secondary);">${data.scoring_quality?.signal_status?.signal_note || 'Checking...'}</span>
+                            </div>
+                            
+                            <h4 style="margin-top: 1rem; margin-bottom: 0.5rem;">Factor Data Sources (REAL):</h4>
+                            <div style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.6;">
+                                ${Object.entries(data.scoring_quality?.data_verification || {}).map(([factor, source]) => `
+                                    <div><strong>${factor}:</strong> ${source}</div>
+                                `).join('')}
+                            </div>
+                        </div>
+                        
+                        <div class="audit-section">
+                            <h3>🎯 Features Enabled</h3>
+                            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                                ${(data.system_info?.features || []).map(f => `<span style="background: var(--bg-tertiary); padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.85rem;">✅ ${f}</span>`).join('')}
+                            </div>
                         </div>
                         
                         <p style="color: var(--text-muted); margin-top: 1rem;">Audit completed at: ${data.timestamp}</p>
                     `;
                 }
             } catch (error) {
-                container.innerHTML = `<p style="color: var(--accent-red);">Error running audit</p>`;
+                container.innerHTML = '<p style="color: var(--accent-red);">Error running audit: ' + error.message + '</p>';
+            }
+        }
+        
+        async function showMethodology() {
+            const container = document.getElementById('audit-container');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading methodology...</div>';
+            
+            try {
+                const response = await fetch(`${API_BASE}/audit`);
+                const data = await response.json();
+                
+                if (data.success && data.factor_details) {
+                    const factors = data.factor_details;
+                    container.innerHTML = `
+                        <div class="audit-section">
+                            <h3>📖 Complete Scoring Methodology - v8.3</h3>
+                            <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+                                This system uses <strong>9 weighted factors</strong> with a <strong>conviction multiplier</strong> to generate trading signals.
+                                All calculations use <strong>REAL market data</strong> - no fake or simulated scores.
+                            </p>
+                        </div>
+                        
+                        <div class="audit-section">
+                            <h3>⚡ Score Amplification System</h3>
+                            <table class="data-table">
+                                <thead><tr><th>Factors Agreeing</th><th>Multiplier</th><th>Effect</th></tr></thead>
+                                <tbody>
+                                    <tr><td>7+ factors</td><td style="color: var(--accent-green); font-weight: 600;">1.6x</td><td>Very strong amplification</td></tr>
+                                    <tr><td>6 factors</td><td style="color: var(--accent-green);">1.4x</td><td>Strong amplification</td></tr>
+                                    <tr><td>5 factors</td><td>1.25x</td><td>Moderate amplification</td></tr>
+                                    <tr><td>4 factors</td><td>1.1x</td><td>Slight amplification</td></tr>
+                                </tbody>
+                            </table>
+                            <p style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);">
+                                <strong>Extreme Factor Bonus:</strong> +5 points when 3+ factors have scores >75 or <25<br>
+                                <strong>Trend Alignment Bonus:</strong> +3 points when MTF and Technical agree
+                            </p>
+                        </div>
+                        
+                        ${Object.entries(factors).map(([name, f]) => `
+                            <div class="audit-section" style="border-left: 4px solid var(--accent-blue); padding-left: 1rem;">
+                                <h3 style="text-transform: capitalize;">${name === 'mtf' ? 'MTF (Multi-Timeframe)' : name} - ${f.weight_percent}</h3>
+                                <p style="color: var(--text-secondary); margin-bottom: 0.5rem;">${f.description}</p>
+                                <p style="font-size: 0.85rem;"><strong>Score Range:</strong> ${f.score_range} | <strong>Data Sources:</strong> ${f.data_sources?.join(', ') || 'Calculated'}</p>
+                                
+                                ${f.components ? `
+                                    <div style="margin-top: 0.75rem;">
+                                        ${Object.entries(f.components).map(([cname, comp]) => `
+                                            <div style="background: var(--bg-tertiary); padding: 0.75rem; border-radius: 8px; margin-bottom: 0.5rem;">
+                                                <strong>${cname.replace('_', ' ')}:</strong> ${comp.description || ''}
+                                                ${comp.scoring ? `
+                                                    <table class="data-table" style="margin-top: 0.5rem; font-size: 0.85rem;">
+                                                        <thead><tr><th>Condition</th><th>Points/Effect</th><th>Meaning</th></tr></thead>
+                                                        <tbody>
+                                                            ${comp.scoring.slice(0, 6).map(s => `
+                                                                <tr>
+                                                                    <td>${s.condition}</td>
+                                                                    <td style="color: ${(s.points || '').includes('+') ? 'var(--accent-green)' : (s.points || '').includes('-') ? 'var(--accent-red)' : 'var(--text-primary)'}; font-weight: 600;">${s.points || s.multiplier || ''}</td>
+                                                                    <td>${s.meaning}</td>
+                                                                </tr>
+                                                            `).join('')}
+                                                        </tbody>
+                                                    </table>
+                                                ` : ''}
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                ` : ''}
+                                
+                                ${f.scoring && !f.components ? `
+                                    <table class="data-table" style="margin-top: 0.5rem; font-size: 0.85rem;">
+                                        <thead><tr><th>Condition</th><th>Score</th><th>Meaning</th></tr></thead>
+                                        <tbody>
+                                            ${f.scoring.slice(0, 8).map(s => `
+                                                <tr>
+                                                    <td>${s.differential || s.alignment || s.factors_bullish || s.factors_bearish || s.condition || '-'}</td>
+                                                    <td style="font-weight: 600;">${s.score}</td>
+                                                    <td>${s.meaning || s.strength || ''}</td>
+                                                </tr>
+                                            `).join('')}
+                                        </tbody>
+                                    </table>
+                                ` : ''}
+                                
+                                ${f.central_bank_rates ? `
+                                    <details style="margin-top: 0.75rem;">
+                                        <summary style="cursor: pointer; color: var(--accent-blue);">View Central Bank Rates</summary>
+                                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; margin-top: 0.5rem; font-size: 0.85rem;">
+                                            ${Object.entries(f.central_bank_rates).map(([cur, rate]) => `
+                                                <div style="background: var(--bg-tertiary); padding: 0.25rem 0.5rem; border-radius: 4px;">
+                                                    <strong>${cur}:</strong> ${rate}%
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                    </details>
+                                ` : ''}
+                                
+                                <p style="margin-top: 0.5rem; font-size: 0.85rem;">
+                                    <strong>Thresholds:</strong> 
+                                    <span style="color: var(--accent-green);">BULLISH ${f.signal_thresholds?.bullish || '>= 58'}</span> | 
+                                    <span style="color: var(--accent-red);">BEARISH ${f.signal_thresholds?.bearish || '<= 42'}</span> | 
+                                    <span>NEUTRAL ${f.signal_thresholds?.neutral || '43-57'}</span>
+                                </p>
+                            </div>
+                        `).join('')}
+                        
+                        <div class="audit-section">
+                            <h3>⭐ Star Rating System</h3>
+                            <table class="data-table">
+                                <thead><tr><th>Deviation from 50</th><th>Stars</th><th>Meaning</th></tr></thead>
+                                <tbody>
+                                    <tr><td>≥ 35 points</td><td>⭐⭐⭐⭐⭐</td><td>Extreme signal</td></tr>
+                                    <tr><td>≥ 25 points</td><td>⭐⭐⭐⭐</td><td>Strong signal</td></tr>
+                                    <tr><td>≥ 18 points</td><td>⭐⭐⭐</td><td>Moderate signal</td></tr>
+                                    <tr><td>≥ 10 points</td><td>⭐⭐</td><td>Weak signal</td></tr>
+                                    <tr><td>< 10 points</td><td>⭐</td><td>Very weak signal</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="audit-section" style="background: var(--bg-tertiary); padding: 1rem; border-radius: 8px;">
+                            <h3>✅ Data Integrity Statement</h3>
+                            <p>All scoring calculations use <strong>real market data</strong> from verified sources:</p>
+                            <ul style="margin-left: 1.5rem; color: var(--text-secondary);">
+                                <li>Price data from Polygon.io (real-time forex rates)</li>
+                                <li>Technical indicators calculated from actual candle data</li>
+                                <li>Interest rates from central bank publications</li>
+                                <li>Sentiment from IG Markets client positioning</li>
+                                <li>News from Finnhub API and RSS feeds</li>
+                            </ul>
+                            <p style="margin-top: 0.5rem;"><strong>NO fake data, NO simulated scores, NO artificial inflation.</strong></p>
+                        </div>
+                        
+                        <button onclick="runAudit()" style="margin-top: 1rem;">← Back to Audit Results</button>
+                    `;
+                }
+            } catch (error) {
+                container.innerHTML = '<p style="color: var(--accent-red);">Error loading methodology</p>';
             }
         }
         
