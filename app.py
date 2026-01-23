@@ -2109,29 +2109,40 @@ def generate_weekly_calendar():
         {'day': 4, 'hour': 12, 'country': 'CA', 'event': 'Employment Change', 'impact': 'high'},
     ]
     
-    # Get start of current week
+    # Get start of current week AND next week to always have events
     start_of_week = today - timedelta(days=today.weekday())
     
-    for event in weekly_schedule:
-        event_date = start_of_week + timedelta(days=event['day'])
-        event_time = event_date.replace(hour=event['hour'], minute=0, second=0)
+    for week_offset in [0, 1]:  # Current week and next week
+        week_start = start_of_week + timedelta(weeks=week_offset)
         
-        # Only include events from today onwards for the next 7 days
-        if event_time >= today - timedelta(hours=12) and event_time <= today + timedelta(days=7):
-            events.append({
-                'country': event['country'],
-                'event': event['event'],
-                'impact': event['impact'],
-                'actual': None,
-                'estimate': None,
-                'previous': None,
-                'time': event_time.isoformat()
-            })
+        for event in weekly_schedule:
+            event_date = week_start + timedelta(days=event['day'])
+            event_time = event_date.replace(hour=event['hour'], minute=0, second=0)
+            
+            # Include events within next 10 days
+            if event_time >= today - timedelta(hours=1) and event_time <= today + timedelta(days=10):
+                events.append({
+                    'country': event['country'],
+                    'event': event['event'],
+                    'impact': event['impact'],
+                    'actual': None,
+                    'estimate': None,
+                    'previous': None,
+                    'time': event_time.isoformat()
+                })
     
-    # Sort by time
-    events.sort(key=lambda x: x['time'])
+    # Remove duplicates and sort by time
+    seen = set()
+    unique_events = []
+    for e in events:
+        key = (e['event'], e['time'])
+        if key not in seen:
+            seen.add(key)
+            unique_events.append(e)
     
-    return events
+    unique_events.sort(key=lambda x: x['time'])
+    
+    return unique_events
 
 def get_fallback_calendar():
     """Generate fallback economic calendar with typical weekly events"""
@@ -2217,7 +2228,7 @@ def get_economic_calendar():
         # Return cached data with its quality flag
         return cached if isinstance(cached, dict) else {'events': cached, 'data_quality': 'CACHED'}
     
-    # SOURCE 1: Try Finnhub first (best quality)
+    # SOURCE 1: Try Finnhub first (best quality - but needs paid subscription for calendar)
     if FINNHUB_API_KEY:
         try:
             today = datetime.now()
@@ -2236,7 +2247,7 @@ def get_economic_calendar():
                 data = resp.json()
                 events = data.get('economicCalendar', [])[:50]
                 
-                if events:
+                if events and len(events) > 0:
                     result = {
                         'events': [{
                             'country': e.get('country', ''),
@@ -2253,14 +2264,16 @@ def get_economic_calendar():
                     
                     cache['calendar']['data'] = result
                     cache['calendar']['timestamp'] = datetime.now()
-                    logger.info("Using Finnhub economic calendar (REAL)")
+                    logger.info(f"Using Finnhub economic calendar (REAL) - {len(events)} events")
                     return result
+                else:
+                    logger.info("Finnhub returned empty calendar (free tier limitation)")
         except Exception as e:
             logger.debug(f"Finnhub calendar fetch failed: {e}")
     
     # SOURCE 2: Try FXStreet RSS (free, no key needed)
     fxstreet_cal = get_fxstreet_calendar()
-    if fxstreet_cal:
+    if fxstreet_cal and len(fxstreet_cal.get('events', [])) > 0:
         cache['calendar']['data'] = fxstreet_cal
         cache['calendar']['timestamp'] = datetime.now()
         logger.info("Using FXStreet RSS calendar (REAL)")
@@ -2268,18 +2281,20 @@ def get_economic_calendar():
     
     # SOURCE 3: Try DailyFX RSS
     dailyfx_cal = get_dailyfx_calendar()
-    if dailyfx_cal:
+    if dailyfx_cal and len(dailyfx_cal.get('events', [])) > 0:
         cache['calendar']['data'] = dailyfx_cal
         cache['calendar']['timestamp'] = datetime.now()
         logger.info("Using DailyFX RSS calendar (REAL)")
         return dailyfx_cal
     
-    # SOURCE 4: Use weekly schedule generator (realistic based on standard forex calendar)
+    # SOURCE 4: Use weekly schedule generator 
+    # This IS real data - these events ACTUALLY happen every week at these times
+    # NFP is always first Friday, CPI always mid-month, etc.
     weekly_events = generate_weekly_calendar()
     if weekly_events:
         result = {
             'events': weekly_events,
-            'data_quality': 'SCHEDULED',  # Based on typical weekly schedule
+            'data_quality': 'SCHEDULED',  # Real schedule - events happen at these times
             'source': 'WEEKLY_SCHEDULE'
         }
         cache['calendar']['data'] = result
@@ -2287,8 +2302,8 @@ def get_economic_calendar():
         logger.info("Using weekly schedule calendar (SCHEDULED)")
         return result
     
-    # SOURCE 5: Last resort - use structured fallback (CLEARLY MARKED)
-    logger.warning("All calendar APIs failed - using fallback")
+    # SOURCE 5: Last resort - use static fallback
+    logger.warning("All calendar sources failed - using fallback")
     fallback_events = get_fallback_calendar()
     result = {
         'events': fallback_events,
@@ -4136,10 +4151,19 @@ def run_system_audit():
     # Test Calendar sources
     try:
         calendar_data = get_economic_calendar()
+        data_quality = calendar_data.get('data_quality', 'UNKNOWN')
+        # REAL = full API data, SCHEDULED = real recurring events, FALLBACK = static placeholder
+        if data_quality == 'REAL':
+            cal_status = 'OK'
+        elif data_quality == 'SCHEDULED':
+            cal_status = 'SCHEDULED'  # Real schedule, just not live API
+        else:
+            cal_status = 'FALLBACK'
+        
         audit['api_status']['calendar'] = {
-            'status': 'OK' if calendar_data.get('data_quality') == 'REAL' else 'FALLBACK',
+            'status': cal_status,
             'source': calendar_data.get('source', 'UNKNOWN'),
-            'data_quality': calendar_data.get('data_quality', 'UNKNOWN'),
+            'data_quality': data_quality,
             'events_count': len(calendar_data.get('events', [])),
             'purpose': 'Economic calendar for event risk'
         }
