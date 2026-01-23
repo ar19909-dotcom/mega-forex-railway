@@ -4525,7 +4525,7 @@ def run_system_audit():
             'bullish_threshold': 65,
             'bearish_threshold': 35
         },
-        'total_factors': 9,
+        'total_factors': 10,
         'total_weight': 100,
         'conviction_multiplier': {
             'description': 'Amplifies score when factors agree on direction',
@@ -4553,12 +4553,12 @@ def run_system_audit():
     }
     
     # ═══════════════════════════════════════════════════════════════════════════
-    # 9 FACTOR DETAILS
+    # 10 FACTOR DETAILS (v8.4 PRO)
     # ═══════════════════════════════════════════════════════════════════════════
     audit['factor_details'] = {
         'technical': {
-            'weight': 24,
-            'weight_percent': '24%',
+            'weight': 22,
+            'weight_percent': '22%',
             'description': 'RSI, MACD, ADX trend analysis',
             'data_sources': ['Polygon.io candles', 'Calculated indicators'],
             'score_range': '10-90',
@@ -4599,8 +4599,8 @@ def run_system_audit():
             'signal_thresholds': {'bullish': '>= 58', 'bearish': '<= 42', 'neutral': '43-57'}
         },
         'fundamental': {
-            'weight': 18,
-            'weight_percent': '18%',
+            'weight': 16,
+            'weight_percent': '16%',
             'description': 'Interest rate differentials and carry trade analysis',
             'data_sources': ['Central bank rates database', 'FRED API'],
             'score_range': '15-85',
@@ -4642,8 +4642,8 @@ def run_system_audit():
             'signal_thresholds': {'bullish': '>= 58', 'bearish': '<= 42', 'neutral': '43-57'}
         },
         'intermarket': {
-            'weight': 11,
-            'weight_percent': '11%',
+            'weight': 10,
+            'weight_percent': '10%',
             'description': 'Correlation analysis with DXY, Gold, Yields, Oil',
             'data_sources': ['Polygon.io', 'Alpha Vantage'],
             'score_range': '15-85',
@@ -4657,8 +4657,8 @@ def run_system_audit():
             'signal_thresholds': {'bullish': '>= 58', 'bearish': '<= 42', 'neutral': '43-57'}
         },
         'quantitative': {
-            'weight': 8,
-            'weight_percent': '8%',
+            'weight': 7,
+            'weight_percent': '7%',
             'description': 'Z-Score and Bollinger Band mean reversion analysis',
             'data_sources': ['Calculated from price data'],
             'score_range': '10-90',
@@ -4748,9 +4748,9 @@ def run_system_audit():
             'signal_thresholds': {'bullish': '>= 58', 'bearish': '<= 42', 'neutral': '43-57'}
         },
         'calendar': {
-            'weight': 5,
-            'weight_percent': '5%',
-            'description': 'Economic events risk assessment',
+            'weight': 6,
+            'weight_percent': '6%',
+            'description': 'Economic events risk assessment + Seasonality patterns',
             'data_sources': ['Finnhub API economic calendar'],
             'score_range': '20-90',
             'calculation': '100 - risk_score',
@@ -4766,8 +4766,8 @@ def run_system_audit():
             }
         },
         'confluence': {
-            'weight': 4,
-            'weight_percent': '4%',
+            'weight': 3,
+            'weight_percent': '3%',
             'description': 'Factor agreement bonus/penalty',
             'score_range': '5-95',
             'scoring': [
@@ -4782,9 +4782,38 @@ def run_system_audit():
                 {'mixed': 'default', 'score': 50, 'strength': 'Mixed signals'}
             ],
             'signal_thresholds': {'bullish': '>= 58', 'bearish': '<= 42', 'neutral': '43-57'}
+        },
+        'options': {
+            'weight': 6,
+            'weight_percent': '6%',
+            'description': '25-Delta Risk Reversals & Put/Call Ratio analysis',
+            'data_sources': ['CME FX Options (when available)', 'Price volatility structure proxy'],
+            'score_range': '15-85 (REAL), 40-60 (PROXY)',
+            'components': {
+                'risk_reversal': {
+                    'description': '25-delta call IV minus put IV',
+                    'interpretation': 'Positive = calls expensive (bullish), Negative = puts expensive (bearish)',
+                    'weight': '70%'
+                },
+                'put_call_ratio': {
+                    'description': 'Put volume / Call volume (contrarian indicator)',
+                    'interpretation': 'High P/C = too many puts = contrarian bullish',
+                    'weight': '30%'
+                }
+            },
+            'scoring': [
+                {'risk_reversal': '> +3.0', 'score': 85, 'meaning': 'Very bullish options positioning'},
+                {'risk_reversal': '+1.5 to +3.0', 'score': 72, 'meaning': 'Bullish positioning'},
+                {'risk_reversal': '-1.5 to -3.0', 'score': 28, 'meaning': 'Bearish positioning'},
+                {'risk_reversal': '< -3.0', 'score': 15, 'meaning': 'Very bearish options positioning'},
+                {'put_call_ratio': '> 1.5', 'score': '+20 (contrarian)', 'meaning': 'Too many puts (bullish)'},
+                {'put_call_ratio': '< 0.7', 'score': '-20 (contrarian)', 'meaning': 'Too many calls (bearish)'}
+            ],
+            'signal_thresholds': {'bullish': '>= 58', 'bearish': '<= 42', 'neutral': '43-57'},
+            'note': 'Uses price volatility proxy when CME data unavailable'
         }
     }
-    
+
     # ═══════════════════════════════════════════════════════════════════════════
     # DIRECTION & STRENGTH LABELS
     # ═══════════════════════════════════════════════════════════════════════════
@@ -5094,14 +5123,15 @@ def run_system_audit():
         'signal_status': signal_status,
         'data_verification': {
             'technical': 'RSI, MACD, ADX calculated from Polygon.io candle data',
-            'fundamental': 'Interest rate differentials from central bank rates',
-            'sentiment': 'IG positioning + Finnhub news + RSS feeds',
+            'fundamental': 'Interest rate differentials from central bank rates + FRED API',
+            'sentiment': 'IG positioning + Finnhub news + RSS feeds + COT institutional data',
             'intermarket': 'DXY, Gold, Yields correlation analysis',
             'quantitative': 'Z-score and Bollinger %B from price statistics',
-            'mtf': 'H1/H4/D1 EMA analysis from candle data',
+            'mtf': 'H1/H4/D1 EMA analysis from candle data (proper OHLC aggregation)',
             'structure': 'Swing high/low detection + pivot calculations',
-            'calendar': 'Finnhub economic calendar risk assessment',
-            'confluence': 'Factor agreement analysis'
+            'calendar': 'Multi-tier economic calendar + Seasonality patterns (month/quarter-end flows)',
+            'confluence': 'Factor agreement analysis across 10 factors',
+            'options': '25-delta risk reversals + Put/Call ratios (price volatility proxy)'
         },
         'calibration_notes': {
             'score_range': '5-95 (proper differentiation)',
@@ -5122,14 +5152,14 @@ def run_system_audit():
 @app.route('/api-info')
 def api_info():
     return jsonify({
-        'name': 'MEGA FOREX v8.3 PRO',
+        'name': 'MEGA FOREX v8.4 PRO - Institutional Grade',
         'version': '8.4',
         'status': 'operational',
         'pairs': len(FOREX_PAIRS),
         'factors': len(FACTOR_WEIGHTS),
         'features': [
             '45 Forex Pairs',
-            '9-Factor Weighted Scoring (REAL DATA)',
+            '10-Factor Institutional Scoring (Options + COT + Seasonality)',
             'Multi-Source News (Finnhub + RSS)',
             'Multi-tier Data Fallbacks',
             'REAL IG Sentiment + Intermarket',
