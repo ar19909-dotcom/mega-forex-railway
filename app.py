@@ -307,14 +307,19 @@ CACHE_TTL = {
 }
 
 def is_cache_valid(cache_type, custom_ttl=None):
-    """Check if cache is still valid"""
-    if cache_type not in cache:
+    """Check if cache is still valid (thread-safe)"""
+    try:
+        if cache_type not in cache:
+            return False
+        cache_entry = cache.get(cache_type, {})
+        timestamp = cache_entry.get('timestamp')
+        if timestamp is None:
+            return False
+        elapsed = (datetime.now() - timestamp).total_seconds()
+        ttl = custom_ttl if custom_ttl else CACHE_TTL.get(cache_type, 300)
+        return elapsed < ttl
+    except (KeyError, TypeError, AttributeError):
         return False
-    if cache[cache_type]['timestamp'] is None:
-        return False
-    elapsed = (datetime.now() - cache[cache_type]['timestamp']).total_seconds()
-    ttl = custom_ttl if custom_ttl else CACHE_TTL.get(cache_type, 300)
-    return elapsed < ttl
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # SQLITE DATABASE - TRADE JOURNAL & SIGNAL HISTORY
@@ -2917,13 +2922,18 @@ def get_options_positioning(pair):
     # NOTE: CME options data requires special API access or scraping
     # For now, we'll use a proxy method based on market structure
 
-    # Check cache
+    # Check cache (thread-safe)
     cache_key = f'options_{pair}'
     timestamp_key = f'{cache_key}_timestamp'
-    if cache_key in cache and timestamp_key in cache:
-        elapsed = (datetime.now() - cache[timestamp_key]).total_seconds()
-        if elapsed < 1800:  # 30-min cache
-            return cache[cache_key]
+    try:
+        if cache_key in cache and timestamp_key in cache:
+            cached_timestamp = cache.get(timestamp_key)
+            if cached_timestamp:
+                elapsed = (datetime.now() - cached_timestamp).total_seconds()
+                if elapsed < 1800:  # 30-min cache
+                    return cache.get(cache_key)
+    except (KeyError, TypeError, AttributeError):
+        pass  # Cache miss, continue to fetch
 
     try:
         # METHOD 1: Try to fetch from CME DataMine API (if available)
@@ -3019,13 +3029,18 @@ def get_cot_data(currency):
     if currency not in cftc_codes:
         return {'success': False, 'net_positioning': 0, 'note': 'No COT data for this currency'}
 
-    # Check cache (COT updates weekly, so cache for 1 day)
+    # Check cache (COT updates weekly, so cache for 1 day) - thread-safe
     cache_key = f'cot_{currency}'
     timestamp_key = f'{cache_key}_timestamp'
-    if cache_key in cache and timestamp_key in cache:
-        elapsed = (datetime.now() - cache[timestamp_key]).total_seconds()
-        if elapsed < 86400:  # 24-hour cache
-            return cache[cache_key]
+    try:
+        if cache_key in cache and timestamp_key in cache:
+            cached_timestamp = cache.get(timestamp_key)
+            if cached_timestamp:
+                elapsed = (datetime.now() - cached_timestamp).total_seconds()
+                if elapsed < 86400:  # 24-hour cache
+                    return cache.get(cache_key)
+    except (KeyError, TypeError, AttributeError):
+        pass  # Cache miss, continue to fetch
 
     try:
         # CFTC publishes COT reports in JSON format
@@ -3259,8 +3274,8 @@ def analyze_intermarket(pair):
 # ═══════════════════════════════════════════════════════════════════════════════
 def calculate_factor_scores(pair):
     """
-    Calculate all 9 factor scores for a pair - FIXED SCORING v2
-    
+    Calculate all 10 factor scores for a pair - FIXED SCORING v2
+
     CHANGES:
     1. Expanded score ranges (15-90 instead of 40-70)
     2. More aggressive scoring for extreme conditions
@@ -3765,7 +3780,7 @@ def calculate_factor_scores(pair):
         'details': {
             'bullish_factors': bullish_factors,
             'bearish_factors': bearish_factors,
-            'neutral_factors': 9 - bullish_factors - bearish_factors,  # 9 factors now (added options)
+            'neutral_factors': 10 - bullish_factors - bearish_factors,  # 10 factors total (v8.4 PRO)
             'confluence_strength': 'STRONG' if abs(conf_score - 50) > 25 else 'MODERATE' if abs(conf_score - 50) > 10 else 'WEAK'
         }
     }
@@ -4215,7 +4230,7 @@ def generate_signal(pair):
         factors_available = sum(1 for f in factors.values() if f['score'] != 50)
         
         # ─────────────────────────────────────────────────────────────────────────
-        # COMPREHENSIVE DATA QUALITY ASSESSMENT (ALL 9 FACTORS)
+        # COMPREHENSIVE DATA QUALITY ASSESSMENT (ALL 10 FACTORS)
         # ─────────────────────────────────────────────────────────────────────────
         data_quality_checks = {
             'rate_source': rate.get('source', 'UNKNOWN') in ['POLYGON', 'LIVE', 'API'],
@@ -5184,14 +5199,19 @@ def get_rates_endpoint():
 def get_signals():
     try:
         signals = []
-        
+
         with ThreadPoolExecutor(max_workers=10) as executor:
             future_to_pair = {executor.submit(generate_signal, pair): pair for pair in FOREX_PAIRS}
-            
+
             for future in as_completed(future_to_pair):
-                signal = future.result()
-                if signal:
-                    signals.append(signal)
+                try:
+                    signal = future.result()
+                    if signal:
+                        signals.append(signal)
+                except Exception as e:
+                    # Log but don't fail entire request if one pair fails
+                    pair = future_to_pair.get(future, 'UNKNOWN')
+                    logger.debug(f"Signal generation failed for {pair}: {e}")
         
         # Sort by SIGNAL STRENGTH (best trades first regardless of direction)
         # Strongest signals = furthest from 50 (neutral)
