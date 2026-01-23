@@ -59,8 +59,12 @@ app = Flask(__name__, template_folder='templates', static_folder='static')
 # ═══════════════════════════════════════════════════════════════════════════════
 @app.route('/')
 def serve_dashboard():
-    """Serve the main dashboard"""
-    return render_template('index.html')
+    """Serve the main dashboard with no-cache headers to force fresh reload"""
+    response = make_response(render_template('index.html'))
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
 
 @app.route('/test-calendar')
 def test_calendar():

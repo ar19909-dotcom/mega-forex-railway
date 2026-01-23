@@ -8,7 +8,11 @@
       "Bash(git ls-tree:*)",
       "Bash(Source: WEEKLY_SCHEDULE)",
       "Bash(83 events\"\n\nTEST RESULTS:\n✅ Calendar returns SCHEDULED with 83 events\n✅ Force refresh clears old cache\n✅ Frontend displays correct data quality\n✅ Auto-refreshes when Calendar tab is clicked\n✅ No more FALLBACK status shown to users\n\nVERIFIED WORKING 100%\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(tasklist:*)",
+      "Bash(findstr:*)",
+      "Read(//c/Users/DELL/Mega Forex/mega-forex-pwa/**)",
+      "Bash(xargs:*)"
     ]
   }
 }

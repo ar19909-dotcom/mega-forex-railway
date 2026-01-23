@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>MEGA FOREX v8.3 PRO - Professional Trading Dashboard</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <style>
@@ -1830,9 +1833,18 @@
         // Load Calendar
         async function loadCalendar(forceRefresh = false) {
             try {
-                // Add refresh parameter to bypass cache if needed
-                const url = forceRefresh ? `${API_BASE}/calendar?refresh=true` : `${API_BASE}/calendar`;
-                const response = await fetch(url);
+                // ALWAYS add timestamp to bypass browser cache
+                const timestamp = new Date().getTime();
+                const url = forceRefresh
+                    ? `${API_BASE}/calendar?refresh=true&t=${timestamp}`
+                    : `${API_BASE}/calendar?t=${timestamp}`;
+                const response = await fetch(url, {
+                    cache: 'no-store',
+                    headers: {
+                        'Cache-Control': 'no-cache',
+                        'Pragma': 'no-cache'
+                    }
+                });
                 const data = await response.json();
                 
                 if (data.success) {
