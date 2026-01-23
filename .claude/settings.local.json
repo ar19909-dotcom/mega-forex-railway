@@ -12,7 +12,10 @@
       "Bash(tasklist:*)",
       "Bash(findstr:*)",
       "Read(//c/Users/DELL/Mega Forex/mega-forex-pwa/**)",
-      "Bash(xargs:*)"
+      "Bash(xargs:*)",
+      "Bash(timeout:*)",
+      "Bash(dir:*)",
+      "Bash(git reset:*)"
     ]
   }
 }

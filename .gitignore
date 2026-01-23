@@ -65,3 +65,5 @@ factor_weights.json
 # Don't upload large files
 *.csv
 *.xlsx
+audit_output.json
+audit_test.json
