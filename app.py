@@ -275,7 +275,7 @@ cache = {
     'rates': {'data': {}, 'timestamp': None},
     'candles': {'data': {}, 'timestamp': None},
     'news': {'data': [], 'timestamp': None},
-    'calendar': {'data': [], 'timestamp': None},
+    'calendar': {'data': None, 'timestamp': None},  # Start with None to force fresh fetch
     'fundamental': {'data': {}, 'timestamp': None},
     'intermarket_data': {'data': {}, 'timestamp': None}
 }
@@ -284,7 +284,7 @@ CACHE_TTL = {
     'rates': 30,      # 30 seconds
     'candles': 300,   # 5 minutes
     'news': 600,      # 10 minutes
-    'calendar': 3600, # 1 hour
+    'calendar': 900,  # 15 minutes (was 1 hour - too long)
     'fundamental': 3600,
     'intermarket_data': 300  # 5 minutes
 }
@@ -4506,6 +4506,42 @@ def reset_weights():
     }
     save_weights(FACTOR_WEIGHTS)
     return jsonify({'success': True, 'weights': FACTOR_WEIGHTS})
+
+@app.route('/clear-cache')
+def clear_cache_endpoint():
+    """Clear all caches to force fresh data fetch"""
+    global cache
+    cache = {
+        'rates': {'data': {}, 'timestamp': None},
+        'candles': {'data': {}, 'timestamp': None},
+        'news': {'data': [], 'timestamp': None},
+        'calendar': {'data': None, 'timestamp': None},
+        'fundamental': {'data': {}, 'timestamp': None},
+        'intermarket_data': {'data': {}, 'timestamp': None}
+    }
+    return jsonify({
+        'success': True, 
+        'message': 'All caches cleared',
+        'timestamp': datetime.now().isoformat()
+    })
+
+@app.route('/clear-calendar-cache')
+def clear_calendar_cache():
+    """Clear only calendar cache to force fresh calendar fetch"""
+    global cache
+    cache['calendar'] = {'data': None, 'timestamp': None}
+    
+    # Immediately fetch fresh calendar
+    fresh_calendar = get_economic_calendar()
+    
+    return jsonify({
+        'success': True,
+        'message': 'Calendar cache cleared and refreshed',
+        'data_quality': fresh_calendar.get('data_quality', 'UNKNOWN'),
+        'source': fresh_calendar.get('source', 'UNKNOWN'),
+        'events_count': len(fresh_calendar.get('events', [])),
+        'timestamp': datetime.now().isoformat()
+    })
 
 @app.route('/audit')
 def audit_endpoint():
