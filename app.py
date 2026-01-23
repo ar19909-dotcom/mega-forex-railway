@@ -43,6 +43,7 @@ from functools import lru_cache, wraps
 from dotenv import load_dotenv
 import numpy as np
 from collections import defaultdict
+import threading
 
 # Load environment variables
 load_dotenv()
@@ -297,6 +298,9 @@ cache = {
     'intermarket_data': {'data': {}, 'timestamp': None}
 }
 
+# Thread lock for cache access (prevents race conditions in ThreadPoolExecutor)
+cache_lock = threading.Lock()
+
 CACHE_TTL = {
     'rates': 30,      # 30 seconds
     'candles': 300,   # 5 minutes
@@ -307,19 +311,20 @@ CACHE_TTL = {
 }
 
 def is_cache_valid(cache_type, custom_ttl=None):
-    """Check if cache is still valid (thread-safe)"""
-    try:
-        if cache_type not in cache:
+    """Check if cache is still valid (thread-safe with mutex lock)"""
+    with cache_lock:
+        try:
+            if cache_type not in cache:
+                return False
+            cache_entry = cache.get(cache_type, {})
+            timestamp = cache_entry.get('timestamp')
+            if timestamp is None:
+                return False
+            elapsed = (datetime.now() - timestamp).total_seconds()
+            ttl = custom_ttl if custom_ttl else CACHE_TTL.get(cache_type, 300)
+            return elapsed < ttl
+        except (KeyError, TypeError, AttributeError):
             return False
-        cache_entry = cache.get(cache_type, {})
-        timestamp = cache_entry.get('timestamp')
-        if timestamp is None:
-            return False
-        elapsed = (datetime.now() - timestamp).total_seconds()
-        ttl = custom_ttl if custom_ttl else CACHE_TTL.get(cache_type, 300)
-        return elapsed < ttl
-    except (KeyError, TypeError, AttributeError):
-        return False
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # SQLITE DATABASE - TRADE JOURNAL & SIGNAL HISTORY
@@ -839,10 +844,12 @@ def get_rate(pair):
     return None
 
 def get_all_rates():
-    """Get rates for all pairs with caching"""
-    if is_cache_valid('rates') and cache['rates']['data']:
-        return cache['rates']['data']
-    
+    """Get rates for all pairs with caching (thread-safe)"""
+    if is_cache_valid('rates'):
+        with cache_lock:
+            if cache['rates']['data']:
+                return cache['rates']['data']
+
     rates = {}
     with ThreadPoolExecutor(max_workers=10) as executor:
         future_to_pair = {executor.submit(get_rate, pair): pair for pair in FOREX_PAIRS}
@@ -854,9 +861,10 @@ def get_all_rates():
                     rates[pair] = result
             except Exception as e:
                 logger.debug(f"Rate fetch error for {pair}: {e}")
-    
-    cache['rates']['data'] = rates
-    cache['rates']['timestamp'] = datetime.now()
+
+    with cache_lock:
+        cache['rates']['data'] = rates
+        cache['rates']['timestamp'] = datetime.now()
     return rates
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1786,9 +1794,11 @@ def get_rss_forex_news():
     return articles
 
 def get_finnhub_news():
-    """Fetch forex news from Finnhub + RSS feeds for comprehensive coverage"""
-    if is_cache_valid('news') and cache['news']['data']:
-        return cache['news']['data']
+    """Fetch forex news from Finnhub + RSS feeds for comprehensive coverage (thread-safe)"""
+    if is_cache_valid('news'):
+        with cache_lock:
+            if cache['news']['data']:
+                return cache['news']['data']
     
     all_articles = []
     sources_status = {}
@@ -1842,9 +1852,10 @@ def get_finnhub_news():
         'count': len(unique_articles),
         'sources': sources_status
     }
-    
-    cache['news']['data'] = result
-    cache['news']['timestamp'] = datetime.now()
+
+    with cache_lock:
+        cache['news']['data'] = result
+        cache['news']['timestamp'] = datetime.now()
     return result
 
 def analyze_sentiment(pair):
@@ -2595,11 +2606,13 @@ def get_fallback_calendar():
     return events
 
 def get_economic_calendar():
-    """Fetch economic calendar from multiple sources - tracks data quality"""
-    if is_cache_valid('calendar') and cache['calendar']['data']:
-        cached = cache['calendar']['data']
-        # Return cached data with its quality flag
-        return cached if isinstance(cached, dict) else {'events': cached, 'data_quality': 'CACHED'}
+    """Fetch economic calendar from multiple sources - tracks data quality (thread-safe)"""
+    if is_cache_valid('calendar'):
+        with cache_lock:
+            if cache['calendar']['data']:
+                cached = cache['calendar']['data']
+                # Return cached data with its quality flag
+                return cached if isinstance(cached, dict) else {'events': cached, 'data_quality': 'CACHED'}
 
     # SOURCE 1: Try Finnhub first (best quality - but needs paid subscription for calendar)
     if FINNHUB_API_KEY:
@@ -2635,8 +2648,9 @@ def get_economic_calendar():
                         'source': 'FINNHUB'
                     }
 
-                    cache['calendar']['data'] = result
-                    cache['calendar']['timestamp'] = datetime.now()
+                    with cache_lock:
+                        cache['calendar']['data'] = result
+                        cache['calendar']['timestamp'] = datetime.now()
                     logger.info(f"✓ Using Finnhub economic calendar (REAL) - {len(events)} events")
                     return result
                 else:
@@ -2648,8 +2662,9 @@ def get_economic_calendar():
     logger.info("📅 Trying Forex Factory calendar...")
     forexfactory_cal = get_forexfactory_calendar()
     if forexfactory_cal and len(forexfactory_cal.get('events', [])) > 0:
-        cache['calendar']['data'] = forexfactory_cal
-        cache['calendar']['timestamp'] = datetime.now()
+        with cache_lock:
+            cache['calendar']['data'] = forexfactory_cal
+            cache['calendar']['timestamp'] = datetime.now()
         logger.info(f"✓ Using Forex Factory calendar (REAL) - {len(forexfactory_cal['events'])} events")
         return forexfactory_cal
 
@@ -2657,8 +2672,9 @@ def get_economic_calendar():
     logger.info("📅 Trying MyFxBook calendar...")
     myfxbook_cal = get_myfxbook_calendar()
     if myfxbook_cal and len(myfxbook_cal.get('events', [])) > 0:
-        cache['calendar']['data'] = myfxbook_cal
-        cache['calendar']['timestamp'] = datetime.now()
+        with cache_lock:
+            cache['calendar']['data'] = myfxbook_cal
+            cache['calendar']['timestamp'] = datetime.now()
         logger.info(f"✓ Using MyFxBook calendar (REAL) - {len(myfxbook_cal['events'])} events")
         return myfxbook_cal
 
@@ -2666,8 +2682,9 @@ def get_economic_calendar():
     logger.info("📅 Trying Trading Economics calendar...")
     tradingeconomics_cal = get_tradingeconomics_calendar()
     if tradingeconomics_cal and len(tradingeconomics_cal.get('events', [])) > 0:
-        cache['calendar']['data'] = tradingeconomics_cal
-        cache['calendar']['timestamp'] = datetime.now()
+        with cache_lock:
+            cache['calendar']['data'] = tradingeconomics_cal
+            cache['calendar']['timestamp'] = datetime.now()
         logger.info(f"✓ Using Trading Economics calendar (REAL) - {len(tradingeconomics_cal['events'])} events")
         return tradingeconomics_cal
 
@@ -2675,8 +2692,9 @@ def get_economic_calendar():
     logger.info("📅 Trying Investing.com RSS...")
     investing_cal = get_investing_calendar()
     if investing_cal and len(investing_cal.get('events', [])) > 0:
-        cache['calendar']['data'] = investing_cal
-        cache['calendar']['timestamp'] = datetime.now()
+        with cache_lock:
+            cache['calendar']['data'] = investing_cal
+            cache['calendar']['timestamp'] = datetime.now()
         logger.info(f"✓ Using Investing.com calendar (REAL) - {len(investing_cal['events'])} events")
         return investing_cal
 
@@ -2684,8 +2702,9 @@ def get_economic_calendar():
     logger.info("📅 Trying FXStreet RSS...")
     fxstreet_cal = get_fxstreet_calendar()
     if fxstreet_cal and len(fxstreet_cal.get('events', [])) > 0:
-        cache['calendar']['data'] = fxstreet_cal
-        cache['calendar']['timestamp'] = datetime.now()
+        with cache_lock:
+            cache['calendar']['data'] = fxstreet_cal
+            cache['calendar']['timestamp'] = datetime.now()
         logger.info(f"✓ Using FXStreet RSS calendar (REAL) - {len(fxstreet_cal['events'])} events")
         return fxstreet_cal
 
@@ -2693,8 +2712,9 @@ def get_economic_calendar():
     logger.info("📅 Trying DailyFX RSS...")
     dailyfx_cal = get_dailyfx_calendar()
     if dailyfx_cal and len(dailyfx_cal.get('events', [])) > 0:
-        cache['calendar']['data'] = dailyfx_cal
-        cache['calendar']['timestamp'] = datetime.now()
+        with cache_lock:
+            cache['calendar']['data'] = dailyfx_cal
+            cache['calendar']['timestamp'] = datetime.now()
         logger.info(f"✓ Using DailyFX RSS calendar (REAL) - {len(dailyfx_cal['events'])} events")
         return dailyfx_cal
     
@@ -2709,8 +2729,9 @@ def get_economic_calendar():
             'data_quality': 'SCHEDULED',  # Real schedule - events happen at these times
             'source': 'WEEKLY_SCHEDULE'
         }
-        cache['calendar']['data'] = result
-        cache['calendar']['timestamp'] = datetime.now()
+        with cache_lock:
+            cache['calendar']['data'] = result
+            cache['calendar']['timestamp'] = datetime.now()
         logger.info(f"✓ Using weekly schedule calendar (SCHEDULED) - {len(weekly_events)} events")
         return result
 
@@ -2723,8 +2744,9 @@ def get_economic_calendar():
             'data_quality': 'FALLBACK',
             'source': 'ENHANCED_TEMPLATE'
         }
-        cache['calendar']['data'] = result
-        cache['calendar']['timestamp'] = datetime.now()
+        with cache_lock:
+            cache['calendar']['data'] = result
+            cache['calendar']['timestamp'] = datetime.now()
         logger.info(f"✓ Using enhanced fallback calendar - {len(fallback_events)} events")
         return result
 
@@ -2818,10 +2840,12 @@ def get_fred_data(series_id):
     return None
 
 def get_fundamental_data():
-    """Get fundamental economic data"""
-    if is_cache_valid('fundamental') and cache['fundamental']['data']:
-        return cache['fundamental']['data']
-    
+    """Get fundamental economic data (thread-safe)"""
+    if is_cache_valid('fundamental'):
+        with cache_lock:
+            if cache['fundamental']['data']:
+                return cache['fundamental']['data']
+
     data = {
         'us_rate': get_fred_data('FEDFUNDS') or 5.25,
         'us_gdp': get_fred_data('GDP') or 27000,
@@ -2829,9 +2853,10 @@ def get_fundamental_data():
         'dxy': get_fred_data('DTWEXBGS') or 104,
         'us_10y': get_fred_data('DGS10') or 4.5
     }
-    
-    cache['fundamental']['data'] = data
-    cache['fundamental']['timestamp'] = datetime.now()
+
+    with cache_lock:
+        cache['fundamental']['data'] = data
+        cache['fundamental']['timestamp'] = datetime.now()
     return data
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -2839,14 +2864,17 @@ def get_fundamental_data():
 # ═══════════════════════════════════════════════════════════════════════════════
 def get_real_intermarket_data():
     """
-    Fetch REAL intermarket data:
+    Fetch REAL intermarket data (thread-safe):
     1. Gold (XAU/USD) - Risk sentiment indicator
     2. US 10Y Treasury Yield - Interest rate differential
     3. DXY (Dollar Index) - USD strength
     4. Oil prices - Commodity currency correlation
     """
-    if is_cache_valid('intermarket', 300) and cache.get('intermarket_data', {}).get('data'):
-        return cache['intermarket_data']['data']
+    if is_cache_valid('intermarket', 300):
+        with cache_lock:
+            data = cache.get('intermarket_data', {}).get('data')
+            if data:
+                return data
     
     intermarket = {
         'gold': None,
@@ -2888,12 +2916,13 @@ def get_real_intermarket_data():
     real_count = sum(1 for v in [intermarket['gold'], intermarket['dxy'], intermarket['us_10y'], intermarket['oil']] if v is not None)
     if real_count >= 2:
         intermarket['data_quality'] = 'REAL'
-    
-    # Cache the data
-    if 'intermarket_data' not in cache:
-        cache['intermarket_data'] = {}
-    cache['intermarket_data']['data'] = intermarket
-    cache['intermarket_data']['timestamp'] = datetime.now()
+
+    # Cache the data (thread-safe)
+    with cache_lock:
+        if 'intermarket_data' not in cache:
+            cache['intermarket_data'] = {}
+        cache['intermarket_data']['data'] = intermarket
+        cache['intermarket_data']['timestamp'] = datetime.now()
     
     return intermarket
 
@@ -2922,18 +2951,19 @@ def get_options_positioning(pair):
     # NOTE: CME options data requires special API access or scraping
     # For now, we'll use a proxy method based on market structure
 
-    # Check cache (thread-safe)
+    # Check cache (thread-safe with mutex lock)
     cache_key = f'options_{pair}'
     timestamp_key = f'{cache_key}_timestamp'
-    try:
-        if cache_key in cache and timestamp_key in cache:
-            cached_timestamp = cache.get(timestamp_key)
-            if cached_timestamp:
-                elapsed = (datetime.now() - cached_timestamp).total_seconds()
-                if elapsed < 1800:  # 30-min cache
-                    return cache.get(cache_key)
-    except (KeyError, TypeError, AttributeError):
-        pass  # Cache miss, continue to fetch
+    with cache_lock:
+        try:
+            if cache_key in cache and timestamp_key in cache:
+                cached_timestamp = cache.get(timestamp_key)
+                if cached_timestamp:
+                    elapsed = (datetime.now() - cached_timestamp).total_seconds()
+                    if elapsed < 1800:  # 30-min cache
+                        return cache.get(cache_key)
+        except (KeyError, TypeError, AttributeError):
+            pass  # Cache miss, continue to fetch
 
     try:
         # METHOD 1: Try to fetch from CME DataMine API (if available)
@@ -2991,9 +3021,10 @@ def get_options_positioning(pair):
                     'note': 'Calculated from price volatility structure'
                 }
 
-                # Cache it
-                cache[cache_key] = result
-                cache[f'{cache_key}_timestamp'] = datetime.now()
+                # Cache it (thread-safe)
+                with cache_lock:
+                    cache[cache_key] = result
+                    cache[f'{cache_key}_timestamp'] = datetime.now()
 
                 return result
 
@@ -3029,18 +3060,19 @@ def get_cot_data(currency):
     if currency not in cftc_codes:
         return {'success': False, 'net_positioning': 0, 'note': 'No COT data for this currency'}
 
-    # Check cache (COT updates weekly, so cache for 1 day) - thread-safe
+    # Check cache (COT updates weekly, so cache for 1 day) - thread-safe with mutex lock
     cache_key = f'cot_{currency}'
     timestamp_key = f'{cache_key}_timestamp'
-    try:
-        if cache_key in cache and timestamp_key in cache:
-            cached_timestamp = cache.get(timestamp_key)
-            if cached_timestamp:
-                elapsed = (datetime.now() - cached_timestamp).total_seconds()
-                if elapsed < 86400:  # 24-hour cache
-                    return cache.get(cache_key)
-    except (KeyError, TypeError, AttributeError):
-        pass  # Cache miss, continue to fetch
+    with cache_lock:
+        try:
+            if cache_key in cache and timestamp_key in cache:
+                cached_timestamp = cache.get(timestamp_key)
+                if cached_timestamp:
+                    elapsed = (datetime.now() - cached_timestamp).total_seconds()
+                    if elapsed < 86400:  # 24-hour cache
+                        return cache.get(cache_key)
+        except (KeyError, TypeError, AttributeError):
+            pass  # Cache miss, continue to fetch
 
     try:
         # CFTC publishes COT reports in JSON format
@@ -3059,8 +3091,10 @@ def get_cot_data(currency):
             'note': 'COT data integration pending - using price trend proxy'
         }
 
-        cache[cache_key] = result
-        cache[f'{cache_key}_timestamp'] = datetime.now()
+        # Cache it (thread-safe)
+        with cache_lock:
+            cache[cache_key] = result
+            cache[f'{cache_key}_timestamp'] = datetime.now()
 
         return result
 
@@ -5257,8 +5291,9 @@ def get_calendar():
 
     if force_refresh:
         logger.info("📅 Calendar: Force refresh requested - clearing cache")
-        cache['calendar']['timestamp'] = None
-        cache['calendar']['data'] = None
+        with cache_lock:
+            cache['calendar']['timestamp'] = None
+            cache['calendar']['data'] = None
 
     calendar_data = get_economic_calendar()
 
@@ -5337,16 +5372,17 @@ def reset_weights():
 
 @app.route('/clear-cache')
 def clear_cache_endpoint():
-    """Clear all caches to force fresh data fetch"""
+    """Clear all caches to force fresh data fetch (thread-safe)"""
     global cache
-    cache = {
-        'rates': {'data': {}, 'timestamp': None},
-        'candles': {'data': {}, 'timestamp': None},
-        'news': {'data': [], 'timestamp': None},
-        'calendar': {'data': None, 'timestamp': None},
-        'fundamental': {'data': {}, 'timestamp': None},
-        'intermarket_data': {'data': {}, 'timestamp': None}
-    }
+    with cache_lock:
+        cache = {
+            'rates': {'data': {}, 'timestamp': None},
+            'candles': {'data': {}, 'timestamp': None},
+            'news': {'data': [], 'timestamp': None},
+            'calendar': {'data': None, 'timestamp': None},
+            'fundamental': {'data': {}, 'timestamp': None},
+            'intermarket_data': {'data': {}, 'timestamp': None}
+        }
     return jsonify({
         'success': True, 
         'message': 'All caches cleared',
