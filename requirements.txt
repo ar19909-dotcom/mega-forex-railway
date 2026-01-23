@@ -1,3 +1,5 @@
+# MEGA FOREX v8.4 PRO - Production Dependencies
+# Last updated: 2026-01-24 - Thread-safe cache implementation
 flask==3.0.0
 requests==2.31.0
 python-dotenv==1.0.0
