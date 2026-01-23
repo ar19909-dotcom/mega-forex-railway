@@ -12,15 +12,16 @@
 ║  ✓ DATA QUALITY INDICATORS (v8.4 - 100% REAL DATA)                           ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
 ║  SCORING METHODOLOGY: Audited for Swing Trading (2-10 day holds)             ║
-║  - Technical (24%): RSI, MACD, ADX from real candle data                     ║
-║  - Fundamental (18%): Interest rate differentials                            ║
-║  - Sentiment (13%): IG positioning + news sentiment                          ║
-║  - Intermarket (11%): DXY, Gold, Yields correlations                         ║
+║  - Technical (22%): RSI, MACD, ADX from real candle data                     ║
+║  - Fundamental (16%): Interest rate differentials                            ║
+║  - Sentiment (13%): IG positioning + news + COT data                         ║
+║  - Intermarket (10%): DXY, Gold, Yields correlations                         ║
 ║  - MTF (10%): Multi-timeframe EMA alignment                                  ║
-║  - Quantitative (8%): Z-Score, Bollinger %B                                  ║
+║  - Quantitative (7%): Z-Score, Bollinger %B                                  ║
 ║  - Structure (7%): Support/Resistance, pivots                                ║
-║  - Calendar (5%): Economic event risk                                        ║
-║  - Confluence (4%): Factor agreement bonus                                   ║
+║  - Calendar (6%): Economic event risk + seasonality                          ║
+║  - Options (6%): 25-delta risk reversals, P/C ratios                         ║
+║  - Confluence (3%): Factor agreement bonus                                   ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 """
 
@@ -2917,8 +2918,11 @@ def get_options_positioning(pair):
 
     # Check cache
     cache_key = f'options_{pair}'
-    if is_cache_valid(cache_key, 1800):  # 30-min cache
-        return cache.get(cache_key, {})
+    timestamp_key = f'{cache_key}_timestamp'
+    if cache_key in cache and timestamp_key in cache:
+        elapsed = (datetime.now() - cache[timestamp_key]).total_seconds()
+        if elapsed < 1800:  # 30-min cache
+            return cache[cache_key]
 
     try:
         # METHOD 1: Try to fetch from CME DataMine API (if available)
@@ -3016,8 +3020,11 @@ def get_cot_data(currency):
 
     # Check cache (COT updates weekly, so cache for 1 day)
     cache_key = f'cot_{currency}'
-    if is_cache_valid(cache_key, 86400):  # 24-hour cache
-        return cache.get(cache_key, {})
+    timestamp_key = f'{cache_key}_timestamp'
+    if cache_key in cache and timestamp_key in cache:
+        elapsed = (datetime.now() - cache[timestamp_key]).total_seconds()
+        if elapsed < 86400:  # 24-hour cache
+            return cache[cache_key]
 
     try:
         # CFTC publishes COT reports in JSON format
@@ -3687,7 +3694,7 @@ def calculate_factor_scores(pair):
 
         # Combine (70% RR, 30% P/C)
         options_score = (rr_score * 0.7) + (pc_score * 0.3)
-        options_quality = 'REAL'
+        options_quality = options_data.get('data_quality', 'REAL')  # Use actual data quality from source
 
         factors['options'] = {
             'score': round(options_score, 1),
@@ -3697,7 +3704,8 @@ def calculate_factor_scores(pair):
                 'risk_reversal': round(risk_reversal, 2),
                 'put_call_ratio': round(put_call_ratio, 2),
                 'iv_skew': round(implied_vol_skew, 2),
-                'interpretation': 'Calls expensive' if risk_reversal > 0 else 'Puts expensive' if risk_reversal < 0 else 'Balanced'
+                'interpretation': 'Calls expensive' if risk_reversal > 0 else 'Puts expensive' if risk_reversal < 0 else 'Balanced',
+                'source': options_data.get('note', 'Calculated from volatility structure')
             }
         }
     else:
@@ -3716,10 +3724,10 @@ def calculate_factor_scores(pair):
         factors['options'] = {
             'score': round(options_score, 1),
             'signal': 'BULLISH' if options_score >= 58 else 'BEARISH' if options_score <= 42 else 'NEUTRAL',
-            'data_quality': 'ESTIMATED',
+            'data_quality': 'PROXY',  # Using real RSI data as proxy
             'details': {
-                'note': 'Using price momentum proxy - CME data not available',
-                'proxy_basis': 'RSI trend analysis'
+                'note': 'Using RSI momentum proxy - Options volatility data not available',
+                'proxy_basis': 'RSI trend analysis from real price data'
             }
         }
 
@@ -4495,7 +4503,7 @@ def run_system_audit():
     """Run comprehensive system audit with complete scoring methodology"""
     audit = {
         'timestamp': datetime.now().isoformat(),
-        'version': '8.3.2',
+        'version': '8.4 PRO',
         'api_status': {},
         'data_quality': {},
         'score_validation': {},
@@ -4508,7 +4516,7 @@ def run_system_audit():
     # SCORING METHODOLOGY DOCUMENTATION
     # ═══════════════════════════════════════════════════════════════════════════
     audit['scoring_methodology'] = {
-        'version': '8.3.2 - TRUE DATA SCORING',
+        'version': '8.4 PRO - INSTITUTIONAL GRADE',
         'description': 'Multi-factor weighted scoring system with data quality tracking',
         'score_range': {
             'min': 5,
@@ -5115,7 +5123,7 @@ def run_system_audit():
 def api_info():
     return jsonify({
         'name': 'MEGA FOREX v8.3 PRO',
-        'version': '8.3',
+        'version': '8.4',
         'status': 'operational',
         'pairs': len(FOREX_PAIRS),
         'factors': len(FACTOR_WEIGHTS),
@@ -5163,7 +5171,7 @@ def get_signals():
             'success': True,
             'count': len(signals),
             'timestamp': datetime.now().isoformat(),
-            'version': '8.3',
+            'version': '8.4',
             'signals': signals
         })
     
@@ -5759,11 +5767,11 @@ def is_port_available(port):
 # INITIALIZE DATABASE ON STARTUP (for Railway)
 # ═══════════════════════════════════════════════════════════════════════════════
 init_database()
-logger.info("🚀 MEGA FOREX v8.3 PRO initialized")
+logger.info("🚀 MEGA FOREX v8.4 PRO - INSTITUTIONAL GRADE initialized")
 
 if __name__ == '__main__':
     print("=" * 70)
-    print("         MEGA FOREX v8.3 PRO - PRODUCTION TRADING SYSTEM")
+    print("      MEGA FOREX v8.4 PRO - INSTITUTIONAL GRADE SYSTEM")
     print("=" * 70)
     print(f"  Pairs:           {len(FOREX_PAIRS)}")
     print(f"  Factors:         {len(FACTOR_WEIGHTS)}")
@@ -5775,15 +5783,15 @@ if __name__ == '__main__':
     print(f"  IG Markets API:  {'✓ (' + IG_ACC_TYPE + ')' if all([IG_API_KEY, IG_USERNAME, IG_PASSWORD]) else '✗'}")
     print(f"  ExchangeRate:    ✓ (Free, no key needed)")
     print("=" * 70)
-    print("  v8.3 PRO FEATURES:")
-    print("    ✨ 9-Factor Weighted Scoring (REAL DATA)")
+    print("  v8.4 PRO FEATURES:")
+    print("    ✨ 10-Factor Institutional Scoring (Options + COT + Seasonality)")
     print("    ✨ 16 Candlestick Pattern Recognition")
     print("    ✨ SQLite Trade Journal & Signal History")
     print("    ✨ Performance Tracking & Analytics")
     print("    ✨ Smart Dynamic SL/TP (Variable ATR)")
-    print("    ✨ REAL IG Client Sentiment + Intermarket")
+    print("    ✨ REAL IG Client Sentiment + Institutional COT Data")
     print("    ✨ Complete Backtesting Module")
-    print("    ✨ Multi-Source News (Finnhub + RSS)")
+    print("    ✨ Multi-Source News + Economic Calendar")
     print("=" * 70)
     
     # Use PORT from environment (Railway) or default to 5000
