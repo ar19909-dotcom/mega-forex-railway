@@ -1884,12 +1884,16 @@
                         const dataQuality = data.data_quality || 'UNKNOWN';
                         const dataSource = data.source || 'UNKNOWN';
                         const qualityColor = dataQuality === 'REAL' ? 'var(--accent-green)' : 
+                                           dataQuality === 'SCHEDULED' ? '#f59e0b' :  // Amber - real schedule
                                            dataQuality === 'FALLBACK' ? 'var(--accent-red)' : '#f59e0b';
-                        const qualityIcon = dataQuality === 'REAL' ? '✓' : dataQuality === 'FALLBACK' ? '⚠' : '~';
+                        const qualityIcon = dataQuality === 'REAL' ? '✓' : 
+                                          dataQuality === 'SCHEDULED' ? '📅' : 
+                                          dataQuality === 'FALLBACK' ? '⚠' : '~';
+                        const qualityLabel = dataQuality === 'SCHEDULED' ? 'LIVE SCHEDULE' : dataQuality;
                         
                         const dataSourceBadge = `
                             <div style="margin-bottom: 1rem; padding: 0.5rem 1rem; background: var(--bg-tertiary); border-radius: 8px; display: inline-flex; align-items: center; gap: 0.5rem;">
-                                <span style="color: ${qualityColor}; font-weight: 600;">${qualityIcon} ${dataQuality}</span>
+                                <span style="color: ${qualityColor}; font-weight: 600;">${qualityIcon} ${qualityLabel}</span>
                                 <span style="color: var(--text-muted);">|</span>
                                 <span style="color: var(--text-secondary);">Source: ${dataSource}</span>
                                 <span style="color: var(--text-muted);">|</span>
@@ -2155,14 +2159,19 @@
                                     <tr><th>API</th><th>Status</th><th>Purpose</th><th>Details</th></tr>
                                 </thead>
                                 <tbody>
-                                    ${Object.entries(data.api_status || {}).map(([name, info]) => `
+                                    ${Object.entries(data.api_status || {}).map(([name, info]) => {
+                                        // Map SCHEDULED and FALLBACK to appropriate status classes
+                                        let statusClass = info.status === 'OK' ? 'ok' : 
+                                                         info.status === 'LIMITED' || info.status === 'SCHEDULED' ? 'limited' : 'error';
+                                        let statusLabel = info.status === 'SCHEDULED' ? 'SCHEDULED' : info.status;
+                                        return `
                                         <tr>
                                             <td style="text-transform: capitalize; font-weight: 600;">${name.replace('_', ' ')}</td>
-                                            <td><span class="status-badge ${info.status === 'OK' ? 'ok' : info.status === 'LIMITED' ? 'limited' : 'error'}">${info.status}</span></td>
+                                            <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
                                             <td style="font-size: 0.85rem; color: var(--text-secondary);">${info.purpose || '-'}</td>
-                                            <td>${info.test_rate || info.test_value || info.articles || info.sources?.join(', ') || info.error || '-'}</td>
+                                            <td>${info.data_quality || info.test_rate || info.test_value || info.articles || info.events_count || info.sources?.join(', ') || info.error || '-'}</td>
                                         </tr>
-                                    `).join('')}
+                                    `}).join('')}
                                 </tbody>
                             </table>
                         </div>
@@ -2196,17 +2205,19 @@
                                     ${Object.entries(data.score_validation?.factor_scores || {}).map(([name, f]) => {
                                         const quality = data.score_validation?.factor_data_quality?.[name] || f.data_quality || 'UNKNOWN';
                                         const qualityColor = quality === 'REAL' || quality === 'HIGH' ? 'var(--accent-green)' : 
-                                                           quality === 'MEDIUM' || quality === 'CALCULATED' ? '#f59e0b' : 
+                                                           quality === 'MEDIUM' || quality === 'CALCULATED' || quality === 'SCHEDULED' ? '#f59e0b' : 
                                                            quality === 'FALLBACK' || quality === 'NO_DATA' ? 'var(--accent-red)' : 'var(--text-muted)';
                                         const qualityIcon = quality === 'REAL' || quality === 'HIGH' ? '✓' : 
-                                                          quality === 'MEDIUM' || quality === 'CALCULATED' ? '~' : '⚠';
+                                                          quality === 'MEDIUM' || quality === 'CALCULATED' ? '~' : 
+                                                          quality === 'SCHEDULED' ? '📅' : '⚠';
+                                        const qualityLabel = quality === 'SCHEDULED' ? 'SCHEDULE' : quality;
                                         return `
                                         <tr>
                                             <td style="text-transform: capitalize;">${name}</td>
                                             <td>${data.system_info?.factor_weights?.[name] || '-'}%</td>
                                             <td style="color: ${f.score >= 58 ? 'var(--accent-green)' : f.score <= 42 ? 'var(--accent-red)' : 'var(--text-primary)'}; font-weight: 600;">${f.score}</td>
                                             <td><span class="status-badge ${f.signal === 'BULLISH' ? 'ok' : f.signal === 'BEARISH' ? 'error' : 'limited'}">${f.signal}</span></td>
-                                            <td style="color: ${qualityColor}; font-weight: 500;">${qualityIcon} ${quality}</td>
+                                            <td style="color: ${qualityColor}; font-weight: 500;">${qualityIcon} ${qualityLabel}</td>
                                         </tr>`;
                                     }).join('')}
                                 </tbody>
@@ -2214,8 +2225,9 @@
                             <div style="margin-top: 0.75rem; padding: 0.5rem; background: var(--bg-tertiary); border-radius: 6px; font-size: 0.8rem;">
                                 <strong>Data Quality Legend:</strong> 
                                 <span style="color: var(--accent-green);">✓ REAL</span> = Live API data | 
+                                <span style="color: #f59e0b;">📅 SCHEDULE</span> = Real recurring events | 
                                 <span style="color: #f59e0b;">~ MEDIUM</span> = Partial data | 
-                                <span style="color: var(--accent-red);">⚠ FALLBACK</span> = Static/estimated
+                                <span style="color: var(--accent-red);">⚠ FALLBACK</span> = Static placeholder
                             </div>
                             <div style="margin-top: 1rem; padding: 0.75rem; background: var(--bg-tertiary); border-radius: 8px;">
                                 <strong>Conviction:</strong> 
