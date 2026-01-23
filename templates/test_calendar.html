@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Calendar Test - No Cache</title>
+    <style>
+        body { font-family: Arial; padding: 20px; background: #0a0e17; color: #f3f4f6; }
+        .status { padding: 20px; margin: 20px 0; border-radius: 8px; }
+        .success { background: #10b981; }
+        .error { background: #ef4444; }
+        .warning { background: #f59e0b; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #374151; }
+        th { background: #1a1f2e; font-weight: 600; }
+        .high { color: #ef4444; }
+        .medium { color: #f59e0b; }
+        .low { color: #10b981; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Economic Calendar Test (No Cache)</h1>
+    <p>This page fetches fresh data directly from the backend with cache-busting.</p>
+
+    <div id="status" class="status">Loading...</div>
+    <div id="calendar"></div>
+
+    <script>
+        // Force no cache by adding timestamp
+        const timestamp = new Date().getTime();
+        const url = `http://localhost:5000/calendar?refresh=true&nocache=${timestamp}`;
+
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                const statusDiv = document.getElementById('status');
+                const calendarDiv = document.getElementById('calendar');
+
+                // Show status
+                const quality = data.data_quality || 'UNKNOWN';
+                const source = data.source || 'UNKNOWN';
+                const count = data.count || 0;
+
+                if (quality === 'SCHEDULED') {
+                    statusDiv.className = 'status success';
+                    statusDiv.innerHTML = `
+                        <h2>✅ SUCCESS! Backend is Working!</h2>
+                        <p><strong>Data Quality:</strong> ${quality}</p>
+                        <p><strong>Source:</strong> ${source}</p>
+                        <p><strong>Events:</strong> ${count}</p>
+                        <p><strong>Cache TTL:</strong> ${data.cache_ttl_seconds} seconds</p>
+                    `;
+                } else if (quality === 'FALLBACK') {
+                    statusDiv.className = 'status error';
+                    statusDiv.innerHTML = `
+                        <h2>❌ PROBLEM: Still showing fallback</h2>
+                        <p><strong>Data Quality:</strong> ${quality}</p>
+                        <p><strong>Source:</strong> ${source}</p>
+                        <p><strong>Events:</strong> ${count}</p>
+                    `;
+                } else {
+                    statusDiv.className = 'status warning';
+                    statusDiv.innerHTML = `
+                        <h2>⚠️ UNKNOWN STATUS</h2>
+                        <p><strong>Data Quality:</strong> ${quality}</p>
+                        <p><strong>Source:</strong> ${source}</p>
+                        <p><strong>Events:</strong> ${count}</p>
+                    `;
+                }
+
+                // Show events
+                if (data.events && data.events.length > 0) {
+                    const events = data.events.slice(0, 10); // First 10 events
+                    calendarDiv.innerHTML = `
+                        <h3>First 10 Events:</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Country</th>
+                                    <th>Impact</th>
+                                    <th>Event</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${events.map(e => `
+                                    <tr>
+                                        <td>${new Date(e.time).toLocaleString()}</td>
+                                        <td>${e.country}</td>
+                                        <td class="${e.impact}">${e.impact.toUpperCase()}</td>
+                                        <td>${e.event}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                }
+            })
+            .catch(error => {
+                document.getElementById('status').className = 'status error';
+                document.getElementById('status').innerHTML = `
+                    <h2>❌ ERROR</h2>
+                    <p>Failed to load calendar: ${error.message}</p>
+                    <p>Make sure the server is running on localhost:5000</p>
+                `;
+            });
+    </script>
+</body>
+</html>

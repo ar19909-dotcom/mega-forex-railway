@@ -62,6 +62,11 @@ def serve_dashboard():
     """Serve the main dashboard"""
     return render_template('index.html')
 
+@app.route('/test-calendar')
+def test_calendar():
+    """Test page to verify calendar is working (bypasses browser cache)"""
+    return render_template('test_calendar.html')
+
 @app.route('/health')
 def health_check():
     """Health check endpoint"""
