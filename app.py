@@ -5039,7 +5039,7 @@ def run_system_audit():
         'factor_weights': FACTOR_WEIGHTS,
         'features': [
             '45 Forex Pairs',
-            '9-Factor Weighted Scoring',
+            '10-Factor Institutional Scoring (Options + COT + Seasonality)',
             'Conviction Multiplier',
             'Z-Score Analysis',
             'Support/Resistance Detection',
