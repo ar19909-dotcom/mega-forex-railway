@@ -1314,7 +1314,7 @@
                 else if (tabName === 'technical') loadTechnical();
                 else if (tabName === 'positioning') loadPositioning();
                 else if (tabName === 'news') loadNews();
-                else if (tabName === 'calendar') loadCalendar();
+                else if (tabName === 'calendar') loadCalendar(true); // Force refresh to clear old cache
                 else if (tabName === 'weights') loadWeights();
                 else if (tabName === 'api-status') loadApiStatus();
             });
@@ -1828,9 +1828,11 @@
         }
         
         // Load Calendar
-        async function loadCalendar() {
+        async function loadCalendar(forceRefresh = false) {
             try {
-                const response = await fetch(`${API_BASE}/calendar`);
+                // Add refresh parameter to bypass cache if needed
+                const url = forceRefresh ? `${API_BASE}/calendar?refresh=true` : `${API_BASE}/calendar`;
+                const response = await fetch(url);
                 const data = await response.json();
                 
                 if (data.success) {

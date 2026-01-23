@@ -284,7 +284,7 @@ CACHE_TTL = {
     'rates': 30,      # 30 seconds
     'candles': 300,   # 5 minutes
     'news': 600,      # 10 minutes
-    'calendar': 900,  # 15 minutes (was 1 hour - too long)
+    'calendar': 120,  # 2 minutes (reduced from 15min for faster updates)
     'fundamental': 3600,
     'intermarket_data': 300  # 5 minutes
 }
@@ -4604,8 +4604,16 @@ def get_news():
 
 @app.route('/calendar')
 def get_calendar():
+    # Support force-refresh parameter to bypass cache
+    force_refresh = request.args.get('refresh', 'false').lower() == 'true'
+
+    if force_refresh:
+        logger.info("📅 Calendar: Force refresh requested - clearing cache")
+        cache['calendar']['timestamp'] = None
+        cache['calendar']['data'] = None
+
     calendar_data = get_economic_calendar()
-    
+
     # Handle both old format (list) and new format (dict)
     if isinstance(calendar_data, dict):
         events = calendar_data.get('events', [])
@@ -4615,13 +4623,16 @@ def get_calendar():
         events = calendar_data
         data_quality = 'UNKNOWN'
         source = 'UNKNOWN'
-    
+
+    logger.info(f"📅 Calendar served: {len(events)} events from {source} (Quality: {data_quality})")
+
     return jsonify({
-        'success': True, 
-        'count': len(events), 
+        'success': True,
+        'count': len(events),
         'events': events,
         'data_quality': data_quality,
-        'source': source
+        'source': source,
+        'cache_ttl_seconds': CACHE_TTL.get('calendar', 120)
     })
 
 @app.route('/backtest', methods=['GET', 'POST'])
