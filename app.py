@@ -2121,6 +2121,166 @@ def get_fxstreet_calendar():
     
     return None
 
+def get_forexfactory_calendar():
+    """Fetch calendar from Forex Factory (very popular, reliable)"""
+    try:
+        # Forex Factory provides calendar data in a structured format
+        url = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+        resp = req_lib.get(url, headers=headers, timeout=10)
+
+        if resp.status_code == 200:
+            data = resp.json()
+            events = []
+
+            for item in data:
+                # Map impact to our format
+                impact_map = {'high': 'high', 'medium': 'medium', 'low': 'low', 'holiday': 'low'}
+                impact = impact_map.get(item.get('impact', '').lower(), 'low')
+
+                # Parse date and time
+                date_str = item.get('date', '')
+                time_str = item.get('time', '')
+
+                try:
+                    # Combine date and time
+                    if date_str and time_str and time_str != 'All Day' and time_str != 'Tentative':
+                        event_datetime = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
+                    else:
+                        event_datetime = datetime.strptime(date_str, "%Y-%m-%d") if date_str else datetime.now()
+                except:
+                    event_datetime = datetime.now()
+
+                events.append({
+                    'country': item.get('country', 'US'),
+                    'event': item.get('title', ''),
+                    'impact': impact,
+                    'actual': item.get('actual'),
+                    'estimate': item.get('forecast'),
+                    'previous': item.get('previous'),
+                    'time': event_datetime.isoformat()
+                })
+
+            if len(events) > 0:
+                return {
+                    'events': events[:80],  # Limit to 80 events
+                    'data_quality': 'REAL',
+                    'source': 'FOREX_FACTORY'
+                }
+
+    except Exception as e:
+        logger.debug(f"Forex Factory calendar failed: {e}")
+
+    return None
+
+def get_myfxbook_calendar():
+    """Fetch calendar from MyFxBook (free, reliable)"""
+    try:
+        # MyFxBook community calendar
+        today = datetime.now()
+        from_date = today.strftime('%Y-%m-%d')
+        to_date = (today + timedelta(days=7)).strftime('%Y-%m-%d')
+
+        url = f"https://www.myfxbook.com/api/get-economic-calendar.json"
+        params = {
+            'start': from_date,
+            'end': to_date
+        }
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+        resp = req_lib.get(url, params=params, headers=headers, timeout=10)
+
+        if resp.status_code == 200:
+            data = resp.json()
+            events = []
+
+            for item in data.get('calendarData', []):
+                impact_map = {'3': 'high', '2': 'medium', '1': 'low'}
+                impact = impact_map.get(str(item.get('impact', '1')), 'low')
+
+                # Parse timestamp
+                timestamp = item.get('date')
+                if timestamp:
+                    event_datetime = datetime.fromtimestamp(int(timestamp))
+                else:
+                    event_datetime = datetime.now()
+
+                events.append({
+                    'country': item.get('country', 'US'),
+                    'event': item.get('title', ''),
+                    'impact': impact,
+                    'actual': item.get('actual'),
+                    'estimate': item.get('forecast'),
+                    'previous': item.get('previous'),
+                    'time': event_datetime.isoformat()
+                })
+
+            if len(events) > 0:
+                return {
+                    'events': events[:80],
+                    'data_quality': 'REAL',
+                    'source': 'MYFXBOOK'
+                }
+
+    except Exception as e:
+        logger.debug(f"MyFxBook calendar failed: {e}")
+
+    return None
+
+def get_tradingeconomics_calendar():
+    """Fetch calendar from Trading Economics (free tier available)"""
+    try:
+        # Trading Economics public calendar feed
+        url = "https://tradingeconomics.com/calendar"
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Accept': 'application/json'
+        }
+        resp = req_lib.get(url + "?format=json", headers=headers, timeout=10)
+
+        if resp.status_code == 200:
+            try:
+                data = resp.json()
+                events = []
+
+                for item in data:
+                    importance = item.get('importance', 1)
+                    impact = 'high' if importance >= 3 else 'medium' if importance == 2 else 'low'
+
+                    # Parse date
+                    date_str = item.get('date', '')
+                    try:
+                        event_datetime = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+                    except:
+                        event_datetime = datetime.now()
+
+                    events.append({
+                        'country': item.get('country', 'US'),
+                        'event': item.get('event', ''),
+                        'impact': impact,
+                        'actual': item.get('actual'),
+                        'estimate': item.get('forecast'),
+                        'previous': item.get('previous'),
+                        'time': event_datetime.isoformat()
+                    })
+
+                if len(events) > 0:
+                    return {
+                        'events': events[:80],
+                        'data_quality': 'REAL',
+                        'source': 'TRADING_ECONOMICS'
+                    }
+            except:
+                pass
+
+    except Exception as e:
+        logger.debug(f"Trading Economics calendar failed: {e}")
+
+    return None
+
 def get_dailyfx_calendar():
     """Fetch calendar from DailyFX RSS"""
     try:
@@ -2435,7 +2595,35 @@ def get_economic_calendar():
         except Exception as e:
             logger.debug(f"Finnhub calendar fetch failed: {e}")
 
-    # SOURCE 2: Try Investing.com RSS (free, reliable)
+    # SOURCE 2: Try Forex Factory (BEST FREE SOURCE - Most popular)
+    logger.info("📅 Trying Forex Factory calendar...")
+    forexfactory_cal = get_forexfactory_calendar()
+    if forexfactory_cal and len(forexfactory_cal.get('events', [])) > 0:
+        cache['calendar']['data'] = forexfactory_cal
+        cache['calendar']['timestamp'] = datetime.now()
+        logger.info(f"✓ Using Forex Factory calendar (REAL) - {len(forexfactory_cal['events'])} events")
+        return forexfactory_cal
+
+    # SOURCE 3: Try MyFxBook calendar (Free, reliable)
+    logger.info("📅 Trying MyFxBook calendar...")
+    myfxbook_cal = get_myfxbook_calendar()
+    if myfxbook_cal and len(myfxbook_cal.get('events', [])) > 0:
+        cache['calendar']['data'] = myfxbook_cal
+        cache['calendar']['timestamp'] = datetime.now()
+        logger.info(f"✓ Using MyFxBook calendar (REAL) - {len(myfxbook_cal['events'])} events")
+        return myfxbook_cal
+
+    # SOURCE 4: Try Trading Economics
+    logger.info("📅 Trying Trading Economics calendar...")
+    tradingeconomics_cal = get_tradingeconomics_calendar()
+    if tradingeconomics_cal and len(tradingeconomics_cal.get('events', [])) > 0:
+        cache['calendar']['data'] = tradingeconomics_cal
+        cache['calendar']['timestamp'] = datetime.now()
+        logger.info(f"✓ Using Trading Economics calendar (REAL) - {len(tradingeconomics_cal['events'])} events")
+        return tradingeconomics_cal
+
+    # SOURCE 5: Try Investing.com RSS (free, reliable)
+    logger.info("📅 Trying Investing.com RSS...")
     investing_cal = get_investing_calendar()
     if investing_cal and len(investing_cal.get('events', [])) > 0:
         cache['calendar']['data'] = investing_cal
@@ -2443,7 +2631,8 @@ def get_economic_calendar():
         logger.info(f"✓ Using Investing.com calendar (REAL) - {len(investing_cal['events'])} events")
         return investing_cal
 
-    # SOURCE 3: Try FXStreet RSS (free, no key needed)
+    # SOURCE 6: Try FXStreet RSS (free, no key needed)
+    logger.info("📅 Trying FXStreet RSS...")
     fxstreet_cal = get_fxstreet_calendar()
     if fxstreet_cal and len(fxstreet_cal.get('events', [])) > 0:
         cache['calendar']['data'] = fxstreet_cal
@@ -2451,7 +2640,8 @@ def get_economic_calendar():
         logger.info(f"✓ Using FXStreet RSS calendar (REAL) - {len(fxstreet_cal['events'])} events")
         return fxstreet_cal
 
-    # SOURCE 4: Try DailyFX RSS
+    # SOURCE 7: Try DailyFX RSS
+    logger.info("📅 Trying DailyFX RSS...")
     dailyfx_cal = get_dailyfx_calendar()
     if dailyfx_cal and len(dailyfx_cal.get('events', [])) > 0:
         cache['calendar']['data'] = dailyfx_cal
@@ -2459,9 +2649,10 @@ def get_economic_calendar():
         logger.info(f"✓ Using DailyFX RSS calendar (REAL) - {len(dailyfx_cal['events'])} events")
         return dailyfx_cal
     
-    # SOURCE 5: Use weekly schedule generator
+    # SOURCE 8: Use weekly schedule generator (FALLBACK)
     # This IS real data - these events ACTUALLY happen every week at these times
     # NFP is always first Friday, CPI always mid-month, etc.
+    logger.info("📅 Using weekly schedule fallback...")
     weekly_events = generate_weekly_calendar()
     if weekly_events and len(weekly_events) > 0:
         result = {
@@ -2474,7 +2665,7 @@ def get_economic_calendar():
         logger.info(f"✓ Using weekly schedule calendar (SCHEDULED) - {len(weekly_events)} events")
         return result
 
-    # SOURCE 6: Last resort - use enhanced fallback with current dates
+    # SOURCE 9: Last resort - use enhanced fallback with current dates
     logger.warning("⚠️ All calendar sources failed - using enhanced fallback")
     fallback_events = get_fallback_calendar()
     if fallback_events and len(fallback_events) > 0:
