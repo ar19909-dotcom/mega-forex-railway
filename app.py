@@ -2200,17 +2200,29 @@ def get_forexfactory_calendar():
                 impact_map = {'high': 'high', 'medium': 'medium', 'low': 'low', 'holiday': 'low'}
                 impact = impact_map.get(item.get('impact', '').lower(), 'low')
 
-                # Parse date and time
+                # Parse date and time - handle both ISO 8601 and separate date/time formats
                 date_str = item.get('date', '')
                 time_str = item.get('time', '')
 
                 try:
-                    # Combine date and time
-                    if date_str and time_str and time_str != 'All Day' and time_str != 'Tentative':
+                    # Check if date is in ISO 8601 format (contains 'T')
+                    if date_str and 'T' in date_str:
+                        # ISO 8601 format: 2026-01-18T18:50:00-05:00
+                        # Remove timezone offset for parsing
+                        iso_date = date_str.split('+')[0].split('-05:00')[0].split('-04:00')[0]
+                        if '.' in iso_date:
+                            iso_date = iso_date.split('.')[0]  # Remove milliseconds if present
+                        event_datetime = datetime.strptime(iso_date, "%Y-%m-%dT%H:%M:%S")
+                    elif date_str and time_str and time_str != 'All Day' and time_str != 'Tentative':
+                        # Separate date and time fields
                         event_datetime = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
+                    elif date_str:
+                        # Just date
+                        event_datetime = datetime.strptime(date_str[:10], "%Y-%m-%d")
                     else:
-                        event_datetime = datetime.strptime(date_str, "%Y-%m-%d") if date_str else datetime.now()
-                except:
+                        event_datetime = datetime.now()
+                except Exception as e:
+                    logger.debug(f"Date parsing failed for {date_str}: {e}")
                     event_datetime = datetime.now()
 
                 events.append({
