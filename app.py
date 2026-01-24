@@ -296,7 +296,9 @@ cache = {
     'calendar': {'data': None, 'timestamp': None},  # Start with None to force fresh fetch
     'fundamental': {'data': {}, 'timestamp': None},
     'intermarket_data': {'data': {}, 'timestamp': None},
-    'positioning': {'data': None, 'timestamp': None}  # IG positioning cache
+    'positioning': {'data': None, 'timestamp': None},  # IG positioning cache
+    'signals': {'data': None, 'timestamp': None},      # Signals cache for fast loading
+    'audit': {'data': None, 'timestamp': None}         # Audit cache for performance
 }
 
 # Thread lock for cache access (prevents race conditions in ThreadPoolExecutor)
@@ -309,7 +311,9 @@ CACHE_TTL = {
     'calendar': 1800, # 30 minutes - increased for stability
     'fundamental': 3600,
     'intermarket_data': 300,  # 5 minutes
-    'positioning': 120  # 2 minutes - IG sentiment doesn't change rapidly
+    'positioning': 120,  # 2 minutes - IG sentiment doesn't change rapidly
+    'signals': 60,    # 1 minute - balance freshness vs performance
+    'audit': 300      # 5 minutes - audit data doesn't change rapidly
 }
 
 # Store the best quality calendar data separately (never overwrite with worse data)
@@ -5265,7 +5269,17 @@ def get_rates_endpoint():
 
 @app.route('/signals')
 def get_signals():
+    """Get all trading signals with caching for fast loading"""
     try:
+        # Check cache first (thread-safe)
+        if is_cache_valid('signals'):
+            with cache_lock:
+                cached = cache['signals'].get('data')
+                if cached:
+                    logger.debug("📊 Signals: Returning cached data")
+                    return jsonify(cached)
+
+        # Generate fresh signals
         signals = []
 
         with ThreadPoolExecutor(max_workers=10) as executor:
@@ -5277,23 +5291,27 @@ def get_signals():
                     if signal:
                         signals.append(signal)
                 except Exception as e:
-                    # Log but don't fail entire request if one pair fails
                     pair = future_to_pair.get(future, 'UNKNOWN')
                     logger.debug(f"Signal generation failed for {pair}: {e}")
-        
+
         # Sort by SIGNAL STRENGTH (best trades first regardless of direction)
-        # Strongest signals = furthest from 50 (neutral)
-        # Score 85 (LONG) and Score 15 (SHORT) both have strength 35, both are top trades
         signals.sort(key=lambda x: abs(x['composite_score'] - 50), reverse=True)
-        
-        return jsonify({
+
+        result = {
             'success': True,
             'count': len(signals),
             'timestamp': datetime.now().isoformat(),
             'version': '8.4',
             'signals': signals
-        })
-    
+        }
+
+        # Cache the result (thread-safe)
+        with cache_lock:
+            cache['signals']['data'] = result
+            cache['signals']['timestamp'] = datetime.now()
+
+        return jsonify(result)
+
     except Exception as e:
         logger.error(f"Signals endpoint error: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -5416,7 +5434,9 @@ def clear_cache_endpoint():
             'calendar': {'data': None, 'timestamp': None},
             'fundamental': {'data': {}, 'timestamp': None},
             'intermarket_data': {'data': {}, 'timestamp': None},
-            'positioning': {'data': None, 'timestamp': None}
+            'positioning': {'data': None, 'timestamp': None},
+            'signals': {'data': None, 'timestamp': None},
+            'audit': {'data': None, 'timestamp': None}
         }
     return jsonify({
         'success': True,
@@ -5445,8 +5465,25 @@ def clear_calendar_cache():
 
 @app.route('/audit')
 def audit_endpoint():
+    """Run system audit with caching for performance"""
+    # Check cache first (thread-safe)
+    if is_cache_valid('audit'):
+        with cache_lock:
+            cached = cache['audit'].get('data')
+            if cached:
+                logger.debug("🔍 Audit: Returning cached data")
+                return jsonify(cached)
+
+    # Generate fresh audit
     audit = run_system_audit()
-    return jsonify({'success': True, **audit})
+    result = {'success': True, **audit}
+
+    # Cache the result (thread-safe)
+    with cache_lock:
+        cache['audit']['data'] = result
+        cache['audit']['timestamp'] = datetime.now()
+
+    return jsonify(result)
 
 @app.route('/test-ig')
 def test_ig():
