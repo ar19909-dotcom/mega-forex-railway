@@ -1,33 +1,68 @@
 {
-  "name": "MEGA FOREX v8.4 PRO - Institutional Grade",
+  "name": "MEGA FOREX v8.4 PRO",
   "short_name": "MEGA FOREX",
-  "description": "Professional 45-Pair Forex Trading Dashboard with 10-Factor Institutional Analysis (Options + COT + Seasonality)",
+  "description": "Professional 45-Pair Forex Trading Dashboard with 10-Factor Institutional Analysis",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0a0e17",
-  "theme_color": "#3b82f6",
+  "theme_color": "#0a0e17",
   "orientation": "any",
   "scope": "/",
+  "lang": "en-US",
+  "dir": "ltr",
+  "prefer_related_applications": false,
   "icons": [
     {
-      "src": "/icon-192.png",
+      "src": "/static/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
-      "src": "/icon-512.png",
+      "src": "/static/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/static/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/static/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
-  "categories": ["finance", "business"],
+  "categories": ["finance", "business", "productivity"],
+  "shortcuts": [
+    {
+      "name": "View Signals",
+      "short_name": "Signals",
+      "description": "View all trading signals",
+      "url": "/?section=signals",
+      "icons": [{"src": "/static/icon-192.png", "sizes": "192x192"}]
+    },
+    {
+      "name": "Economic Calendar",
+      "short_name": "Calendar",
+      "description": "View economic events",
+      "url": "/?section=calendar",
+      "icons": [{"src": "/static/icon-192.png", "sizes": "192x192"}]
+    }
+  ],
   "screenshots": [
     {
-      "src": "/screenshot.png",
-      "sizes": "1280x720",
-      "type": "image/png"
+      "src": "/static/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "form_factor": "narrow"
     }
-  ]
+  ],
+  "edge_side_panel": {
+    "preferred_width": 400
+  }
 }

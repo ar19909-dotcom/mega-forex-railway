@@ -2,10 +2,36 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
+
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#0a0e17">
+    <meta name="background-color" content="#0a0e17">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="MEGA FOREX">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="MEGA FOREX">
+    <meta name="msapplication-TileColor" content="#0a0e17">
+    <meta name="msapplication-navbutton-color" content="#3b82f6">
+    <meta name="format-detection" content="telephone=no">
+
+    <!-- App Icons -->
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" type="image/png" sizes="192x192" href="/static/icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="/static/icon-512.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/static/icon-192.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="/static/icon-192.png">
+    <link rel="apple-touch-icon" sizes="144x144" href="/static/icon-192.png">
+    <link rel="apple-touch-icon" sizes="120x120" href="/static/icon-192.png">
+    <link rel="apple-touch-icon" href="/static/icon-192.png">
+
+    <!-- iOS Splash Screens -->
+    <link rel="apple-touch-startup-image" href="/static/icon-512.png">
+
     <title>MEGA FOREX v8.4 PRO - Institutional Grade Trading Dashboard</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <style>
@@ -960,12 +986,178 @@
             .signals-grid {
                 grid-template-columns: repeat(2, 1fr);
             }
-            
+
             .header-stats {
                 gap: 1.5rem;
             }
         }
-        
+
+        /* ═══════════════════════════════════════════════════════════════════════════
+           NATIVE APP ENHANCEMENTS - iOS & Android optimizations
+           ═══════════════════════════════════════════════════════════════════════════ */
+
+        /* Safe Area Support for Notched Devices */
+        @supports (padding: env(safe-area-inset-top)) {
+            .header {
+                padding-top: calc(0.75rem + env(safe-area-inset-top));
+            }
+
+            .main-content {
+                padding-bottom: calc(80px + env(safe-area-inset-bottom));
+            }
+
+            .mobile-bottom-nav {
+                padding-bottom: env(safe-area-inset-bottom);
+            }
+        }
+
+        /* Smooth scrolling & native feel */
+        html {
+            scroll-behavior: smooth;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+        }
+
+        body {
+            overscroll-behavior-y: contain;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* Mobile Bottom Navigation Bar */
+        .mobile-bottom-nav {
+            display: none;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-color);
+            padding: 0.5rem;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .mobile-bottom-nav .nav-items {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+        }
+
+        .mobile-bottom-nav .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 0.5rem 1rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.7rem;
+            transition: color 0.2s ease;
+            cursor: pointer;
+        }
+
+        .mobile-bottom-nav .nav-item.active {
+            color: var(--accent-blue);
+        }
+
+        .mobile-bottom-nav .nav-item svg {
+            width: 24px;
+            height: 24px;
+            margin-bottom: 0.25rem;
+        }
+
+        @media (max-width: 768px) {
+            .mobile-bottom-nav {
+                display: block;
+            }
+
+            /* Hide regular nav on mobile when bottom nav is present */
+            .nav-container {
+                display: none;
+            }
+        }
+
+        /* App Splash Screen */
+        .splash-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--bg-primary);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease, visibility 0.5s ease;
+        }
+
+        .splash-screen.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .splash-logo {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--accent-blue);
+            margin-bottom: 1rem;
+        }
+
+        .splash-logo span {
+            color: var(--accent-green);
+        }
+
+        .splash-subtitle {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-bottom: 2rem;
+        }
+
+        .splash-loader {
+            width: 50px;
+            height: 50px;
+            border: 3px solid var(--border-color);
+            border-top-color: var(--accent-blue);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        /* Pull to Refresh Visual Indicator */
+        .pull-indicator {
+            position: fixed;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%) translateY(-100%);
+            background: var(--accent-blue);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0 0 0.5rem 0.5rem;
+            font-size: 0.8rem;
+            z-index: 1001;
+            transition: transform 0.3s ease;
+        }
+
+        .pull-indicator.visible {
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* Touch-optimized Cards */
+        @media (max-width: 768px) {
+            .signal-card {
+                transition: transform 0.2s ease, box-shadow 0.2s ease;
+            }
+
+            .signal-card:active {
+                transform: scale(0.98);
+                box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            }
+        }
+
         /* Touch device optimizations */
         @media (hover: none) and (pointer: coarse) {
             .signal-card:active {
@@ -1022,6 +1214,16 @@
     </style>
 </head>
 <body>
+    <!-- Splash Screen -->
+    <div class="splash-screen" id="splash">
+        <div class="splash-logo">MEGA<span>FOREX</span></div>
+        <div class="splash-subtitle">Institutional Grade Trading</div>
+        <div class="splash-loader"></div>
+    </div>
+
+    <!-- Pull to Refresh Indicator -->
+    <div class="pull-indicator" id="pull-indicator">↻ Release to refresh</div>
+
     <!-- Header -->
     <header class="header">
         <div class="logo">MEGA<span>FOREX</span> v8.4 <span style="color: var(--accent-green); font-size: 0.7em;">PRO</span></div>
@@ -2539,6 +2741,126 @@
         // Initialize
         loadSignals();
         setInterval(updateCountdown, 1000);
+
+        // ═══════════════════════════════════════════════════════════════════════════
+        // NATIVE APP FEATURES
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        // Hide splash screen after content loads
+        window.addEventListener('load', function() {
+            setTimeout(function() {
+                document.getElementById('splash').classList.add('hidden');
+            }, 1500);
+        });
+
+        // Mobile bottom navigation handling
+        function initMobileNav() {
+            const navItems = document.querySelectorAll('.mobile-bottom-nav .nav-item');
+            navItems.forEach(item => {
+                item.addEventListener('click', function() {
+                    const target = this.getAttribute('data-target');
+                    navItems.forEach(i => i.classList.remove('active'));
+                    this.classList.add('active');
+
+                    // Show corresponding section
+                    document.querySelectorAll('.tab-section').forEach(s => s.style.display = 'none');
+                    const section = document.getElementById(target + '-section');
+                    if (section) section.style.display = 'block';
+
+                    // Also update the main nav tabs
+                    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+                    const tab = document.querySelector(`.nav-tab[onclick*="${target}"]`);
+                    if (tab) tab.classList.add('active');
+
+                    // Scroll to top
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                });
+            });
+        }
+
+        // Pull to refresh (visual only - actual refresh handled by app)
+        let touchStartY = 0;
+        let isPulling = false;
+
+        document.addEventListener('touchstart', function(e) {
+            if (window.scrollY === 0) {
+                touchStartY = e.touches[0].clientY;
+            }
+        }, { passive: true });
+
+        document.addEventListener('touchmove', function(e) {
+            if (touchStartY > 0 && window.scrollY === 0) {
+                const touchY = e.touches[0].clientY;
+                const diff = touchY - touchStartY;
+                if (diff > 50 && !isPulling) {
+                    isPulling = true;
+                    document.getElementById('pull-indicator').classList.add('visible');
+                }
+            }
+        }, { passive: true });
+
+        document.addEventListener('touchend', function() {
+            if (isPulling) {
+                isPulling = false;
+                document.getElementById('pull-indicator').classList.remove('visible');
+                loadSignals(); // Refresh data
+            }
+            touchStartY = 0;
+        }, { passive: true });
+
+        // Initialize mobile nav
+        initMobileNav();
+
+        // Register Service Worker for PWA
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').then(function(registration) {
+                console.log('ServiceWorker registration successful');
+            }).catch(function(err) {
+                console.log('ServiceWorker registration failed: ', err);
+            });
+        }
     </script>
+
+    <!-- Mobile Bottom Navigation -->
+    <nav class="mobile-bottom-nav">
+        <div class="nav-items">
+            <div class="nav-item active" data-target="signals">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 3v18h18"></path>
+                    <path d="M18 9l-5 5-4-4-3 3"></path>
+                </svg>
+                <span>Signals</span>
+            </div>
+            <div class="nav-item" data-target="news">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 20H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v1m2 13a2 2 0 0 1-2-2V7m2 13a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2"></path>
+                </svg>
+                <span>News</span>
+            </div>
+            <div class="nav-item" data-target="calendar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+                <span>Calendar</span>
+            </div>
+            <div class="nav-item" data-target="journal">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                </svg>
+                <span>Journal</span>
+            </div>
+            <div class="nav-item" data-target="audit">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                </svg>
+                <span>Settings</span>
+            </div>
+        </div>
+    </nav>
 </body>
 </html>
