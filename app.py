@@ -5331,6 +5331,99 @@ def get_signals():
         logger.error(f"Signals endpoint error: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# SUBSCRIPTION ENDPOINT - STRIPPED DATA (NO SCORING METHODOLOGY)
+# ═══════════════════════════════════════════════════════════════════════════════
+def strip_scoring_data(signal):
+    """Remove all scoring methodology from signal data for subscription users"""
+    return {
+        'pair': signal.get('pair'),
+        'category': signal.get('category'),
+        'direction': signal.get('direction'),  # Keep direction (result of scoring)
+        'rate': signal.get('rate'),
+        'trade_setup': {
+            'entry': signal.get('trade_setup', {}).get('entry'),
+            'sl': signal.get('trade_setup', {}).get('sl'),
+            'tp1': signal.get('trade_setup', {}).get('tp1'),
+            'tp2': signal.get('trade_setup', {}).get('tp2'),
+            'sl_pips': signal.get('trade_setup', {}).get('sl_pips'),
+            'tp1_pips': signal.get('trade_setup', {}).get('tp1_pips'),
+            'tp2_pips': signal.get('trade_setup', {}).get('tp2_pips'),
+            'risk_reward_1': signal.get('trade_setup', {}).get('risk_reward_1'),
+            'risk_reward_2': signal.get('trade_setup', {}).get('risk_reward_2'),
+            'trade_quality': signal.get('trade_setup', {}).get('trade_quality'),
+            'market_context': signal.get('trade_setup', {}).get('market_context')
+        },
+        'technical': {
+            'rsi': signal.get('technical', {}).get('rsi'),
+            'macd': signal.get('technical', {}).get('macd'),
+            'adx': signal.get('technical', {}).get('adx'),
+            'atr': signal.get('technical', {}).get('atr'),
+            'bollinger': signal.get('technical', {}).get('bollinger'),
+            'ema_signal': signal.get('technical', {}).get('ema_signal')
+        },
+        'timestamp': signal.get('timestamp')
+        # REMOVED: composite_score, stars, strength_label, factors, factor_grid,
+        #          factor_data_quality, conviction, patterns, statistics,
+        #          data_quality, factors_available, holding_period
+    }
+
+@app.route('/signals/subscription')
+def get_subscription_signals():
+    """Get trading signals with scoring data STRIPPED for subscription app security"""
+    try:
+        # Check cache first (thread-safe)
+        if is_cache_valid('signals'):
+            with cache_lock:
+                cached = cache['signals'].get('data')
+                if cached and 'signals' in cached:
+                    # Strip scoring data from cached signals
+                    stripped_signals = [strip_scoring_data(s) for s in cached['signals']]
+                    logger.debug("📊 Subscription Signals: Returning stripped cached data")
+                    return jsonify({
+                        'success': True,
+                        'count': len(stripped_signals),
+                        'timestamp': datetime.now().isoformat(),
+                        'version': '8.4-SUB',
+                        'signals': stripped_signals
+                    })
+
+        # Generate fresh signals
+        signals = []
+
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            future_to_pair = {executor.submit(generate_signal, pair): pair for pair in FOREX_PAIRS}
+
+            for future in as_completed(future_to_pair):
+                try:
+                    signal = future.result()
+                    if signal:
+                        signals.append(signal)
+                except Exception as e:
+                    pair = future_to_pair.get(future, 'UNKNOWN')
+                    logger.debug(f"Signal generation failed for {pair}: {e}")
+
+        # Sort by direction strength (not revealing actual score)
+        signals.sort(key=lambda x: abs(x['composite_score'] - 50), reverse=True)
+
+        # Strip all scoring data before returning
+        stripped_signals = [strip_scoring_data(s) for s in signals]
+
+        result = {
+            'success': True,
+            'count': len(stripped_signals),
+            'timestamp': datetime.now().isoformat(),
+            'version': '8.4-SUB',
+            'signals': stripped_signals
+        }
+
+        logger.info(f"📊 Subscription endpoint: Returned {len(stripped_signals)} stripped signals")
+        return jsonify(result)
+
+    except Exception as e:
+        logger.error(f"Subscription signals endpoint error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/signal/<pair>')
 def get_single_signal(pair):
     pair = pair.replace('_', '/')
