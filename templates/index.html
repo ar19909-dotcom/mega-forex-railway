@@ -2746,6 +2746,7 @@
                     if (events.length > 0) {
                         const getFlag = (country) => {
                             const flags = {
+                                // 2-letter country codes
                                 'US': '🇺🇸', 'USA': '🇺🇸',
                                 'EU': '🇪🇺', 'DE': '🇩🇪', 'FR': '🇫🇷', 'IT': '🇮🇹', 'ES': '🇪🇸',
                                 'UK': '🇬🇧', 'GB': '🇬🇧',
@@ -2754,7 +2755,18 @@
                                 'CA': '🇨🇦',
                                 'NZ': '🇳🇿',
                                 'CH': '🇨🇭',
-                                'CN': '🇨🇳'
+                                'CN': '🇨🇳',
+                                // 3-letter currency codes (from Forex Factory API)
+                                'USD': '🇺🇸',
+                                'EUR': '🇪🇺',
+                                'GBP': '🇬🇧',
+                                'JPY': '🇯🇵',
+                                'AUD': '🇦🇺',
+                                'CAD': '🇨🇦',
+                                'NZD': '🇳🇿',
+                                'CHF': '🇨🇭',
+                                'CNY': '🇨🇳',
+                                'ALL': '🌐'
                             };
                             return flags[country.toUpperCase()] || '🌐';
                         };
