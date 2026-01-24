@@ -2858,9 +2858,6 @@
             touchStartY = 0;
         }, { passive: true });
 
-        // Initialize mobile nav
-        initMobileNav();
-
         // Register Service Worker for PWA
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/sw.js').then(function(registration) {
@@ -2916,5 +2913,11 @@
             </div>
         </div>
     </nav>
+
+    <!-- Initialize Mobile Navigation (must be after nav HTML) -->
+    <script>
+        // Initialize mobile nav now that DOM elements exist
+        initMobileNav();
+    </script>
 </body>
 </html>
