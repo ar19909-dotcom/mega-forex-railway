@@ -295,7 +295,8 @@ cache = {
     'news': {'data': [], 'timestamp': None},
     'calendar': {'data': None, 'timestamp': None},  # Start with None to force fresh fetch
     'fundamental': {'data': {}, 'timestamp': None},
-    'intermarket_data': {'data': {}, 'timestamp': None}
+    'intermarket_data': {'data': {}, 'timestamp': None},
+    'positioning': {'data': None, 'timestamp': None}  # IG positioning cache
 }
 
 # Thread lock for cache access (prevents race conditions in ThreadPoolExecutor)
@@ -307,7 +308,8 @@ CACHE_TTL = {
     'news': 600,      # 10 minutes
     'calendar': 1800, # 30 minutes - increased for stability
     'fundamental': 3600,
-    'intermarket_data': 300  # 5 minutes
+    'intermarket_data': 300,  # 5 minutes
+    'positioning': 120  # 2 minutes - IG sentiment doesn't change rapidly
 }
 
 # Store the best quality calendar data separately (never overwrite with worse data)
@@ -5413,10 +5415,11 @@ def clear_cache_endpoint():
             'news': {'data': [], 'timestamp': None},
             'calendar': {'data': None, 'timestamp': None},
             'fundamental': {'data': {}, 'timestamp': None},
-            'intermarket_data': {'data': {}, 'timestamp': None}
+            'intermarket_data': {'data': {}, 'timestamp': None},
+            'positioning': {'data': None, 'timestamp': None}
         }
     return jsonify({
-        'success': True, 
+        'success': True,
         'message': 'All caches cleared',
         'timestamp': datetime.now().isoformat()
     })
@@ -5639,24 +5642,37 @@ def get_all_ig_sentiment():
 
 @app.route('/positioning')
 def get_positioning():
-    """Get retail positioning data - REAL from IG when available"""
-    
-    # Try to get REAL data from IG API first
+    """Get retail positioning data - REAL from IG when available (with caching)"""
+
+    # Check cache first (thread-safe)
+    if is_cache_valid('positioning'):
+        with cache_lock:
+            cached_data = cache['positioning'].get('data')
+            if cached_data:
+                logger.debug("📊 Positioning: Returning cached data")
+                return jsonify(cached_data)
+
+    # Try to get REAL data from IG API
     if all([IG_API_KEY, IG_USERNAME, IG_PASSWORD]):
         ig_data = get_all_ig_sentiment()
-        
+
         if ig_data and len(ig_data) > 0:
             logger.info(f"✅ Positioning: Using REAL IG data ({len(ig_data)} pairs)")
-            return jsonify({
-                'success': True, 
-                'count': len(ig_data), 
+            result = {
+                'success': True,
+                'count': len(ig_data),
                 'source': 'IG_MARKETS_REAL',
                 'data': ig_data
-            })
-    
+            }
+            # Cache the successful result (thread-safe)
+            with cache_lock:
+                cache['positioning']['data'] = result
+                cache['positioning']['timestamp'] = datetime.now()
+            return jsonify(result)
+
     # Fallback: Return message that IG is not configured
     logger.warning("⚠️ Positioning: IG API not configured, returning placeholder")
-    
+
     positioning = []
     for pair in FOREX_PAIRS[:15]:
         positioning.append({
@@ -5667,14 +5683,16 @@ def get_positioning():
             'source': 'NOT_CONFIGURED',
             'message': 'Configure IG API for real data'
         })
-    
-    return jsonify({
-        'success': True, 
-        'count': len(positioning), 
+
+    result = {
+        'success': True,
+        'count': len(positioning),
         'source': 'NOT_CONFIGURED',
         'message': 'Add IG_USERNAME and IG_PASSWORD to .env for real positioning data',
         'data': positioning
-    })
+    }
+    # Don't cache NOT_CONFIGURED so it retries when credentials are added
+    return jsonify(result)
 
 @app.route('/api-status')
 def api_status():
