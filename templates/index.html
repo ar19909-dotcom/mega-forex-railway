@@ -1564,10 +1564,10 @@
                 word-break: break-word !important;
             }
 
-            /* Hide Details column in API Status table (4th column) */
-            #tab-audit table thead tr th:nth-child(4),
-            #tab-audit table tbody tr td:nth-child(4) {
-                display: none !important;
+            /* Audit tables - show all columns but compress further */
+            #tab-audit table,
+            #audit-container table {
+                font-size: 0.45rem !important;
             }
 
             /* Quality checks badges - wrap */
@@ -3185,7 +3185,7 @@
                                             <td>${p.pair}</td>
                                             <td style="color: ${p.score >= 65 ? 'var(--accent-green)' : p.score <= 35 ? 'var(--accent-red)' : 'var(--text-primary)'}; font-weight: 600;">${p.score || p.error || 'N/A'}</td>
                                             <td><span class="status-badge ${p.direction === 'LONG' ? 'ok' : p.direction === 'SHORT' ? 'error' : 'limited'}">${p.direction || '-'}</span></td>
-                                            <td>${p.factors_count || 0}/9</td>
+                                            <td>${p.factors_count || 0}/10</td>
                                         </tr>
                                     `).join('')}
                                 </tbody>
