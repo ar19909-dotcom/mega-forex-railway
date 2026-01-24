@@ -2195,67 +2195,82 @@ def get_fxstreet_calendar():
     return None
 
 def get_forexfactory_calendar():
-    """Fetch calendar from Forex Factory (very popular, reliable)"""
-    try:
-        # Forex Factory provides calendar data in a structured format
-        url = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        }
-        resp = req_lib.get(url, headers=headers, timeout=10)
+    """Fetch calendar from Forex Factory with retry logic and multiple URLs"""
+    # Try multiple URLs in case one is blocked or rate-limited
+    urls = [
+        "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
+    ]
 
-        if resp.status_code == 200:
-            data = resp.json()
-            events = []
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'application/json',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Cache-Control': 'no-cache'
+    }
 
-            for item in data:
-                # Map impact to our format
-                impact_map = {'high': 'high', 'medium': 'medium', 'low': 'low', 'holiday': 'low'}
-                impact = impact_map.get(item.get('impact', '').lower(), 'low')
+    for url in urls:
+        for attempt in range(3):  # Retry up to 3 times per URL
+            try:
+                logger.info(f"📅 Forex Factory attempt {attempt+1}/3 for {url}")
+                resp = req_lib.get(url, headers=headers, timeout=20)
 
-                # Parse date and time - handle ISO 8601 format
-                date_str = item.get('date', '')
-                time_str = item.get('time', '')
+                if resp.status_code == 200:
+                    data = resp.json()
+                    events = []
 
-                try:
-                    # Check if date is in ISO 8601 format (contains 'T')
-                    if date_str and 'T' in date_str:
-                        # ISO 8601 format: 2026-01-18T18:50:00-05:00 or 2026-01-18T18:50:00+00:00
-                        # Extract just the datetime part (first 19 characters: YYYY-MM-DDTHH:MM:SS)
-                        iso_date = date_str[:19]  # Take only 'YYYY-MM-DDTHH:MM:SS'
-                        event_datetime = datetime.strptime(iso_date, "%Y-%m-%dT%H:%M:%S")
-                    elif date_str and time_str and time_str not in ['All Day', 'Tentative', '']:
-                        # Separate date and time fields
-                        event_datetime = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
-                    elif date_str:
-                        # Just date - take first 10 chars (YYYY-MM-DD)
-                        event_datetime = datetime.strptime(date_str[:10], "%Y-%m-%d")
-                    else:
-                        event_datetime = datetime.now()
-                except Exception as e:
-                    logger.warning(f"Forex Factory date parsing failed for '{date_str}': {e}")
-                    event_datetime = datetime.now()
+                    for item in data:
+                        # Map impact to our format
+                        impact_map = {'high': 'high', 'medium': 'medium', 'low': 'low', 'holiday': 'low'}
+                        impact = impact_map.get(item.get('impact', '').lower(), 'low')
 
-                events.append({
-                    'country': item.get('country', 'US'),
-                    'event': item.get('title', ''),
-                    'impact': impact,
-                    'actual': item.get('actual'),
-                    'estimate': item.get('forecast'),
-                    'previous': item.get('previous'),
-                    'time': event_datetime.isoformat()
-                })
+                        # Parse date and time - handle ISO 8601 format
+                        date_str = item.get('date', '')
+                        time_str = item.get('time', '')
 
-            if len(events) > 0:
-                return {
-                    'events': events[:80],  # Limit to 80 events
-                    'data_quality': 'REAL',
-                    'source': 'FOREX_FACTORY'
-                }
+                        try:
+                            if date_str and 'T' in date_str:
+                                iso_date = date_str[:19]
+                                event_datetime = datetime.strptime(iso_date, "%Y-%m-%dT%H:%M:%S")
+                            elif date_str and time_str and time_str not in ['All Day', 'Tentative', '']:
+                                event_datetime = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
+                            elif date_str:
+                                event_datetime = datetime.strptime(date_str[:10], "%Y-%m-%d")
+                            else:
+                                event_datetime = datetime.now()
+                        except Exception:
+                            event_datetime = datetime.now()
 
-    except Exception as e:
-        logger.warning(f"Forex Factory calendar failed: {type(e).__name__}: {e}")
+                        events.append({
+                            'country': item.get('country', 'US'),
+                            'event': item.get('title', ''),
+                            'impact': impact,
+                            'actual': item.get('actual'),
+                            'estimate': item.get('forecast'),
+                            'previous': item.get('previous'),
+                            'time': event_datetime.isoformat()
+                        })
 
+                    if len(events) > 0:
+                        logger.info(f"✅ Forex Factory: Got {len(events)} events with forecast/previous data")
+                        return {
+                            'events': events[:80],
+                            'data_quality': 'REAL',
+                            'source': 'FOREX_FACTORY'
+                        }
+
+                elif resp.status_code == 429:  # Rate limited
+                    logger.warning(f"⚠️ Forex Factory rate limited, waiting...")
+                    import time
+                    time.sleep(2)
+                else:
+                    logger.warning(f"⚠️ Forex Factory returned {resp.status_code}")
+
+            except Exception as e:
+                logger.warning(f"⚠️ Forex Factory attempt {attempt+1} failed: {e}")
+                import time
+                time.sleep(1)  # Brief wait before retry
+
+    logger.warning("❌ All Forex Factory attempts failed")
     return None
 
 def get_myfxbook_calendar():
