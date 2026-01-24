@@ -1093,14 +1093,192 @@
                 display: block;
             }
 
-            /* Keep regular nav visible but style it differently */
+            /* Hide regular nav on mobile */
             .nav-container {
                 display: none;
             }
 
-            /* Add bottom padding to main content for nav bar */
-            .main-content {
-                padding-bottom: 80px;
+            /* CRITICAL: Large bottom padding for nav bar visibility */
+            .main-content,
+            .tab-content,
+            #tab-overview,
+            #tab-rates,
+            #tab-analyzer,
+            #tab-technical,
+            #tab-positioning,
+            #tab-news,
+            #tab-calendar,
+            #tab-weights,
+            #tab-audit,
+            #tab-api-status {
+                padding-bottom: 120px !important;
+            }
+
+            /* ══════════════════════════════════════════════════════════════
+               ALL TABLES - Base mobile styles
+               ══════════════════════════════════════════════════════════════ */
+            .data-table {
+                display: table !important;
+                width: 100% !important;
+                table-layout: auto !important;
+                font-size: 0.65rem !important;
+                overflow-x: visible !important;
+            }
+
+            .data-table th, .data-table td {
+                padding: 0.3rem 0.15rem !important;
+                font-size: 0.6rem !important;
+                white-space: normal !important;
+                word-break: break-word !important;
+                max-width: none !important;
+            }
+
+            /* ══════════════════════════════════════════════════════════════
+               RATES TABLE - 5 columns compressed
+               ══════════════════════════════════════════════════════════════ */
+            #tab-rates table {
+                font-size: 0.6rem !important;
+            }
+
+            #tab-rates th, #tab-rates td {
+                padding: 0.25rem 0.1rem !important;
+            }
+
+            /* ══════════════════════════════════════════════════════════════
+               PAIR ANALYZER - Compact layout
+               ══════════════════════════════════════════════════════════════ */
+            #tab-analyzer {
+                padding: 0.5rem !important;
+            }
+
+            #tab-analyzer select {
+                width: 100% !important;
+                font-size: 0.8rem !important;
+                margin-bottom: 0.5rem !important;
+            }
+
+            #tab-analyzer table {
+                font-size: 0.7rem !important;
+            }
+
+            #tab-analyzer th, #tab-analyzer td {
+                padding: 0.4rem 0.2rem !important;
+            }
+
+            /* ══════════════════════════════════════════════════════════════
+               TECHNICAL INDICATORS - Fit 6+ columns
+               ══════════════════════════════════════════════════════════════ */
+            #tab-technical table {
+                font-size: 0.55rem !important;
+            }
+
+            #tab-technical th, #tab-technical td {
+                padding: 0.2rem 0.1rem !important;
+            }
+
+            /* ══════════════════════════════════════════════════════════════
+               POSITIONING - Compact
+               ══════════════════════════════════════════════════════════════ */
+            #tab-positioning table {
+                font-size: 0.6rem !important;
+            }
+
+            #tab-positioning th, #tab-positioning td {
+                padding: 0.25rem 0.1rem !important;
+            }
+
+            /* ══════════════════════════════════════════════════════════════
+               NEWS - Clickable + visible
+               ══════════════════════════════════════════════════════════════ */
+            #tab-news {
+                padding: 0.5rem !important;
+            }
+
+            #tab-news .news-item {
+                padding: 0.75rem !important;
+                margin-bottom: 0.75rem !important;
+                border-radius: 8px !important;
+                background: var(--bg-card) !important;
+            }
+
+            /* ══════════════════════════════════════════════════════════════
+               CALENDAR - Compact 8 columns
+               ══════════════════════════════════════════════════════════════ */
+            #tab-calendar {
+                padding: 0.25rem !important;
+                overflow-x: hidden !important;
+            }
+
+            #tab-calendar table {
+                font-size: 0.5rem !important;
+                width: 100% !important;
+                table-layout: fixed !important;
+            }
+
+            #tab-calendar th, #tab-calendar td {
+                padding: 0.2rem 0.05rem !important;
+                font-size: 0.5rem !important;
+                overflow: hidden !important;
+                text-overflow: ellipsis !important;
+            }
+
+            /* Hide some columns on very small screens */
+            #tab-calendar th:nth-child(7),
+            #tab-calendar td:nth-child(7) {
+                display: none;
+            }
+
+            /* ══════════════════════════════════════════════════════════════
+               WEIGHTS - All buttons visible
+               ══════════════════════════════════════════════════════════════ */
+            #tab-weights {
+                padding: 0.5rem !important;
+                padding-bottom: 140px !important;
+            }
+
+            #tab-weights button {
+                padding: 0.5rem 0.75rem !important;
+                font-size: 0.75rem !important;
+                min-height: 40px !important;
+            }
+
+            /* ══════════════════════════════════════════════════════════════
+               AUDIT - Fit columns
+               ══════════════════════════════════════════════════════════════ */
+            #tab-audit {
+                padding: 0.5rem !important;
+            }
+
+            #tab-audit table {
+                font-size: 0.55rem !important;
+            }
+
+            #tab-audit th, #tab-audit td {
+                padding: 0.2rem 0.1rem !important;
+            }
+
+            #tab-audit .audit-section {
+                padding: 0.5rem !important;
+                margin-bottom: 0.5rem !important;
+            }
+
+            #tab-audit h3, #tab-audit h4 {
+                font-size: 0.85rem !important;
+            }
+
+            /* ══════════════════════════════════════════════════════════════
+               API STATUS - All content visible
+               ══════════════════════════════════════════════════════════════ */
+            #tab-api-status {
+                padding: 0.5rem !important;
+                padding-bottom: 140px !important;
+            }
+
+            #tab-api-status .api-card,
+            #tab-api-status .status-card {
+                padding: 0.5rem !important;
+                font-size: 0.7rem !important;
+                margin-bottom: 0.5rem !important;
             }
         }
 
@@ -2031,21 +2209,26 @@
             }
         }
         
-        // Load News
+        // Load News - Headlines are clickable links
         async function loadNews() {
             try {
                 const response = await fetch(`${API_BASE}/news`);
                 const data = await response.json();
-                
+
                 if (data.success) {
                     const container = document.getElementById('news-container');
-                    
+
                     if (data.articles && data.articles.length > 0) {
                         container.innerHTML = data.articles.map(article => `
-                            <div class="news-item">
-                                <div class="news-headline">${article.headline}</div>
+                            <div class="news-item" style="cursor: pointer;" onclick="window.open('${article.url || '#'}', '_blank')">
+                                <div class="news-headline" style="color: var(--accent-blue); text-decoration: underline;">
+                                    ${article.headline}
+                                </div>
                                 <div class="news-meta">
                                     ${article.source} | ${new Date(article.datetime * 1000).toLocaleString()}
+                                </div>
+                                <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.25rem;">
+                                    Tap to read full article →
                                 </div>
                             </div>
                         `).join('');
