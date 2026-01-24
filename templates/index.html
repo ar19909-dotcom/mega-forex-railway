@@ -1369,6 +1369,53 @@
             }
 
             /* ══════════════════════════════════════════════════════════════
+               HOLDING PERIOD - 4 columns to 2x2 grid
+               ══════════════════════════════════════════════════════════════ */
+            #analyzer-detail [style*="linear-gradient"][style*="139, 92, 246"] {
+                padding: 0.5rem !important;
+            }
+
+            #analyzer-detail [style*="linear-gradient"][style*="139, 92, 246"] > div[style*="repeat(4, 1fr)"] {
+                display: grid !important;
+                grid-template-columns: repeat(2, 1fr) !important;
+                gap: 0.5rem !important;
+            }
+
+            #analyzer-detail [style*="linear-gradient"][style*="139, 92, 246"] [style*="text-align: center"][style*="padding: 0.75rem"] {
+                padding: 0.4rem !important;
+            }
+
+            #analyzer-detail [style*="linear-gradient"][style*="139, 92, 246"] [style*="font-size: 1.5rem"],
+            #analyzer-detail [style*="linear-gradient"][style*="139, 92, 246"] [style*="font-size: 1rem"] {
+                font-size: 0.85rem !important;
+            }
+
+            #analyzer-detail [style*="linear-gradient"][style*="139, 92, 246"] [style*="font-size: 0.7rem"] {
+                font-size: 0.5rem !important;
+            }
+
+            /* Holding period factors badges */
+            #analyzer-detail [style*="linear-gradient"][style*="139, 92, 246"] [style*="flex-wrap: wrap"][style*="justify-content: center"] {
+                gap: 0.25rem !important;
+                padding-top: 0.5rem !important;
+            }
+
+            #analyzer-detail [style*="linear-gradient"][style*="139, 92, 246"] [style*="font-size: 0.75rem"][style*="padding: 0.3rem"] {
+                font-size: 0.55rem !important;
+                padding: 0.2rem 0.4rem !important;
+            }
+
+            /* Holding period recommendation box */
+            #analyzer-detail [style*="linear-gradient"][style*="139, 92, 246"] [style*="margin-top: 1rem"][style*="text-align: center"] {
+                margin-top: 0.5rem !important;
+                padding: 0.5rem !important;
+            }
+
+            #analyzer-detail [style*="linear-gradient"][style*="139, 92, 246"] [style*="font-size: 0.85rem"] {
+                font-size: 0.65rem !important;
+            }
+
+            /* ══════════════════════════════════════════════════════════════
                CALENDAR - Show Forecast/Previous/Actual properly
                ══════════════════════════════════════════════════════════════ */
             #calendar-container {
@@ -1402,21 +1449,32 @@
                 word-break: break-word !important;
             }
 
-            /* Calendar column widths */
+            /* Calendar column widths - flag emoji needs space */
             #tab-calendar th:nth-child(1),
-            #tab-calendar td:nth-child(1) { width: 12% !important; } /* Time */
+            #tab-calendar td:nth-child(1) { width: 11% !important; } /* Time */
             #tab-calendar th:nth-child(2),
-            #tab-calendar td:nth-child(2) { width: 10% !important; } /* Currency */
+            #tab-calendar td:nth-child(2) { width: 14% !important; font-size: 0.55rem !important; } /* Currency - larger for flag */
             #tab-calendar th:nth-child(3),
-            #tab-calendar td:nth-child(3) { width: 8% !important; } /* Impact */
+            #tab-calendar td:nth-child(3) { width: 7% !important; } /* Impact */
             #tab-calendar th:nth-child(4),
-            #tab-calendar td:nth-child(4) { width: 30% !important; } /* Event */
+            #tab-calendar td:nth-child(4) { width: 28% !important; } /* Event */
             #tab-calendar th:nth-child(5),
             #tab-calendar td:nth-child(5) { width: 13% !important; } /* Forecast */
             #tab-calendar th:nth-child(6),
             #tab-calendar td:nth-child(6) { width: 13% !important; } /* Previous */
             #tab-calendar th:nth-child(7),
             #tab-calendar td:nth-child(7) { width: 14% !important; } /* Actual */
+
+            /* Calendar currency cell - show flag properly */
+            #tab-calendar td:nth-child(2) > div {
+                flex-direction: column !important;
+                gap: 0 !important;
+                align-items: flex-start !important;
+            }
+
+            #tab-calendar td:nth-child(2) span[style*="font-size: 1.25rem"] {
+                font-size: 0.9rem !important;
+            }
 
             /* Calendar header */
             #tab-calendar > div:first-child {
@@ -1568,6 +1626,113 @@
             .status-badge {
                 font-size: 0.45rem !important;
                 padding: 0.1rem 0.25rem !important;
+            }
+        }
+
+        /* PWA Install Banner */
+        .install-banner {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: calc(100% - 2rem);
+            max-width: 400px;
+            background: linear-gradient(135deg, #1a1f2e, #0a0e17);
+            border: 1px solid var(--accent-blue);
+            border-radius: 1rem;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            z-index: 10000;
+            box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3);
+            animation: slideUp 0.3s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateX(-50%) translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+        }
+
+        .install-banner.ios-banner {
+            flex-direction: row;
+            align-items: center;
+        }
+
+        .install-banner-content {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .install-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+        }
+
+        .install-text {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .install-text strong {
+            color: var(--text-primary);
+            font-size: 0.95rem;
+        }
+
+        .install-text span {
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+        }
+
+        .install-buttons {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: flex-end;
+        }
+
+        .install-btn-primary {
+            background: var(--accent-blue);
+            color: white;
+            border: none;
+            padding: 0.6rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .install-btn-primary:hover {
+            background: #2563eb;
+        }
+
+        .install-btn-dismiss {
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+            padding: 0.6rem 1rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .install-btn-dismiss:hover {
+            background: var(--bg-hover);
+        }
+
+        @media (max-width: 768px) {
+            .install-banner {
+                bottom: 100px;
+                width: calc(100% - 1rem);
+                margin: 0 0.5rem;
             }
         }
 
@@ -3338,6 +3503,73 @@
                 console.log('ServiceWorker registration failed: ', err);
             });
         }
+
+        // PWA Install Prompt - Show automatically on mobile
+        let deferredPrompt;
+        const installBanner = document.getElementById('install-banner');
+        const installBtn = document.getElementById('install-btn');
+        const dismissBtn = document.getElementById('dismiss-install');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            // Prevent Chrome 67 and earlier from automatically showing the prompt
+            e.preventDefault();
+            // Stash the event so it can be triggered later
+            deferredPrompt = e;
+            // Show install banner
+            if (installBanner) {
+                installBanner.style.display = 'flex';
+            }
+            console.log('PWA install prompt ready');
+        });
+
+        if (installBtn) {
+            installBtn.addEventListener('click', async () => {
+                if (!deferredPrompt) return;
+                // Show the install prompt
+                deferredPrompt.prompt();
+                // Wait for the user to respond to the prompt
+                const { outcome } = await deferredPrompt.userChoice;
+                console.log('PWA install outcome:', outcome);
+                // Clear the deferred prompt
+                deferredPrompt = null;
+                // Hide the banner
+                if (installBanner) {
+                    installBanner.style.display = 'none';
+                }
+            });
+        }
+
+        if (dismissBtn) {
+            dismissBtn.addEventListener('click', () => {
+                if (installBanner) {
+                    installBanner.style.display = 'none';
+                }
+                // Remember dismissal for this session
+                sessionStorage.setItem('pwa-install-dismissed', 'true');
+            });
+        }
+
+        // Check if already installed or dismissed
+        window.addEventListener('appinstalled', () => {
+            console.log('PWA was installed');
+            if (installBanner) {
+                installBanner.style.display = 'none';
+            }
+        });
+
+        // iOS Safari install instructions
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        const isInStandaloneMode = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+
+        if (isIOS && !isInStandaloneMode && !sessionStorage.getItem('pwa-install-dismissed')) {
+            // Show iOS-specific install instructions after 2 seconds
+            setTimeout(() => {
+                const iosBanner = document.getElementById('ios-install-banner');
+                if (iosBanner) {
+                    iosBanner.style.display = 'flex';
+                }
+            }, 2000);
+        }
     </script>
 
     <!-- Mobile Bottom Navigation - All 10 Tabs -->
@@ -3385,6 +3617,33 @@
             </div>
         </div>
     </nav>
+
+    <!-- PWA Install Banner (Android/Chrome) -->
+    <div id="install-banner" class="install-banner" style="display: none;">
+        <div class="install-banner-content">
+            <img src="/static/icon-192.png" alt="MEGA FOREX" class="install-icon">
+            <div class="install-text">
+                <strong>Install MEGA FOREX PRO</strong>
+                <span>Add to your home screen for the best experience</span>
+            </div>
+        </div>
+        <div class="install-buttons">
+            <button id="install-btn" class="install-btn-primary">Install</button>
+            <button id="dismiss-install" class="install-btn-dismiss">Not Now</button>
+        </div>
+    </div>
+
+    <!-- iOS Install Instructions Banner -->
+    <div id="ios-install-banner" class="install-banner ios-banner" style="display: none;">
+        <div class="install-banner-content">
+            <img src="/static/icon-192.png" alt="MEGA FOREX" class="install-icon">
+            <div class="install-text">
+                <strong>Install MEGA FOREX PRO</strong>
+                <span>Tap <span style="font-size: 1.2em;">⬆️</span> then "Add to Home Screen"</span>
+            </div>
+        </div>
+        <button onclick="this.parentElement.style.display='none'; sessionStorage.setItem('pwa-install-dismissed', 'true');" class="install-btn-dismiss" style="margin-left: auto;">✕</button>
+    </div>
 
     <!-- Initialize Mobile Navigation (must be after nav HTML) -->
     <script>
