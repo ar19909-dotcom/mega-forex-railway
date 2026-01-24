@@ -305,9 +305,16 @@ CACHE_TTL = {
     'rates': 30,      # 30 seconds
     'candles': 300,   # 5 minutes
     'news': 600,      # 10 minutes
-    'calendar': 120,  # 2 minutes (reduced from 15min for faster updates)
+    'calendar': 1800, # 30 minutes - increased for stability
     'fundamental': 3600,
     'intermarket_data': 300  # 5 minutes
+}
+
+# Store the best quality calendar data separately (never overwrite with worse data)
+best_calendar_cache = {
+    'data': None,
+    'quality': None,
+    'timestamp': None
 }
 
 def is_cache_valid(cache_type, custom_ttl=None):
@@ -2616,13 +2623,61 @@ def get_fallback_calendar():
     return events
 
 def get_economic_calendar():
-    """Fetch economic calendar from multiple sources - tracks data quality (thread-safe)"""
+    """Fetch economic calendar from multiple sources - tracks data quality (thread-safe)
+
+    STABILITY IMPROVEMENT: Never overwrite REAL data with SCHEDULED/FALLBACK data.
+    Once we have good data, we keep it until we get new good data.
+    """
+    global best_calendar_cache
+
+    # Quality ranking: REAL > SCHEDULED > FALLBACK > UNAVAILABLE
+    QUALITY_RANK = {'REAL': 3, 'SCHEDULED': 2, 'FALLBACK': 1, 'UNAVAILABLE': 0, 'CACHED': 3}
+
+    # Check if regular cache is valid
     if is_cache_valid('calendar'):
         with cache_lock:
             if cache['calendar']['data']:
                 cached = cache['calendar']['data']
-                # Return cached data with its quality flag
-                return cached if isinstance(cached, dict) else {'events': cached, 'data_quality': 'CACHED'}
+                result = cached if isinstance(cached, dict) else {'events': cached, 'data_quality': 'CACHED'}
+                # Update best cache if this is better quality
+                cached_quality = result.get('data_quality', 'UNKNOWN')
+                if QUALITY_RANK.get(cached_quality, 0) >= QUALITY_RANK.get(best_calendar_cache.get('quality'), 0):
+                    best_calendar_cache['data'] = result
+                    best_calendar_cache['quality'] = cached_quality
+                    best_calendar_cache['timestamp'] = datetime.now()
+                return result
+
+    # Helper function to save and return calendar data
+    def save_calendar(result, source_name):
+        global best_calendar_cache
+        quality = result.get('data_quality', 'UNKNOWN')
+        quality_rank = QUALITY_RANK.get(quality, 0)
+        best_rank = QUALITY_RANK.get(best_calendar_cache.get('quality'), 0)
+
+        # Only update cache if new data is same or better quality
+        if quality_rank >= best_rank:
+            with cache_lock:
+                cache['calendar']['data'] = result
+                cache['calendar']['timestamp'] = datetime.now()
+            best_calendar_cache['data'] = result
+            best_calendar_cache['quality'] = quality
+            best_calendar_cache['timestamp'] = datetime.now()
+            logger.info(f"✓ Using {source_name} calendar ({quality}) - {len(result.get('events', []))} events")
+            return result
+        else:
+            # New data is worse quality - return best cached data instead
+            logger.info(f"⚠️ {source_name} returned {quality} data, keeping existing {best_calendar_cache.get('quality')} data")
+            if best_calendar_cache.get('data'):
+                # Refresh the cache timestamp to prevent constant retries
+                with cache_lock:
+                    cache['calendar']['data'] = best_calendar_cache['data']
+                    cache['calendar']['timestamp'] = datetime.now()
+                return best_calendar_cache['data']
+            # No best data, use what we got
+            with cache_lock:
+                cache['calendar']['data'] = result
+                cache['calendar']['timestamp'] = datetime.now()
+            return result
 
     # SOURCE 1: Try Finnhub first (best quality - but needs paid subscription for calendar)
     if FINNHUB_API_KEY:
@@ -2657,12 +2712,7 @@ def get_economic_calendar():
                         'data_quality': 'REAL',
                         'source': 'FINNHUB'
                     }
-
-                    with cache_lock:
-                        cache['calendar']['data'] = result
-                        cache['calendar']['timestamp'] = datetime.now()
-                    logger.info(f"✓ Using Finnhub economic calendar (REAL) - {len(events)} events")
-                    return result
+                    return save_calendar(result, 'Finnhub')
                 else:
                     logger.info("Finnhub returned empty calendar (free tier limitation)")
         except Exception as e:
@@ -2672,78 +2722,49 @@ def get_economic_calendar():
     logger.info("📅 Trying Forex Factory calendar...")
     forexfactory_cal = get_forexfactory_calendar()
     if forexfactory_cal and len(forexfactory_cal.get('events', [])) > 0:
-        with cache_lock:
-            cache['calendar']['data'] = forexfactory_cal
-            cache['calendar']['timestamp'] = datetime.now()
-        logger.info(f"✓ Using Forex Factory calendar (REAL) - {len(forexfactory_cal['events'])} events")
-        return forexfactory_cal
+        return save_calendar(forexfactory_cal, 'Forex Factory')
 
     # SOURCE 3: Try MyFxBook calendar (Free, reliable)
     logger.info("📅 Trying MyFxBook calendar...")
     myfxbook_cal = get_myfxbook_calendar()
     if myfxbook_cal and len(myfxbook_cal.get('events', [])) > 0:
-        with cache_lock:
-            cache['calendar']['data'] = myfxbook_cal
-            cache['calendar']['timestamp'] = datetime.now()
-        logger.info(f"✓ Using MyFxBook calendar (REAL) - {len(myfxbook_cal['events'])} events")
-        return myfxbook_cal
+        return save_calendar(myfxbook_cal, 'MyFxBook')
 
     # SOURCE 4: Try Trading Economics
     logger.info("📅 Trying Trading Economics calendar...")
     tradingeconomics_cal = get_tradingeconomics_calendar()
     if tradingeconomics_cal and len(tradingeconomics_cal.get('events', [])) > 0:
-        with cache_lock:
-            cache['calendar']['data'] = tradingeconomics_cal
-            cache['calendar']['timestamp'] = datetime.now()
-        logger.info(f"✓ Using Trading Economics calendar (REAL) - {len(tradingeconomics_cal['events'])} events")
-        return tradingeconomics_cal
+        return save_calendar(tradingeconomics_cal, 'Trading Economics')
 
     # SOURCE 5: Try Investing.com RSS (free, reliable)
     logger.info("📅 Trying Investing.com RSS...")
     investing_cal = get_investing_calendar()
     if investing_cal and len(investing_cal.get('events', [])) > 0:
-        with cache_lock:
-            cache['calendar']['data'] = investing_cal
-            cache['calendar']['timestamp'] = datetime.now()
-        logger.info(f"✓ Using Investing.com calendar (REAL) - {len(investing_cal['events'])} events")
-        return investing_cal
+        return save_calendar(investing_cal, 'Investing.com')
 
     # SOURCE 6: Try FXStreet RSS (free, no key needed)
     logger.info("📅 Trying FXStreet RSS...")
     fxstreet_cal = get_fxstreet_calendar()
     if fxstreet_cal and len(fxstreet_cal.get('events', [])) > 0:
-        with cache_lock:
-            cache['calendar']['data'] = fxstreet_cal
-            cache['calendar']['timestamp'] = datetime.now()
-        logger.info(f"✓ Using FXStreet RSS calendar (REAL) - {len(fxstreet_cal['events'])} events")
-        return fxstreet_cal
+        return save_calendar(fxstreet_cal, 'FXStreet')
 
     # SOURCE 7: Try DailyFX RSS
     logger.info("📅 Trying DailyFX RSS...")
     dailyfx_cal = get_dailyfx_calendar()
     if dailyfx_cal and len(dailyfx_cal.get('events', [])) > 0:
-        with cache_lock:
-            cache['calendar']['data'] = dailyfx_cal
-            cache['calendar']['timestamp'] = datetime.now()
-        logger.info(f"✓ Using DailyFX RSS calendar (REAL) - {len(dailyfx_cal['events'])} events")
-        return dailyfx_cal
-    
+        return save_calendar(dailyfx_cal, 'DailyFX')
+
     # SOURCE 8: Use weekly schedule generator (FALLBACK)
-    # This IS real data - these events ACTUALLY happen every week at these times
-    # NFP is always first Friday, CPI always mid-month, etc.
-    logger.info("📅 Using weekly schedule fallback...")
+    # Only use if we don't have better cached data
+    logger.info("📅 Trying weekly schedule fallback...")
     weekly_events = generate_weekly_calendar()
     if weekly_events and len(weekly_events) > 0:
         result = {
             'events': weekly_events,
-            'data_quality': 'SCHEDULED',  # Real schedule - events happen at these times
+            'data_quality': 'SCHEDULED',
             'source': 'WEEKLY_SCHEDULE'
         }
-        with cache_lock:
-            cache['calendar']['data'] = result
-            cache['calendar']['timestamp'] = datetime.now()
-        logger.info(f"✓ Using weekly schedule calendar (SCHEDULED) - {len(weekly_events)} events")
-        return result
+        return save_calendar(result, 'Weekly Schedule')
 
     # SOURCE 9: Last resort - use enhanced fallback with current dates
     logger.warning("⚠️ All calendar sources failed - using enhanced fallback")
@@ -2754,13 +2775,14 @@ def get_economic_calendar():
             'data_quality': 'FALLBACK',
             'source': 'ENHANCED_TEMPLATE'
         }
-        with cache_lock:
-            cache['calendar']['data'] = result
-            cache['calendar']['timestamp'] = datetime.now()
-        logger.info(f"✓ Using enhanced fallback calendar - {len(fallback_events)} events")
-        return result
+        return save_calendar(result, 'Enhanced Fallback')
 
-    # Emergency fallback - return empty but valid structure
+    # Emergency fallback - check if we have ANY cached data
+    if best_calendar_cache.get('data'):
+        logger.info("📅 Using preserved best calendar data")
+        return best_calendar_cache['data']
+
+    # Absolute last resort - return empty but valid structure
     logger.error("❌ All calendar sources failed including fallback")
     return {
         'events': [],

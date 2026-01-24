@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1f2e"/>
+      <stop offset="100%" style="stop-color:#0a0e17"/>
+    </linearGradient>
+    <linearGradient id="chartGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#059669"/>
+      <stop offset="100%" style="stop-color:#10b981"/>
+    </linearGradient>
+    <linearGradient id="textGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#3b82f6"/>
+      <stop offset="100%" style="stop-color:#60a5fa"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background with rounded corners -->
+  <rect width="512" height="512" rx="90" ry="90" fill="url(#bgGrad)"/>
+
+  <!-- Subtle grid pattern -->
+  <g opacity="0.1" stroke="#3b82f6" stroke-width="1">
+    <line x1="100" y1="0" x2="100" y2="512"/>
+    <line x1="200" y1="0" x2="200" y2="512"/>
+    <line x1="300" y1="0" x2="300" y2="512"/>
+    <line x1="400" y1="0" x2="400" y2="512"/>
+    <line x1="0" y1="128" x2="512" y2="128"/>
+    <line x1="0" y1="256" x2="512" y2="256"/>
+    <line x1="0" y1="384" x2="512" y2="384"/>
+  </g>
+
+  <!-- Chart line with glow effect -->
+  <polyline
+    points="60,380 130,340 200,360 270,280 340,240 410,180 450,140"
+    fill="none"
+    stroke="url(#chartGrad)"
+    stroke-width="8"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    filter="url(#glow)"
+  />
+
+  <!-- Chart dots -->
+  <circle cx="60" cy="380" r="10" fill="#10b981"/>
+  <circle cx="130" cy="340" r="10" fill="#10b981"/>
+  <circle cx="200" cy="360" r="10" fill="#10b981"/>
+  <circle cx="270" cy="280" r="10" fill="#10b981"/>
+  <circle cx="340" cy="240" r="10" fill="#10b981"/>
+  <circle cx="410" cy="180" r="10" fill="#10b981"/>
+  <circle cx="450" cy="140" r="12" fill="#10b981"/>
+
+  <!-- Arrow tip at the end -->
+  <polygon points="450,125 470,145 445,145" fill="#10b981"/>
+
+  <!-- MF Text -->
+  <text x="256" y="300"
+        font-family="Arial Black, sans-serif"
+        font-size="180"
+        font-weight="900"
+        text-anchor="middle"
+        fill="url(#textGrad)"
+        filter="url(#glow)">MF</text>
+
+  <!-- Dollar sign accent -->
+  <text x="420" y="120"
+        font-family="Arial, sans-serif"
+        font-size="50"
+        font-weight="bold"
+        fill="#f59e0b">$</text>
+
+  <!-- PRO badge -->
+  <rect x="355" y="400" width="100" height="40" rx="8" fill="#10b981"/>
+  <text x="405" y="428"
+        font-family="Arial, sans-serif"
+        font-size="24"
+        font-weight="bold"
+        text-anchor="middle"
+        fill="white">PRO</text>
+</svg>
