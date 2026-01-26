@@ -3590,12 +3590,16 @@ Respond in this exact JSON format:
 # ═══════════════════════════════════════════════════════════════════════════════
 def calculate_factor_scores(pair):
     """
-    Calculate all 10 factor scores for a pair - FIXED SCORING v2
+    Calculate all 11 factor scores for a pair - v8.5 AI ENHANCED
 
-    CHANGES:
+    FACTORS: Technical, Fundamental, Sentiment, AI, Intermarket,
+             MTF, Quantitative, Structure, Calendar, Options, Confluence
+
+    FEATURES:
     1. Expanded score ranges (15-90 instead of 40-70)
     2. More aggressive scoring for extreme conditions
     3. Proper differentiation between weak/moderate/strong signals
+    4. AI factor with GPT-4o-mini analysis (v8.5)
     """
     rate = get_rate(pair)
     tech = get_technical_indicators(pair)
@@ -4677,7 +4681,7 @@ def generate_signal(pair):
         factors_available = sum(1 for f in factors.values() if f['score'] != 50)
         
         # ─────────────────────────────────────────────────────────────────────────
-        # COMPREHENSIVE DATA QUALITY ASSESSMENT (ALL 10 FACTORS)
+        # COMPREHENSIVE DATA QUALITY ASSESSMENT (ALL 11 FACTORS - v8.5)
         # ─────────────────────────────────────────────────────────────────────────
         data_quality_checks = {
             'rate_source': rate.get('source', 'UNKNOWN') in ['POLYGON', 'LIVE', 'API'],
@@ -4994,7 +4998,7 @@ def run_system_audit():
             'bullish_threshold': 65,
             'bearish_threshold': 35
         },
-        'total_factors': 10,
+        'total_factors': 11,
         'total_weight': 100,
         'conviction_multiplier': {
             'description': 'Amplifies score when factors agree on direction',
@@ -5026,8 +5030,8 @@ def run_system_audit():
     # ═══════════════════════════════════════════════════════════════════════════
     audit['factor_details'] = {
         'technical': {
-            'weight': 22,
-            'weight_percent': '22%',
+            'weight': 20,
+            'weight_percent': '20%',
             'description': 'RSI, MACD, ADX trend analysis',
             'data_sources': ['Polygon.io candles', 'Calculated indicators'],
             'score_range': '10-90',
@@ -5068,8 +5072,8 @@ def run_system_audit():
             'signal_thresholds': {'bullish': '>= 58', 'bearish': '<= 42', 'neutral': '43-57'}
         },
         'fundamental': {
-            'weight': 16,
-            'weight_percent': '16%',
+            'weight': 14,
+            'weight_percent': '14%',
             'description': 'Interest rate differentials and carry trade analysis',
             'data_sources': ['Central bank rates database', 'FRED API'],
             'score_range': '15-85',
@@ -5091,8 +5095,8 @@ def run_system_audit():
             'signal_thresholds': {'bullish': '>= 58', 'bearish': '<= 42', 'neutral': '43-57'}
         },
         'sentiment': {
-            'weight': 13,
-            'weight_percent': '13%',
+            'weight': 11,
+            'weight_percent': '11%',
             'description': 'IG Client Positioning + News sentiment analysis',
             'data_sources': ['IG Markets API (client positioning)', 'Finnhub API (news)', 'RSS feeds (ForexLive, FXStreet, Investing.com)'],
             'score_range': '15-85',
@@ -5110,9 +5114,32 @@ def run_system_audit():
             'expansion_multiplier': 1.3,
             'signal_thresholds': {'bullish': '>= 58', 'bearish': '<= 42', 'neutral': '43-57'}
         },
-        'intermarket': {
+        'ai': {
             'weight': 10,
             'weight_percent': '10%',
+            'description': 'GPT-4o-mini AI-powered market analysis (v8.5)',
+            'data_sources': ['OpenAI API (GPT-4o-mini model)'],
+            'score_range': '15-85',
+            'components': {
+                'Market_Analysis': {
+                    'description': 'AI analyzes technical and sentiment data',
+                    'input': 'RSI, MACD, sentiment, price action'
+                },
+                'Pattern_Recognition': {
+                    'description': 'Identifies complex market patterns',
+                    'logic': 'Cross-validates other factors'
+                }
+            },
+            'cost_control': {
+                'min_signal_strength': 10,
+                'cache_ttl': 1800,
+                'skip_neutral_signals': True
+            },
+            'signal_thresholds': {'bullish': '>= 58', 'bearish': '<= 42', 'neutral': '43-57'}
+        },
+        'intermarket': {
+            'weight': 9,
+            'weight_percent': '9%',
             'description': 'Correlation analysis with DXY, Gold, Yields, Oil',
             'data_sources': ['Polygon.io', 'Alpha Vantage'],
             'score_range': '15-85',
@@ -5161,8 +5188,8 @@ def run_system_audit():
             'signal_thresholds': {'bullish': '>= 58', 'bearish': '<= 42', 'neutral': '43-57'}
         },
         'mtf': {
-            'weight': 10,
-            'weight_percent': '10%',
+            'weight': 9,
+            'weight_percent': '9%',
             'description': 'Multi-Timeframe trend alignment (H1, H4, D1)',
             'data_sources': ['Polygon.io candles (hourly, daily)'],
             'score_range': '12-88',
@@ -5182,8 +5209,8 @@ def run_system_audit():
             'signal_thresholds': {'bullish': '>= 58', 'bearish': '<= 42', 'neutral': '43-57'}
         },
         'structure': {
-            'weight': 7,
-            'weight_percent': '7%',
+            'weight': 6,
+            'weight_percent': '6%',
             'description': 'Support/Resistance levels and Pivot Points',
             'data_sources': ['Calculated from swing highs/lows'],
             'score_range': '15-85',
@@ -5217,8 +5244,8 @@ def run_system_audit():
             'signal_thresholds': {'bullish': '>= 58', 'bearish': '<= 42', 'neutral': '43-57'}
         },
         'calendar': {
-            'weight': 6,
-            'weight_percent': '6%',
+            'weight': 5,
+            'weight_percent': '5%',
             'description': 'Economic events risk assessment + Seasonality patterns',
             'data_sources': ['Finnhub API economic calendar'],
             'score_range': '20-90',
@@ -5629,13 +5656,14 @@ def run_system_audit():
             'technical': 'RSI, MACD, ADX calculated from Polygon.io candle data',
             'fundamental': 'Interest rate differentials from central bank rates + FRED API',
             'sentiment': 'IG positioning + Finnhub news + RSS feeds + COT institutional data',
+            'ai': 'GPT-4o-mini market analysis and pattern recognition (v8.5)',
             'intermarket': 'DXY, Gold, Yields correlation analysis',
             'quantitative': 'Z-score and Bollinger %B from price statistics',
             'mtf': 'H1/H4/D1 EMA analysis from candle data (proper OHLC aggregation)',
             'structure': 'Swing high/low detection + pivot calculations',
             'calendar': 'Multi-tier economic calendar + Seasonality patterns (month/quarter-end flows)',
-            'confluence': 'Factor agreement analysis across 10 factors',
-            'options': '25-delta risk reversals + Put/Call ratios (price volatility proxy)'
+            'options': '25-delta risk reversals + Put/Call ratios (price volatility proxy)',
+            'confluence': 'Factor agreement analysis across 11 factors'
         },
         'calibration_notes': {
             'score_range': '5-95 (proper differentiation)',
