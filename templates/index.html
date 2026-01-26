@@ -3036,7 +3036,7 @@
                                     <div class="label">Forex Pairs</div>
                                 </div>
                                 <div class="result-card">
-                                    <div class="value">${data.system_info?.total_factors || 10}</div>
+                                    <div class="value">${data.system_info?.total_factors || 11}</div>
                                     <div class="label">Scoring Factors</div>
                                 </div>
                                 <div class="result-card">
@@ -3192,7 +3192,7 @@
                                             <td>${p.pair}</td>
                                             <td style="color: ${p.score >= 65 ? 'var(--accent-green)' : p.score <= 35 ? 'var(--accent-red)' : 'var(--text-primary)'}; font-weight: 600;">${p.score || p.error || 'N/A'}</td>
                                             <td><span class="status-badge ${p.direction === 'LONG' ? 'ok' : p.direction === 'SHORT' ? 'error' : 'limited'}">${p.direction || '-'}</span></td>
-                                            <td>${p.factors_count || 0}/10</td>
+                                            <td>${p.factors_count || 0}/11</td>
                                         </tr>
                                     `).join('')}
                                 </tbody>
