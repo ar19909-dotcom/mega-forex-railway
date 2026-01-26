@@ -155,7 +155,7 @@ AI_FACTOR_CONFIG = {
     'enabled': True,                    # Set to False to disable AI factor
     'model': 'gpt-4o-mini',             # OpenAI model to use (gpt-4o-mini available)
     'cache_ttl': 1800,                  # 30 minutes cache
-    'min_signal_strength': 10,          # Only call AI if other factors show signal strength >= 10
+    'min_signal_strength': 3,           # Call AI for most signals (strength >= 3 from neutral)
     'max_pairs_per_refresh': 15,        # Max pairs to analyze with AI per refresh cycle
     'timeout': 8,                       # API timeout in seconds
     'rate_limit_delay': 0.1             # Delay between API calls (seconds)
