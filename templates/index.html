@@ -33,7 +33,7 @@
     <!-- iOS Splash Screens -->
     <link rel="apple-touch-startup-image" href="/static/icon-512.png">
 
-    <title>MEGA FOREX v8.4 PRO - Institutional Grade Trading Dashboard</title>
+    <title>MEGA FOREX v8.5 PRO - AI Enhanced Trading Dashboard</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
@@ -1884,7 +1884,7 @@
 
     <!-- Header -->
     <header class="header">
-        <div class="logo">MEGA<span>FOREX</span> v8.4 <span style="color: var(--accent-green); font-size: 0.7em;">PRO</span></div>
+        <div class="logo">MEGA<span>FOREX</span> v8.5 <span style="color: var(--accent-green); font-size: 0.7em;">PRO</span></div>
         <div class="header-stats">
             <div class="stat-item">
                 <div class="stat-value" id="total-pairs">45</div>
@@ -2264,11 +2264,16 @@
                             ${qualityBadge}
                         </div>
                         <div class="composite-score">
-                            <div class="score-value ${scoreClass}">${signal.composite_score}</div>
+                            <div class="score-value ${scoreClass}">${signal.dominant_score || signal.composite_score}%</div>
                             <div class="stars">${stars}</div>
                         </div>
                     </div>
-                    
+
+                    <div class="percentage-scores" style="display: flex; justify-content: space-between; margin: 0.5rem 0; padding: 0.3rem; background: rgba(0,0,0,0.2); border-radius: 4px; font-size: 0.75rem;">
+                        <span style="color: var(--accent-green);">LONG: ${(signal.long_score || 0).toFixed(1)}%</span>
+                        <span style="color: var(--accent-red);">SHORT: ${(signal.short_score || 0).toFixed(1)}%</span>
+                    </div>
+
                     <span class="direction-badge ${dirClass}">${signal.direction}</span>
                     
                     <div class="stats-row">
@@ -3240,10 +3245,10 @@
                     const factors = data.factor_details;
                     container.innerHTML = `
                         <div class="audit-section">
-                            <h3>📖 Complete Scoring Methodology - v8.4 PRO (Institutional Grade)</h3>
+                            <h3>📖 Complete Scoring Methodology - v8.5 PRO (AI Enhanced)</h3>
                             <p style="color: var(--text-secondary); margin-bottom: 1rem;">
-                                This system uses <strong>10 weighted factors</strong> including <strong>Options Positioning, COT Data, and Seasonality</strong> with a <strong>conviction multiplier</strong> to generate institutional-grade trading signals.
-                                All calculations use <strong>100% REAL market data</strong> - no fake or simulated scores.
+                                This system uses <strong>11 weighted factors</strong> including <strong>AI Analysis (GPT-5-mini), Options Positioning, COT Data, and Seasonality</strong> with a <strong>conviction multiplier</strong> to generate AI-enhanced trading signals.
+                                All calculations use <strong>100% REAL market data + AI analysis</strong>.
                             </p>
                         </div>
                         

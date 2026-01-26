@@ -3551,11 +3551,18 @@ Respond in this exact JSON format:
                     'data_quality': 'AI_PARTIAL'
                 }
         else:
-            logger.error(f"AI Factor API error: {response.status_code} - {response.text[:200]}")
+            # Parse error message from API response
+            try:
+                error_json = response.json()
+                error_msg = error_json.get('error', {}).get('message', response.text[:150])
+            except:
+                error_msg = response.text[:150]
+
+            logger.error(f"AI Factor API error: {response.status_code} - {error_msg}")
             ai_result = {
                 'score': 50,
                 'signal': 'NEUTRAL',
-                'analysis': f'API error: {response.status_code}',
+                'analysis': f'API error {response.status_code}: {error_msg[:100]}',
                 'confidence': 'LOW',
                 'data_quality': 'API_ERROR'
             }
@@ -5416,7 +5423,42 @@ def run_system_audit():
         }
     except Exception as e:
         audit['api_status']['calendar'] = {'status': 'ERROR', 'error': str(e)}
-    
+
+    # Test OpenAI API (v8.5)
+    try:
+        if OPENAI_API_KEY:
+            # Test API connection with a minimal request
+            headers = {
+                'Authorization': f'Bearer {OPENAI_API_KEY}',
+                'Content-Type': 'application/json'
+            }
+            test_response = req_lib.get(
+                'https://api.openai.com/v1/models',
+                headers=headers,
+                timeout=5
+            )
+            if test_response.status_code == 200:
+                audit['api_status']['openai'] = {
+                    'status': 'OK',
+                    'model': AI_FACTOR_CONFIG.get('model', 'gpt-5-mini'),
+                    'purpose': 'AI-powered market analysis (v8.5)',
+                    'cache_ttl': AI_FACTOR_CONFIG.get('cache_ttl', 1800)
+                }
+            else:
+                audit['api_status']['openai'] = {
+                    'status': 'ERROR',
+                    'error': f'API returned {test_response.status_code}',
+                    'model': AI_FACTOR_CONFIG.get('model', 'gpt-5-mini')
+                }
+        else:
+            audit['api_status']['openai'] = {
+                'status': 'NOT_CONFIGURED',
+                'configured': False,
+                'purpose': 'AI-powered market analysis (v8.5)'
+            }
+    except Exception as e:
+        audit['api_status']['openai'] = {'status': 'ERROR', 'error': str(e)}
+
     # ═══════════════════════════════════════════════════════════════════════════
     # DATA QUALITY CHECK
     # ═══════════════════════════════════════════════════════════════════════════
@@ -5476,7 +5518,7 @@ def run_system_audit():
         'factor_weights': FACTOR_WEIGHTS,
         'features': [
             '45 Forex Pairs',
-            '10-Factor Institutional Scoring (Options + COT + Seasonality)',
+            '11-Factor AI-Enhanced Scoring (GPT-5-mini + Options + COT)',
             'Conviction Multiplier',
             'Z-Score Analysis',
             'Support/Resistance Detection',
@@ -5612,7 +5654,7 @@ def api_info():
         'factors': len(FACTOR_WEIGHTS),
         'features': [
             '45 Forex Pairs',
-            '10-Factor Institutional Scoring (Options + COT + Seasonality)',
+            '11-Factor AI-Enhanced Scoring (GPT-5-mini + Options + COT)',
             'Multi-Source News (Finnhub + RSS)',
             'Multi-tier Data Fallbacks',
             'REAL IG Sentiment + Intermarket',
@@ -6217,9 +6259,15 @@ def api_status():
             'configured': bool(IG_API_KEY and IG_USERNAME and IG_PASSWORD),
             'status': 'OK' if all([IG_API_KEY, IG_USERNAME, IG_PASSWORD]) else 'NOT_CONFIGURED',
             'account_type': IG_ACC_TYPE
+        },
+        'openai': {
+            'configured': bool(OPENAI_API_KEY),
+            'status': 'OK' if OPENAI_API_KEY else 'NOT_CONFIGURED',
+            'model': AI_FACTOR_CONFIG.get('model', 'gpt-5-mini'),
+            'purpose': 'AI Factor Analysis (v8.5)'
         }
     }
-    
+
     return jsonify({'success': True, **status})
 
 # ═══════════════════════════════════════════════════════════════════════════════
