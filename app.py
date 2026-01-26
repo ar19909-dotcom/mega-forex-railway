@@ -5712,8 +5712,9 @@ def get_signals():
                     pair = future_to_pair.get(future, 'UNKNOWN')
                     logger.debug(f"Signal generation failed for {pair}: {e}")
 
-        # Sort by dominant_score (v8.5: use new percentage-based scoring)
-        signals.sort(key=lambda x: x.get('dominant_score', 0), reverse=True)
+        # Sort by SIGNAL STRENGTH (best trades first regardless of LONG/SHORT)
+        # Strongest signals = furthest deviation from 50 (neutral)
+        signals.sort(key=lambda x: abs(x.get('composite_score', 50) - 50), reverse=True)
 
         result = {
             'success': True,
@@ -5806,8 +5807,8 @@ def get_subscription_signals():
                     pair = future_to_pair.get(future, 'UNKNOWN')
                     logger.debug(f"Signal generation failed for {pair}: {e}")
 
-        # Sort by dominant score (v8.5)
-        signals.sort(key=lambda x: x.get('dominant_score', 0), reverse=True)
+        # Sort by SIGNAL STRENGTH (best trades first regardless of LONG/SHORT)
+        signals.sort(key=lambda x: abs(x.get('composite_score', 50) - 50), reverse=True)
 
         # Strip all scoring data before returning
         stripped_signals = [strip_scoring_data(s) for s in signals]
