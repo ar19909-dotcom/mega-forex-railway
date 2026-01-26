@@ -1952,12 +1952,12 @@
                     </select>
                 </div>
                 <div class="filter-group">
-                    <span class="filter-label">Min Score:</span>
+                    <span class="filter-label">Min Strength:</span>
                     <select id="filter-score">
-                        <option value="0">All</option>
-                        <option value="50">50+</option>
-                        <option value="60">60+</option>
-                        <option value="70">70+</option>
+                        <option value="0">All Signals</option>
+                        <option value="15">Tradeable (15+)</option>
+                        <option value="25">Strong (25+)</option>
+                        <option value="35">Very Strong (35+)</option>
                     </select>
                 </div>
                 <button onclick="loadSignals()">🔄 Refresh</button>
@@ -2214,12 +2214,14 @@
             const container = document.getElementById('signals-container');
             const category = document.getElementById('filter-category').value;
             const direction = document.getElementById('filter-direction').value;
-            const minScore = parseInt(document.getElementById('filter-score').value);
-            
+            const minStrength = parseInt(document.getElementById('filter-score').value);
+
             let filtered = signalsData.filter(s => {
                 if (category !== 'all' && s.category.toLowerCase() !== category) return false;
                 if (direction !== 'all' && s.direction.toLowerCase() !== direction) return false;
-                if (s.composite_score < minScore) return false;
+                // Filter by SIGNAL STRENGTH (distance from 50) - works for both LONG and SHORT
+                const signalStrength = Math.abs(s.composite_score - 50);
+                if (signalStrength < minStrength) return false;
                 return true;
             });
             

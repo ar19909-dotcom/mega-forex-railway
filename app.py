@@ -4,7 +4,7 @@
 ║                    Build: January 26, 2026 - Production Ready                ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
 ║  ✓ 45 Forex Pairs with guaranteed data coverage                              ║
-║  ✓ 11-Factor AI-Enhanced Scoring (NEW: GPT-5-mini Analysis)                  ║
+║  ✓ 11-Factor AI-Enhanced Scoring (NEW: GPT-4o-mini Analysis)                  ║
 ║  ✓ Percentage Scoring: 0-100% for LONG and SHORT independently               ║
 ║  ✓ Entry Window: 0-8 hours based on signal strength                          ║
 ║  ✓ 16 Candlestick Pattern Recognition                                        ║
@@ -18,7 +18,7 @@
 ║  - Technical (20%): RSI, MACD, ADX from real candle data                     ║
 ║  - Fundamental (14%): Interest rate differentials                            ║
 ║  - Sentiment (11%): IG positioning + news + COT data                         ║
-║  - AI Analysis (10%): GPT-5-mini market analysis (NEW!)                      ║
+║  - AI Analysis (10%): GPT-4o-mini market analysis (NEW!)                      ║
 ║  - Intermarket (9%): DXY, Gold, Yields correlations                          ║
 ║  - MTF (9%): Multi-timeframe EMA alignment                                   ║
 ║  - Quantitative (7%): Z-Score, Bollinger %B                                  ║
@@ -147,7 +147,7 @@ ig_session = {
     'last_error': None
 }
 
-# OpenAI API (GPT-5-mini for AI Factor)
+# OpenAI API (GPT-4o-mini for AI Factor)
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '')
 
 # AI Factor Configuration
@@ -236,16 +236,14 @@ interest_rates_cache = {
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# FACTOR WEIGHTS (v8.4 Enhanced - Total 100%)
-# Added Options Positioning (6%), COT Data (in sentiment), Seasonality (in calendar)
-# ═══════════════════════════════════════════════════════════════════════════════
 # FACTOR WEIGHTS v8.5 - 11 FACTORS (AI-ENHANCED)
+# Includes: Options Positioning (6%), COT Data (in sentiment), AI Analysis (10%)
 # ═══════════════════════════════════════════════════════════════════════════════
 FACTOR_WEIGHTS = {
     'technical': 20,      # RSI, MACD, ADX, ATR, Bollinger
     'fundamental': 14,    # Interest rate diffs, carry trade
     'sentiment': 11,      # IG Positioning + News + COT data
-    'ai': 10,             # GPT-5-mini AI Analysis (NEW!)
+    'ai': 10,             # GPT-4o-mini AI Analysis (NEW!)
     'intermarket': 9,     # DXY, Gold, Yields, Oil correlations
     'mtf': 9,             # Multi-timeframe alignment (H1/H4/D1)
     'quantitative': 7,    # Z-score, mean reversion, Bollinger %B
@@ -3386,11 +3384,11 @@ def analyze_intermarket(pair):
     }
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# AI FACTOR - GPT-5-mini Analysis (v8.5)
+# AI FACTOR - GPT-4o-mini Analysis (v8.5)
 # ═══════════════════════════════════════════════════════════════════════════════
 def calculate_ai_factor(pair, tech_data, sentiment_data, rate_data, preliminary_score=50):
     """
-    AI-powered market analysis using GPT-5-mini
+    AI-powered market analysis using GPT-4o-mini
 
     Analyzes:
     1. Technical pattern recognition
@@ -3462,7 +3460,7 @@ def calculate_ai_factor(pair, tech_data, sentiment_data, rate_data, preliminary_
 
         current_price = rate_data.get('mid', 0) if rate_data else 0
 
-        # Build prompt for GPT-5-mini
+        # Build prompt for GPT-4o-mini
         prompt = f"""Analyze this forex pair and provide a trading recommendation.
 
 PAIR: {pair}
@@ -4066,7 +4064,7 @@ def calculate_factor_scores(pair):
         }
 
     # ═══════════════════════════════════════════════════════════════════════════
-    # 10. AI FACTOR (10%) - GPT-5-mini Analysis (v8.5 NEW)
+    # 10. AI FACTOR (10%) - GPT-4o-mini Analysis (v8.5 NEW)
     # Only called for pairs with sufficient signal strength to control costs
     # ═══════════════════════════════════════════════════════════════════════════
 
@@ -5024,7 +5022,7 @@ def run_system_audit():
     }
     
     # ═══════════════════════════════════════════════════════════════════════════
-    # 10 FACTOR DETAILS (v8.4 PRO)
+    # 11 FACTOR DETAILS (v8.5 PRO - AI ENHANCED)
     # ═══════════════════════════════════════════════════════════════════════════
     audit['factor_details'] = {
         'technical': {
@@ -5659,7 +5657,7 @@ def run_system_audit():
 def api_info():
     return jsonify({
         'name': 'MEGA FOREX v8.5 PRO - AI Enhanced',
-        'version': '8.4',
+        'version': '8.5',
         'status': 'operational',
         'pairs': len(FOREX_PAIRS),
         'factors': len(FACTOR_WEIGHTS),
@@ -5920,16 +5918,17 @@ def weights_endpoint():
 def reset_weights():
     global FACTOR_WEIGHTS
     FACTOR_WEIGHTS = {
-        'technical': 22,
-        'fundamental': 16,
-        'sentiment': 13,
-        'intermarket': 10,
-        'quantitative': 7,
-        'mtf': 10,
-        'structure': 7,
-        'calendar': 6,
-        'confluence': 3,
-        'options': 6  # New factor in v8.4
+        'technical': 20,      # RSI, MACD, ADX, ATR, Bollinger
+        'fundamental': 14,    # Interest rate diffs, carry trade
+        'sentiment': 11,      # IG Positioning + News + COT data
+        'ai': 10,             # GPT-4o-mini AI Analysis (v8.5)
+        'intermarket': 9,     # DXY, Gold, Yields, Oil correlations
+        'mtf': 9,             # Multi-timeframe alignment (H1/H4/D1)
+        'quantitative': 7,    # Z-score, mean reversion, Bollinger %B
+        'structure': 6,       # S/R levels, pivots
+        'calendar': 5,        # Economic events + Seasonality patterns
+        'options': 6,         # 25-delta risk reversals, put/call skew
+        'confluence': 3       # Factor agreement bonus
     }
     save_weights(FACTOR_WEIGHTS)
     return jsonify({'success': True, 'weights': FACTOR_WEIGHTS})
