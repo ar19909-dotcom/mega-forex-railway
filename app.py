@@ -4446,8 +4446,9 @@ def generate_signal(pair):
 
         if composite_score >= 65:
             direction = 'LONG'
-            # Calculate long_score as percentage (65-95 mapped to 0-100%)
-            dominant_score = round(((composite_score - 50) / 45) * 100, 1)
+            # Calculate long_score as percentage - more aggressive scaling with /35
+            # At 65: 42.9%, At 85: 100%
+            dominant_score = round(((composite_score - 50) / 35) * 100, 1)
             dominant_score = max(0, min(100, dominant_score))
             long_score = dominant_score
             short_score = round(max(0, 100 - dominant_score), 1)
@@ -4459,8 +4460,9 @@ def generate_signal(pair):
                 strength_label = 'MODERATE'
         elif composite_score <= 35:
             direction = 'SHORT'
-            # Calculate short_score as percentage (5-35 mapped to 0-100%)
-            dominant_score = round(((50 - composite_score) / 45) * 100, 1)
+            # Calculate short_score as percentage - more aggressive scaling with /35
+            # At 35: 42.9%, At 15: 100%
+            dominant_score = round(((50 - composite_score) / 35) * 100, 1)
             dominant_score = max(0, min(100, dominant_score))
             short_score = dominant_score
             long_score = round(max(0, 100 - dominant_score), 1)
