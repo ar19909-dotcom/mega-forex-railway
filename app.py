@@ -4440,47 +4440,58 @@ def generate_signal(pair):
         short_score = max(0, min(100, short_score))
 
         # ═══════════════════════════════════════════════════════════════════════════
-        # DIRECTION DETERMINATION - Based on percentage scores
+        # DIRECTION DETERMINATION - Based on composite_score (proven logic)
+        # long_score/short_score are for display only
         # ═══════════════════════════════════════════════════════════════════════════
 
-        # Direction based on which score is higher and above threshold
-        min_threshold = 30  # Minimum 30% to trigger a signal
-
-        if long_score >= min_threshold and long_score > short_score:
+        if composite_score >= 65:
             direction = 'LONG'
-            dominant_score = long_score
-            if long_score >= 80:
+            # Calculate long_score as percentage (65-95 mapped to 0-100%)
+            dominant_score = round(((composite_score - 50) / 45) * 100, 1)
+            dominant_score = max(0, min(100, dominant_score))
+            long_score = dominant_score
+            short_score = round(max(0, 100 - dominant_score), 1)
+            if composite_score >= 80:
                 strength_label = 'VERY STRONG'
-            elif long_score >= 60:
+            elif composite_score >= 72:
                 strength_label = 'STRONG'
-            elif long_score >= 40:
-                strength_label = 'MODERATE'
             else:
-                strength_label = 'WEAK'
-        elif short_score >= min_threshold and short_score > long_score:
+                strength_label = 'MODERATE'
+        elif composite_score <= 35:
             direction = 'SHORT'
-            dominant_score = short_score
-            if short_score >= 80:
+            # Calculate short_score as percentage (5-35 mapped to 0-100%)
+            dominant_score = round(((50 - composite_score) / 45) * 100, 1)
+            dominant_score = max(0, min(100, dominant_score))
+            short_score = dominant_score
+            long_score = round(max(0, 100 - dominant_score), 1)
+            if composite_score <= 20:
                 strength_label = 'VERY STRONG'
-            elif short_score >= 60:
+            elif composite_score <= 28:
                 strength_label = 'STRONG'
-            elif short_score >= 40:
-                strength_label = 'MODERATE'
             else:
-                strength_label = 'WEAK'
+                strength_label = 'MODERATE'
         else:
             direction = 'NEUTRAL'
             strength_label = 'WEAK'
-            dominant_score = max(long_score, short_score)
+            # For neutral, show distance from 50 in both directions
+            if composite_score > 50:
+                dominant_score = round(((composite_score - 50) / 15) * 50, 1)  # Max 50% for neutral
+                long_score = dominant_score
+                short_score = 0
+            else:
+                dominant_score = round(((50 - composite_score) / 15) * 50, 1)  # Max 50% for neutral
+                short_score = dominant_score
+                long_score = 0
 
-        # Calculate star rating (1-5 stars based on dominant score)
-        if dominant_score >= 80:
+        # Calculate star rating (1-5 stars based on deviation from 50)
+        deviation_from_neutral = abs(composite_score - 50)
+        if deviation_from_neutral >= 35:
             stars = 5
-        elif dominant_score >= 60:
+        elif deviation_from_neutral >= 25:
             stars = 4
-        elif dominant_score >= 40:
+        elif deviation_from_neutral >= 18:
             stars = 3
-        elif dominant_score >= 20:
+        elif deviation_from_neutral >= 10:
             stars = 2
         else:
             stars = 1
