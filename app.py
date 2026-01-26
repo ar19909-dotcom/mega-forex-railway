@@ -153,7 +153,7 @@ OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '')
 # AI Factor Configuration
 AI_FACTOR_CONFIG = {
     'enabled': True,                    # Set to False to disable AI factor
-    'model': 'gpt-5-mini',              # OpenAI model to use
+    'model': 'gpt-4o-mini',             # OpenAI model to use (gpt-4o-mini available)
     'cache_ttl': 1800,                  # 30 minutes cache
     'min_signal_strength': 10,          # Only call AI if other factors show signal strength >= 10
     'max_pairs_per_refresh': 15,        # Max pairs to analyze with AI per refresh cycle
@@ -3492,7 +3492,7 @@ Respond in this exact JSON format:
         }
 
         payload = {
-            'model': AI_FACTOR_CONFIG.get('model', 'gpt-5-mini'),
+            'model': AI_FACTOR_CONFIG.get('model', 'gpt-4o-mini'),
             'messages': [
                 {'role': 'system', 'content': 'You are an expert forex analyst. Provide concise, actionable trading signals based on technical and sentiment data. Always respond in valid JSON format.'},
                 {'role': 'user', 'content': prompt}
@@ -4092,7 +4092,7 @@ def calculate_factor_scores(pair):
         'details': {
             'analysis': ai_result.get('analysis', ''),
             'confidence': ai_result.get('confidence', 'MEDIUM'),
-            'model': AI_FACTOR_CONFIG.get('model', 'gpt-5-mini'),
+            'model': AI_FACTOR_CONFIG.get('model', 'gpt-4o-mini'),
             'preliminary_score': round(preliminary_score, 1)
         }
     }
@@ -5440,7 +5440,7 @@ def run_system_audit():
             if test_response.status_code == 200:
                 audit['api_status']['openai'] = {
                     'status': 'OK',
-                    'model': AI_FACTOR_CONFIG.get('model', 'gpt-5-mini'),
+                    'model': AI_FACTOR_CONFIG.get('model', 'gpt-4o-mini'),
                     'purpose': 'AI-powered market analysis (v8.5)',
                     'cache_ttl': AI_FACTOR_CONFIG.get('cache_ttl', 1800)
                 }
@@ -5448,7 +5448,7 @@ def run_system_audit():
                 audit['api_status']['openai'] = {
                     'status': 'ERROR',
                     'error': f'API returned {test_response.status_code}',
-                    'model': AI_FACTOR_CONFIG.get('model', 'gpt-5-mini')
+                    'model': AI_FACTOR_CONFIG.get('model', 'gpt-4o-mini')
                 }
         else:
             audit['api_status']['openai'] = {
@@ -5518,7 +5518,7 @@ def run_system_audit():
         'factor_weights': FACTOR_WEIGHTS,
         'features': [
             '45 Forex Pairs',
-            '11-Factor AI-Enhanced Scoring (GPT-5-mini + Options + COT)',
+            '11-Factor AI-Enhanced Scoring (OpenAI + Options + COT)',
             'Conviction Multiplier',
             'Z-Score Analysis',
             'Support/Resistance Detection',
@@ -5654,7 +5654,7 @@ def api_info():
         'factors': len(FACTOR_WEIGHTS),
         'features': [
             '45 Forex Pairs',
-            '11-Factor AI-Enhanced Scoring (GPT-5-mini + Options + COT)',
+            '11-Factor AI-Enhanced Scoring (OpenAI + Options + COT)',
             'Multi-Source News (Finnhub + RSS)',
             'Multi-tier Data Fallbacks',
             'REAL IG Sentiment + Intermarket',
@@ -6263,7 +6263,7 @@ def api_status():
         'openai': {
             'configured': bool(OPENAI_API_KEY),
             'status': 'OK' if OPENAI_API_KEY else 'NOT_CONFIGURED',
-            'model': AI_FACTOR_CONFIG.get('model', 'gpt-5-mini'),
+            'model': AI_FACTOR_CONFIG.get('model', 'gpt-4o-mini'),
             'purpose': 'AI Factor Analysis (v8.5)'
         }
     }
@@ -6462,11 +6462,11 @@ if __name__ == '__main__':
     print(f"  FRED API:        {'✓' if FRED_API_KEY else '✗'}")
     print(f"  Alpha Vantage:   {'✓' if ALPHA_VANTAGE_KEY else '✗'}")
     print(f"  IG Markets API:  {'✓ (' + IG_ACC_TYPE + ')' if all([IG_API_KEY, IG_USERNAME, IG_PASSWORD]) else '✗'}")
-    print(f"  OpenAI API:      {'✓ (GPT-5-mini)' if OPENAI_API_KEY else '✗'}")
+    print(f"  OpenAI API:      {'✓ (gpt-4o-mini)' if OPENAI_API_KEY else '✗'}")
     print(f"  ExchangeRate:    ✓ (Free, no key needed)")
     print("=" * 70)
     print("  v8.5 PRO FEATURES:")
-    print("    ✨ 11-Factor AI-Enhanced Scoring (GPT-5-mini Analysis)")
+    print("    ✨ 11-Factor AI-Enhanced Scoring (OpenAI Analysis)")
     print("    ✨ Percentage Scoring: 0-100% for LONG and SHORT")
     print("    ✨ Entry Window: 0-8 hours based on signal strength")
     print("    ✨ 16 Candlestick Pattern Recognition")
