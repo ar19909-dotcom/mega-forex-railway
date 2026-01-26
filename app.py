@@ -1,26 +1,29 @@
 """
 ╔══════════════════════════════════════════════════════════════════════════════╗
-║                    MEGA FOREX v8.4 PRO - INSTITUTIONAL GRADE SYSTEM          ║
-║                    Build: January 23, 2026 - Production Ready                ║
+║                    MEGA FOREX v8.5 PRO - AI-ENHANCED SYSTEM                  ║
+║                    Build: January 26, 2026 - Production Ready                ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
 ║  ✓ 45 Forex Pairs with guaranteed data coverage                              ║
-║  ✓ 10-Factor Enhanced Scoring (Options + COT + Seasonality)                  ║
+║  ✓ 11-Factor AI-Enhanced Scoring (NEW: GPT-5-mini Analysis)                  ║
+║  ✓ Percentage Scoring: 0-100% for LONG and SHORT independently               ║
+║  ✓ Entry Window: 0-8 hours based on signal strength                          ║
 ║  ✓ 16 Candlestick Pattern Recognition                                        ║
 ║  ✓ SQLite Trade Journal & Signal History                                     ║
 ║  ✓ Smart Dynamic SL/TP (Variable ATR)                                        ║
 ║  ✓ REAL IG Client Sentiment + Institutional COT Data                         ║
 ║  ✓ Complete Backtesting Module                                               ║
-║  ✓ DATA QUALITY INDICATORS (v8.4 - 100% REAL DATA)                           ║
+║  ✓ DATA QUALITY INDICATORS (v8.5 - AI + REAL DATA)                           ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
-║  SCORING METHODOLOGY: Audited for Swing Trading (2-10 day holds)             ║
-║  - Technical (22%): RSI, MACD, ADX from real candle data                     ║
-║  - Fundamental (16%): Interest rate differentials                            ║
-║  - Sentiment (13%): IG positioning + news + COT data                         ║
-║  - Intermarket (10%): DXY, Gold, Yields correlations                         ║
-║  - MTF (10%): Multi-timeframe EMA alignment                                  ║
+║  SCORING METHODOLOGY: 11-Factor AI-Enhanced (v8.5)                           ║
+║  - Technical (20%): RSI, MACD, ADX from real candle data                     ║
+║  - Fundamental (14%): Interest rate differentials                            ║
+║  - Sentiment (11%): IG positioning + news + COT data                         ║
+║  - AI Analysis (10%): GPT-5-mini market analysis (NEW!)                      ║
+║  - Intermarket (9%): DXY, Gold, Yields correlations                          ║
+║  - MTF (9%): Multi-timeframe EMA alignment                                   ║
 ║  - Quantitative (7%): Z-Score, Bollinger %B                                  ║
-║  - Structure (7%): Support/Resistance, pivots                                ║
-║  - Calendar (6%): Economic event risk + seasonality                          ║
+║  - Structure (6%): Support/Resistance, pivots                                ║
+║  - Calendar (5%): Economic event risk + seasonality                          ║
 ║  - Options (6%): 25-delta risk reversals, P/C ratios                         ║
 ║  - Confluence (3%): Factor agreement bonus                                   ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
@@ -84,7 +87,7 @@ def health_check():
     """Health check endpoint"""
     return jsonify({
         'status': 'healthy',
-        'version': '8.4 PRO - INSTITUTIONAL',
+        'version': '8.5 PRO - AI ENHANCED',
         'pairs': 45,
         'timestamp': datetime.now().isoformat()
     })
@@ -143,6 +146,28 @@ ig_session = {
     'last_login': None,
     'last_error': None
 }
+
+# OpenAI API (GPT-5-mini for AI Factor)
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '')
+
+# AI Factor Configuration
+AI_FACTOR_CONFIG = {
+    'enabled': True,                    # Set to False to disable AI factor
+    'model': 'gpt-5-mini',              # OpenAI model to use
+    'cache_ttl': 1800,                  # 30 minutes cache
+    'min_signal_strength': 10,          # Only call AI if other factors show signal strength >= 10
+    'max_pairs_per_refresh': 15,        # Max pairs to analyze with AI per refresh cycle
+    'timeout': 8,                       # API timeout in seconds
+    'rate_limit_delay': 0.1             # Delay between API calls (seconds)
+}
+
+# AI Factor Cache (thread-safe)
+ai_factor_cache = {
+    'data': {},  # {pair: {result, timestamp}}
+    'call_count': 0,  # Track API calls for cost monitoring
+    'last_reset': None
+}
+ai_cache_lock = threading.Lock()  # Thread safety for AI cache
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # FOREX PAIRS CONFIGURATION (45 PAIRS)
@@ -214,18 +239,22 @@ interest_rates_cache = {
 # FACTOR WEIGHTS (v8.4 Enhanced - Total 100%)
 # Added Options Positioning (6%), COT Data (in sentiment), Seasonality (in calendar)
 # ═══════════════════════════════════════════════════════════════════════════════
+# FACTOR WEIGHTS v8.5 - 11 FACTORS (AI-ENHANCED)
+# ═══════════════════════════════════════════════════════════════════════════════
 FACTOR_WEIGHTS = {
-    'technical': 22,      # RSI, MACD, ADX, ATR, Bollinger (-2% to make room for options)
-    'fundamental': 16,    # Interest rate diffs, carry trade, FRED auto-updates (-2%)
-    'sentiment': 13,      # IG Positioning + News + COT institutional data (enhanced)
-    'intermarket': 10,    # DXY, Gold, Yields, Oil correlations (-1%)
-    'quantitative': 7,    # Z-score, mean reversion, Bollinger %B (-1%)
-    'mtf': 10,            # Multi-timeframe alignment (H1/H4/D1)
-    'structure': 7,       # S/R levels, pivots
-    'calendar': 6,        # Economic events + Seasonality patterns (+1%)
-    'confluence': 3,      # Factor agreement bonus (-1%)
-    'options': 6          # 25-delta risk reversals, put/call skew (NEW!)
+    'technical': 20,      # RSI, MACD, ADX, ATR, Bollinger
+    'fundamental': 14,    # Interest rate diffs, carry trade
+    'sentiment': 11,      # IG Positioning + News + COT data
+    'ai': 10,             # GPT-5-mini AI Analysis (NEW!)
+    'intermarket': 9,     # DXY, Gold, Yields, Oil correlations
+    'mtf': 9,             # Multi-timeframe alignment (H1/H4/D1)
+    'quantitative': 7,    # Z-score, mean reversion, Bollinger %B
+    'structure': 6,       # S/R levels, pivots
+    'calendar': 5,        # Economic events + Seasonality patterns
+    'options': 6,         # 25-delta risk reversals, put/call skew
+    'confluence': 3       # Factor agreement bonus
 }
+# Total: 100%
 
 # Endpoint to get/update weights
 weights_file = 'factor_weights.json'
@@ -312,7 +341,7 @@ CACHE_TTL = {
     'fundamental': 3600,
     'intermarket_data': 300,  # 5 minutes
     'positioning': 120,  # 2 minutes - IG sentiment doesn't change rapidly
-    'signals': 60,    # 1 minute - balance freshness vs performance
+    'signals': 120,   # 2 minutes - v8.5: increased for better performance with AI factor
     'audit': 300      # 5 minutes - audit data doesn't change rapidly
 }
 
@@ -3357,7 +3386,202 @@ def analyze_intermarket(pair):
     }
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 10-FACTOR SIGNAL GENERATION
+# AI FACTOR - GPT-5-mini Analysis (v8.5)
+# ═══════════════════════════════════════════════════════════════════════════════
+def calculate_ai_factor(pair, tech_data, sentiment_data, rate_data, preliminary_score=50):
+    """
+    AI-powered market analysis using GPT-5-mini
+
+    Analyzes:
+    1. Technical pattern recognition
+    2. Market sentiment interpretation
+    3. Risk assessment
+    4. Trade setup quality
+
+    Returns score 0-100 and signal direction
+    Cached for 30 minutes to reduce API costs
+
+    STABILITY FEATURES:
+    - Thread-safe cache access
+    - Only analyzes pairs with signal strength >= threshold
+    - Rate limiting to prevent API overload
+    - Graceful fallback on errors
+    """
+    global ai_factor_cache
+
+    # Check if AI factor is enabled
+    if not AI_FACTOR_CONFIG.get('enabled', True):
+        return {
+            'score': 50,
+            'signal': 'NEUTRAL',
+            'analysis': 'AI factor disabled',
+            'confidence': 'LOW',
+            'data_quality': 'DISABLED'
+        }
+
+    # Thread-safe cache check
+    cache_key = pair
+    with ai_cache_lock:
+        if cache_key in ai_factor_cache['data']:
+            cached = ai_factor_cache['data'][cache_key]
+            cache_age = (datetime.now() - cached['timestamp']).total_seconds()
+            if cache_age < AI_FACTOR_CONFIG['cache_ttl']:
+                logger.debug(f"AI Factor: Using cached result for {pair}")
+                return cached['result']
+
+    # Skip if no API key
+    if not OPENAI_API_KEY:
+        return {
+            'score': 50,
+            'signal': 'NEUTRAL',
+            'analysis': 'AI analysis unavailable - no API key',
+            'confidence': 'LOW',
+            'data_quality': 'UNAVAILABLE'
+        }
+
+    # Only call AI for pairs with sufficient signal strength (cost control)
+    signal_strength = abs(preliminary_score - 50)
+    if signal_strength < AI_FACTOR_CONFIG.get('min_signal_strength', 10):
+        return {
+            'score': 50,
+            'signal': 'NEUTRAL',
+            'analysis': f'Signal strength ({signal_strength:.1f}) below AI threshold',
+            'confidence': 'LOW',
+            'data_quality': 'SKIPPED'
+        }
+
+    try:
+        # Prepare market data for AI analysis
+        rsi = tech_data.get('rsi', 50)
+        macd_hist = tech_data.get('macd', {}).get('histogram', 0)
+        adx = tech_data.get('adx', 20)
+        bb_pct = tech_data.get('bollinger', {}).get('percent_b', 50)
+
+        sentiment_score = sentiment_data.get('score', 50) if sentiment_data else 50
+        sentiment_signal = sentiment_data.get('signal', 'NEUTRAL') if sentiment_data else 'NEUTRAL'
+
+        current_price = rate_data.get('mid', 0) if rate_data else 0
+
+        # Build prompt for GPT-5-mini
+        prompt = f"""Analyze this forex pair and provide a trading recommendation.
+
+PAIR: {pair}
+CURRENT PRICE: {current_price:.5f}
+
+TECHNICAL INDICATORS:
+- RSI (14): {rsi:.1f} (Oversold <30, Overbought >70)
+- MACD Histogram: {macd_hist:.6f} (Positive = Bullish momentum)
+- ADX: {adx:.1f} (Trend strength: >25 = Strong trend)
+- Bollinger %B: {bb_pct:.1f}% (0% = Lower band, 100% = Upper band)
+
+SENTIMENT: {sentiment_signal} (Score: {sentiment_score})
+
+Based on this data, provide:
+1. SCORE: A number from 0-100 (0-30 = Strong Short, 31-45 = Weak Short, 46-54 = Neutral, 55-69 = Weak Long, 70-100 = Strong Long)
+2. SIGNAL: LONG, SHORT, or NEUTRAL
+3. CONFIDENCE: HIGH, MEDIUM, or LOW
+4. BRIEF ANALYSIS: One sentence explaining the reasoning
+
+Respond in this exact JSON format:
+{{"score": 65, "signal": "LONG", "confidence": "MEDIUM", "analysis": "Your analysis here"}}"""
+
+        # Call OpenAI API
+        headers = {
+            'Authorization': f'Bearer {OPENAI_API_KEY}',
+            'Content-Type': 'application/json'
+        }
+
+        payload = {
+            'model': AI_FACTOR_CONFIG.get('model', 'gpt-5-mini'),
+            'messages': [
+                {'role': 'system', 'content': 'You are an expert forex analyst. Provide concise, actionable trading signals based on technical and sentiment data. Always respond in valid JSON format.'},
+                {'role': 'user', 'content': prompt}
+            ],
+            'max_tokens': 150,
+            'temperature': 0.3  # Low temperature for consistent analysis
+        }
+
+        # Rate limiting delay
+        import time
+        time.sleep(AI_FACTOR_CONFIG.get('rate_limit_delay', 0.1))
+
+        response = req_lib.post(
+            'https://api.openai.com/v1/chat/completions',
+            headers=headers,
+            json=payload,
+            timeout=AI_FACTOR_CONFIG.get('timeout', 8)
+        )
+
+        if response.status_code == 200:
+            result = response.json()
+            ai_response = result['choices'][0]['message']['content'].strip()
+
+            # Parse JSON response
+            try:
+                # Clean response if needed (remove markdown code blocks)
+                if ai_response.startswith('```'):
+                    ai_response = ai_response.split('```')[1]
+                    if ai_response.startswith('json'):
+                        ai_response = ai_response[4:]
+
+                ai_data = json.loads(ai_response)
+
+                ai_result = {
+                    'score': max(0, min(100, float(ai_data.get('score', 50)))),
+                    'signal': ai_data.get('signal', 'NEUTRAL').upper(),
+                    'analysis': ai_data.get('analysis', 'AI analysis completed'),
+                    'confidence': ai_data.get('confidence', 'MEDIUM').upper(),
+                    'data_quality': 'AI_REAL'
+                }
+
+                # Validate signal matches score
+                if ai_result['score'] >= 55 and ai_result['signal'] == 'SHORT':
+                    ai_result['signal'] = 'LONG'
+                elif ai_result['score'] <= 45 and ai_result['signal'] == 'LONG':
+                    ai_result['signal'] = 'SHORT'
+
+            except json.JSONDecodeError:
+                # Fallback: extract score from text
+                logger.warning(f"AI Factor: Could not parse JSON response for {pair}")
+                ai_result = {
+                    'score': 50,
+                    'signal': 'NEUTRAL',
+                    'analysis': ai_response[:200] if ai_response else 'Parse error',
+                    'confidence': 'LOW',
+                    'data_quality': 'AI_PARTIAL'
+                }
+        else:
+            logger.error(f"AI Factor API error: {response.status_code} - {response.text[:200]}")
+            ai_result = {
+                'score': 50,
+                'signal': 'NEUTRAL',
+                'analysis': f'API error: {response.status_code}',
+                'confidence': 'LOW',
+                'data_quality': 'API_ERROR'
+            }
+
+    except Exception as e:
+        logger.error(f"AI Factor error for {pair}: {e}")
+        ai_result = {
+            'score': 50,
+            'signal': 'NEUTRAL',
+            'analysis': f'Error: {str(e)[:100]}',
+            'confidence': 'LOW',
+            'data_quality': 'ERROR'
+        }
+
+    # Thread-safe cache the result
+    with ai_cache_lock:
+        ai_factor_cache['data'][cache_key] = {
+            'result': ai_result,
+            'timestamp': datetime.now()
+        }
+        ai_factor_cache['call_count'] = ai_factor_cache.get('call_count', 0) + 1
+
+    return ai_result
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 11-FACTOR SIGNAL GENERATION (AI-ENHANCED)
 # ═══════════════════════════════════════════════════════════════════════════════
 def calculate_factor_scores(pair):
     """
@@ -3835,43 +4059,79 @@ def calculate_factor_scores(pair):
         }
 
     # ═══════════════════════════════════════════════════════════════════════════
-    # 10. CONFLUENCE (3%) - Factor Agreement - EXPANDED
-    # Score range: 10-95
+    # 10. AI FACTOR (10%) - GPT-5-mini Analysis (v8.5 NEW)
+    # Only called for pairs with sufficient signal strength to control costs
+    # ═══════════════════════════════════════════════════════════════════════════
+
+    # Calculate preliminary score to determine if AI analysis is needed
+    preliminary_score = 0
+    preliminary_weight = 0
+    for fname, fdata in factors.items():
+        if fname in FACTOR_WEIGHTS:
+            preliminary_score += fdata.get('score', 50) * FACTOR_WEIGHTS[fname]
+            preliminary_weight += FACTOR_WEIGHTS[fname]
+
+    if preliminary_weight > 0:
+        preliminary_score = preliminary_score / preliminary_weight
+    else:
+        preliminary_score = 50
+
+    # Call AI factor (will skip if signal strength too low or API issues)
+    ai_result = calculate_ai_factor(pair, tech, sentiment, rate, preliminary_score)
+    factors['ai'] = {
+        'score': round(ai_result['score'], 1),
+        'signal': ai_result['signal'],
+        'data_quality': ai_result.get('data_quality', 'AI_REAL'),
+        'details': {
+            'analysis': ai_result.get('analysis', ''),
+            'confidence': ai_result.get('confidence', 'MEDIUM'),
+            'model': AI_FACTOR_CONFIG.get('model', 'gpt-5-mini'),
+            'preliminary_score': round(preliminary_score, 1)
+        }
+    }
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # 11. CONFLUENCE (3%) - Factor Agreement - EXPANDED
+    # Score range: 10-95 (Now includes 11 factors)
     # ═══════════════════════════════════════════════════════════════════════════
     bullish_factors = sum(1 for f in factors.values() if f.get('signal') == 'BULLISH')
     bearish_factors = sum(1 for f in factors.values() if f.get('signal') == 'BEARISH')
-    
-    # More aggressive confluence scoring
-    if bullish_factors >= 7:
+
+    # More aggressive confluence scoring (adjusted for 11 factors)
+    if bullish_factors >= 8:
         conf_score = 95  # Very strong agreement
+    elif bullish_factors >= 7:
+        conf_score = 88
     elif bullish_factors >= 6:
-        conf_score = 85
+        conf_score = 78
     elif bullish_factors >= 5:
-        conf_score = 75
+        conf_score = 68
     elif bullish_factors >= 4:
-        conf_score = 62
-    elif bearish_factors >= 7:
+        conf_score = 58
+    elif bearish_factors >= 8:
         conf_score = 5
+    elif bearish_factors >= 7:
+        conf_score = 12
     elif bearish_factors >= 6:
-        conf_score = 15
+        conf_score = 22
     elif bearish_factors >= 5:
-        conf_score = 25
+        conf_score = 32
     elif bearish_factors >= 4:
-        conf_score = 38
+        conf_score = 42
     else:
         conf_score = 50  # Mixed signals
-    
+
     factors['confluence'] = {
         'score': round(conf_score, 1),
         'signal': 'BULLISH' if conf_score >= 58 else 'BEARISH' if conf_score <= 42 else 'NEUTRAL',
         'details': {
             'bullish_factors': bullish_factors,
             'bearish_factors': bearish_factors,
-            'neutral_factors': 10 - bullish_factors - bearish_factors,  # 10 factors total (v8.4 PRO)
+            'neutral_factors': 11 - bullish_factors - bearish_factors,  # 11 factors total (v8.5)
             'confluence_strength': 'STRONG' if abs(conf_score - 50) > 25 else 'MODERATE' if abs(conf_score - 50) > 10 else 'WEAK'
         }
     }
-    
+
     return factors, tech, rate, patterns
 
 def calculate_holding_period(category, volatility, trend_strength, composite_score, factors):
@@ -3943,24 +4203,49 @@ def calculate_holding_period(category, volatility, trend_strength, composite_sco
     min_days = max(1, recommended_days - 1)
     max_hold_days = min(max_days, recommended_days + 2)
     
-    # Determine timeframe recommendation
-    # Calculate entry window in HOURS (more precise for swing trading)
+    # Determine timeframe recommendation based on holding period
     if recommended_days <= 2:
         timeframe = 'INTRADAY-SWING'
-        entry_window = '4-8 hours'
-        entry_window_hours = '4-8'
     elif recommended_days <= 4:
         timeframe = 'SWING'
-        entry_window_hours = '24-48'  # 1-2 days in hours
-        entry_window = f'{entry_window_hours} hours'
     elif recommended_days <= 7:
         timeframe = 'POSITION'
-        entry_window_hours = '48-72'  # 2-3 days in hours
-        entry_window = f'{entry_window_hours} hours'
     else:
         timeframe = 'LONG-TERM'
-        entry_window_hours = '72-120'  # 3-5 days in hours
-        entry_window = f'{entry_window_hours} hours'
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # ENTRY WINDOW (0-8 hours) - Based on signal strength
+    # Stronger signals = shorter window (act quickly!)
+    # Does NOT affect signal strength - reflects how urgent the entry is
+    # ═══════════════════════════════════════════════════════════════════════════
+    if signal_strength >= 35:
+        # Very strong signal - act immediately
+        entry_window_min = 0
+        entry_window_max = 1
+        entry_urgency = 'IMMEDIATE'
+    elif signal_strength >= 25:
+        # Strong signal - act within 1-2 hours
+        entry_window_min = 1
+        entry_window_max = 2
+        entry_urgency = 'HIGH'
+    elif signal_strength >= 18:
+        # Moderate signal - act within 2-4 hours
+        entry_window_min = 2
+        entry_window_max = 4
+        entry_urgency = 'MODERATE'
+    elif signal_strength >= 10:
+        # Weak signal - can wait 4-6 hours
+        entry_window_min = 4
+        entry_window_max = 6
+        entry_urgency = 'LOW'
+    else:
+        # Very weak signal - up to 8 hours
+        entry_window_min = 6
+        entry_window_max = 8
+        entry_urgency = 'MINIMAL'
+
+    entry_window_hours = f'{entry_window_min}-{entry_window_max}'
+    entry_window = f'{entry_window_hours} hours'
 
     return {
         'recommended_days': recommended_days,
@@ -3970,6 +4255,9 @@ def calculate_holding_period(category, volatility, trend_strength, composite_sco
         'timeframe': timeframe,
         'entry_window': entry_window,
         'entry_window_hours': entry_window_hours,
+        'entry_window_min_hours': entry_window_min,
+        'entry_window_max_hours': entry_window_max,
+        'entry_urgency': entry_urgency,
         'factors_considered': {
             'category': category,
             'volatility': volatility,
@@ -4099,37 +4387,93 @@ def generate_signal(pair):
         composite_score = max(5, min(95, composite_score))
         
         # ═══════════════════════════════════════════════════════════════════════════
-        # DIRECTION DETERMINATION - Based on composite score
+        # PERCENTAGE SCORING (0-100% for both LONG and SHORT)
+        # Independent scores based on factor analysis
         # ═══════════════════════════════════════════════════════════════════════════
-        if composite_score >= 65:
+
+        # Calculate independent Long and Short scores from factor analysis
+        bullish_weight = 0
+        bullish_contribution = 0
+        bearish_weight = 0
+        bearish_contribution = 0
+
+        for factor_name, weight in FACTOR_WEIGHTS.items():
+            if factor_name in factors:
+                factor_score = factors[factor_name].get('score', 50)
+                factor_signal = factors[factor_name].get('signal', 'NEUTRAL')
+
+                if factor_signal == 'BULLISH' or factor_score > 55:
+                    # Factor contributes to LONG score
+                    # Convert factor score (50-95) to contribution (0-100)
+                    contribution = ((factor_score - 50) / 45) * 100
+                    contribution = max(0, min(100, contribution))
+                    bullish_contribution += contribution * weight
+                    bullish_weight += weight
+                elif factor_signal == 'BEARISH' or factor_score < 45:
+                    # Factor contributes to SHORT score
+                    # Convert factor score (5-50) to contribution (0-100)
+                    contribution = ((50 - factor_score) / 45) * 100
+                    contribution = max(0, min(100, contribution))
+                    bearish_contribution += contribution * weight
+                    bearish_weight += weight
+
+        # Calculate percentage scores (0-100%)
+        if bullish_weight > 0:
+            long_score = round((bullish_contribution / bullish_weight), 1)
+        else:
+            long_score = 0.0
+
+        if bearish_weight > 0:
+            short_score = round((bearish_contribution / bearish_weight), 1)
+        else:
+            short_score = 0.0
+
+        # Ensure scores are in valid range
+        long_score = max(0, min(100, long_score))
+        short_score = max(0, min(100, short_score))
+
+        # ═══════════════════════════════════════════════════════════════════════════
+        # DIRECTION DETERMINATION - Based on percentage scores
+        # ═══════════════════════════════════════════════════════════════════════════
+
+        # Direction based on which score is higher and above threshold
+        min_threshold = 30  # Minimum 30% to trigger a signal
+
+        if long_score >= min_threshold and long_score > short_score:
             direction = 'LONG'
-            if composite_score >= 80:
+            dominant_score = long_score
+            if long_score >= 80:
                 strength_label = 'VERY STRONG'
-            elif composite_score >= 72:
+            elif long_score >= 60:
                 strength_label = 'STRONG'
-            else:
+            elif long_score >= 40:
                 strength_label = 'MODERATE'
-        elif composite_score <= 35:
+            else:
+                strength_label = 'WEAK'
+        elif short_score >= min_threshold and short_score > long_score:
             direction = 'SHORT'
-            if composite_score <= 20:
+            dominant_score = short_score
+            if short_score >= 80:
                 strength_label = 'VERY STRONG'
-            elif composite_score <= 28:
+            elif short_score >= 60:
                 strength_label = 'STRONG'
-            else:
+            elif short_score >= 40:
                 strength_label = 'MODERATE'
+            else:
+                strength_label = 'WEAK'
         else:
             direction = 'NEUTRAL'
             strength_label = 'WEAK'
-        
-        # Calculate star rating (1-5 stars based on deviation from 50)
-        deviation_from_neutral = abs(composite_score - 50)
-        if deviation_from_neutral >= 35:
+            dominant_score = max(long_score, short_score)
+
+        # Calculate star rating (1-5 stars based on dominant score)
+        if dominant_score >= 80:
             stars = 5
-        elif deviation_from_neutral >= 25:
+        elif dominant_score >= 60:
             stars = 4
-        elif deviation_from_neutral >= 18:
+        elif dominant_score >= 40:
             stars = 3
-        elif deviation_from_neutral >= 10:
+        elif dominant_score >= 20:
             stars = 2
         else:
             stars = 1
@@ -4341,16 +4685,18 @@ def generate_signal(pair):
         else:
             overall_data_quality = 'ESTIMATED'
         
-        # Per-factor data quality for transparency
+        # Per-factor data quality for transparency (11 factors in v8.5)
         factor_data_quality = {
             'technical': tech.get('data_quality', 'UNKNOWN'),
             'fundamental': 'REAL',  # Central bank rates are always accurate
             'sentiment': factors.get('sentiment', {}).get('data_quality', 'MEDIUM'),
+            'ai': factors.get('ai', {}).get('data_quality', 'UNAVAILABLE'),  # v8.5: AI Factor
             'intermarket': factors.get('intermarket', {}).get('data_quality', 'ESTIMATED'),
             'mtf': 'REAL' if tech.get('data_quality') == 'REAL' else 'FALLBACK',
             'quantitative': 'REAL' if tech.get('data_quality') == 'REAL' else 'FALLBACK',
             'structure': 'REAL' if tech.get('data_quality') == 'REAL' else 'FALLBACK',
             'calendar': factors.get('calendar', {}).get('data_quality', 'FALLBACK'),
+            'options': factors.get('options', {}).get('data_quality', 'PROXY'),
             'confluence': 'CALCULATED'  # Always calculated from other factors
         }
         
@@ -4360,6 +4706,10 @@ def generate_signal(pair):
             'direction': direction,
             'strength_label': strength_label,
             'composite_score': round(composite_score, 1),
+            # v8.5: Percentage-based scoring (0-100% for both directions)
+            'long_score': long_score,
+            'short_score': short_score,
+            'dominant_score': round(dominant_score, 1),
             'stars': stars,
             'data_quality': overall_data_quality,
             'conviction': {
@@ -4606,7 +4956,7 @@ def run_system_audit():
     """Run comprehensive system audit with complete scoring methodology"""
     audit = {
         'timestamp': datetime.now().isoformat(),
-        'version': '8.4 PRO',
+        'version': '8.5 PRO',
         'api_status': {},
         'data_quality': {},
         'score_validation': {},
@@ -4619,7 +4969,7 @@ def run_system_audit():
     # SCORING METHODOLOGY DOCUMENTATION
     # ═══════════════════════════════════════════════════════════════════════════
     audit['scoring_methodology'] = {
-        'version': '8.4 PRO - INSTITUTIONAL GRADE',
+        'version': '8.5 PRO - AI ENHANCED',
         'description': 'Multi-factor weighted scoring system with data quality tracking',
         'score_range': {
             'min': 5,
@@ -5255,7 +5605,7 @@ def run_system_audit():
 @app.route('/api-info')
 def api_info():
     return jsonify({
-        'name': 'MEGA FOREX v8.4 PRO - Institutional Grade',
+        'name': 'MEGA FOREX v8.5 PRO - AI Enhanced',
         'version': '8.4',
         'status': 'operational',
         'pairs': len(FOREX_PAIRS),
@@ -5294,10 +5644,10 @@ def get_signals():
                     logger.debug("📊 Signals: Returning cached data")
                     return jsonify(cached)
 
-        # Generate fresh signals
+        # Generate fresh signals (v8.5: increased workers for faster loading)
         signals = []
 
-        with ThreadPoolExecutor(max_workers=10) as executor:
+        with ThreadPoolExecutor(max_workers=15) as executor:
             future_to_pair = {executor.submit(generate_signal, pair): pair for pair in FOREX_PAIRS}
 
             for future in as_completed(future_to_pair):
@@ -5309,14 +5659,14 @@ def get_signals():
                     pair = future_to_pair.get(future, 'UNKNOWN')
                     logger.debug(f"Signal generation failed for {pair}: {e}")
 
-        # Sort by SIGNAL STRENGTH (best trades first regardless of direction)
-        signals.sort(key=lambda x: abs(x['composite_score'] - 50), reverse=True)
+        # Sort by dominant_score (v8.5: use new percentage-based scoring)
+        signals.sort(key=lambda x: x.get('dominant_score', 0), reverse=True)
 
         result = {
             'success': True,
             'count': len(signals),
             'timestamp': datetime.now().isoformat(),
-            'version': '8.4',
+            'version': '8.5',
             'signals': signals
         }
 
@@ -5384,14 +5734,14 @@ def get_subscription_signals():
                         'success': True,
                         'count': len(stripped_signals),
                         'timestamp': datetime.now().isoformat(),
-                        'version': '8.4-SUB',
+                        'version': '8.5-SUB',
                         'signals': stripped_signals
                     })
 
-        # Generate fresh signals
+        # Generate fresh signals (v8.5)
         signals = []
 
-        with ThreadPoolExecutor(max_workers=10) as executor:
+        with ThreadPoolExecutor(max_workers=15) as executor:
             future_to_pair = {executor.submit(generate_signal, pair): pair for pair in FOREX_PAIRS}
 
             for future in as_completed(future_to_pair):
@@ -5403,8 +5753,8 @@ def get_subscription_signals():
                     pair = future_to_pair.get(future, 'UNKNOWN')
                     logger.debug(f"Signal generation failed for {pair}: {e}")
 
-        # Sort by direction strength (not revealing actual score)
-        signals.sort(key=lambda x: abs(x['composite_score'] - 50), reverse=True)
+        # Sort by dominant score (v8.5)
+        signals.sort(key=lambda x: x.get('dominant_score', 0), reverse=True)
 
         # Strip all scoring data before returning
         stripped_signals = [strip_scoring_data(s) for s in signals]
@@ -5413,7 +5763,7 @@ def get_subscription_signals():
             'success': True,
             'count': len(stripped_signals),
             'timestamp': datetime.now().isoformat(),
-            'version': '8.4-SUB',
+            'version': '8.5-SUB',
             'signals': stripped_signals
         }
 
@@ -6050,31 +6400,32 @@ def is_port_available(port):
 # INITIALIZE DATABASE ON STARTUP (for Railway)
 # ═══════════════════════════════════════════════════════════════════════════════
 init_database()
-logger.info("🚀 MEGA FOREX v8.4 PRO - INSTITUTIONAL GRADE initialized")
+logger.info("🚀 MEGA FOREX v8.5 PRO - AI ENHANCED initialized")
 
 if __name__ == '__main__':
     print("=" * 70)
-    print("      MEGA FOREX v8.4 PRO - INSTITUTIONAL GRADE SYSTEM")
+    print("      MEGA FOREX v8.5 PRO - AI ENHANCED SYSTEM")
     print("=" * 70)
     print(f"  Pairs:           {len(FOREX_PAIRS)}")
-    print(f"  Factors:         {len(FACTOR_WEIGHTS)}")
+    print(f"  Factors:         {len(FACTOR_WEIGHTS)} (AI-Enhanced)")
     print(f"  Database:        {DATABASE_PATH}")
     print(f"  Polygon API:     {'✓' if POLYGON_API_KEY else '✗'}")
     print(f"  Finnhub API:     {'✓' if FINNHUB_API_KEY else '✗'}")
     print(f"  FRED API:        {'✓' if FRED_API_KEY else '✗'}")
     print(f"  Alpha Vantage:   {'✓' if ALPHA_VANTAGE_KEY else '✗'}")
     print(f"  IG Markets API:  {'✓ (' + IG_ACC_TYPE + ')' if all([IG_API_KEY, IG_USERNAME, IG_PASSWORD]) else '✗'}")
+    print(f"  OpenAI API:      {'✓ (GPT-5-mini)' if OPENAI_API_KEY else '✗'}")
     print(f"  ExchangeRate:    ✓ (Free, no key needed)")
     print("=" * 70)
-    print("  v8.4 PRO FEATURES:")
-    print("    ✨ 10-Factor Institutional Scoring (Options + COT + Seasonality)")
+    print("  v8.5 PRO FEATURES:")
+    print("    ✨ 11-Factor AI-Enhanced Scoring (GPT-5-mini Analysis)")
+    print("    ✨ Percentage Scoring: 0-100% for LONG and SHORT")
+    print("    ✨ Entry Window: 0-8 hours based on signal strength")
     print("    ✨ 16 Candlestick Pattern Recognition")
     print("    ✨ SQLite Trade Journal & Signal History")
-    print("    ✨ Performance Tracking & Analytics")
     print("    ✨ Smart Dynamic SL/TP (Variable ATR)")
     print("    ✨ REAL IG Client Sentiment + Institutional COT Data")
     print("    ✨ Complete Backtesting Module")
-    print("    ✨ Multi-Source News + Economic Calendar")
     print("=" * 70)
     
     # Use PORT from environment (Railway) or default to 5000
