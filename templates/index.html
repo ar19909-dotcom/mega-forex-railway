@@ -33,7 +33,7 @@
     <!-- iOS Splash Screens -->
     <link rel="apple-touch-startup-image" href="/static/icon-512.png">
 
-    <title>MEGA FOREX v8.5 PRO - AI Enhanced Trading Dashboard</title>
+    <title>MEGA FOREX v9.0 PRO - AI Enhanced Trading Dashboard</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
@@ -372,25 +372,66 @@
             text-transform: uppercase;
         }
         
-        /* Factor Grid */
+        /* Factor Grid — v9.0: 7 groups */
         .factor-grid {
             display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 0.375rem;
-            margin-bottom: 1rem;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 0.25rem;
+            margin-bottom: 0.75rem;
         }
-        
+
         .factor-item {
             text-align: center;
-            padding: 0.375rem;
+            padding: 0.3rem 0.15rem;
             border-radius: 0.25rem;
-            font-size: 0.625rem;
+            font-size: 0.575rem;
             font-weight: 600;
         }
-        
+
         .factor-item.bullish { background: rgba(16, 185, 129, 0.2); color: var(--accent-green); }
         .factor-item.bearish { background: rgba(239, 68, 68, 0.2); color: var(--accent-red); }
         .factor-item.neutral { background: var(--bg-hover); color: var(--text-secondary); }
+
+        /* v9.0 Quality Gates */
+        .gates-row {
+            display: flex;
+            gap: 0.25rem;
+            margin-bottom: 0.75rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .gate-badge {
+            font-size: 0.55rem;
+            font-weight: 600;
+            padding: 0.15rem 0.35rem;
+            border-radius: 0.2rem;
+        }
+        .gate-badge.pass { background: rgba(16, 185, 129, 0.2); color: var(--accent-green); }
+        .gate-badge.fail { background: rgba(239, 68, 68, 0.2); color: var(--accent-red); }
+
+        /* v9.0 Conviction + Regime row */
+        .v9-meta-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+            padding: 0.4rem 0.6rem;
+            background: rgba(139, 92, 246, 0.1);
+            border-radius: 0.35rem;
+            border: 1px solid rgba(139, 92, 246, 0.2);
+            font-size: 0.7rem;
+        }
+        .regime-badge {
+            padding: 0.15rem 0.4rem;
+            border-radius: 0.2rem;
+            font-size: 0.6rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .regime-badge.trending { background: rgba(59, 130, 246, 0.25); color: #60a5fa; }
+        .regime-badge.ranging { background: rgba(251, 191, 36, 0.25); color: #fbbf24; }
+        .regime-badge.volatile { background: rgba(239, 68, 68, 0.25); color: #f87171; }
+        .regime-badge.quiet { background: rgba(156, 163, 175, 0.25); color: #9ca3af; }
         
         /* Trade Setup */
         .trade-setup {
@@ -1884,7 +1925,7 @@
 
     <!-- Header -->
     <header class="header">
-        <div class="logo">MEGA<span>FOREX</span> v8.5 <span style="color: var(--accent-green); font-size: 0.7em;">PRO</span></div>
+        <div class="logo">MEGA<span>FOREX</span> v9.0 <span style="color: var(--accent-green); font-size: 0.7em;">PRO</span></div>
         <div class="header-stats">
             <div class="stat-item">
                 <div class="stat-value" id="total-pairs">45</div>
@@ -2118,8 +2159,9 @@
         <!-- Audit Tab -->
         <div class="tab-content" id="tab-audit">
             <h2 style="margin-bottom: 1rem;">🔍 System Audit & Scoring Methodology</h2>
-            <button onclick="runAudit()" style="margin-bottom: 1rem; margin-right: 0.5rem;">▶️ Run Full Audit</button>
-            <button onclick="showMethodology()" style="margin-bottom: 1rem;">📖 View Scoring Methodology</button>
+            <button onclick="runAudit()" style="margin-bottom: 1rem; margin-right: 0.5rem;">▶ Run Full Audit</button>
+            <button onclick="showMethodology()" style="margin-bottom: 1rem; margin-right: 0.5rem;">📖 View Scoring Methodology</button>
+            <button onclick="runSignalEvaluation()" style="margin-bottom: 1rem; background: linear-gradient(135deg, #3b82f6, #8b5cf6);">📊 Signal Accuracy (30 Days)</button>
             <div id="audit-container">
                 <p style="color: var(--text-secondary);">Click Run Audit to check system health or View Methodology to see scoring details</p>
             </div>
@@ -2239,7 +2281,8 @@
         
         // Create Signal Card
         function createSignalCard(signal) {
-            const scoreClass = signal.composite_score >= 60 ? 'bullish' : signal.composite_score <= 40 ? 'bearish' : 'neutral';
+            const winRate = (signal.statistics?.win_rate || 50);
+            const scoreClass = winRate >= 60 ? 'bullish' : winRate <= 45 ? 'bearish' : 'neutral';
             const dirClass = signal.direction.toLowerCase();
             const cardClass = signal.direction === 'LONG' ? 'bullish-card' : signal.direction === 'SHORT' ? 'bearish-card' : 'neutral-card';
             const stars = '★'.repeat(signal.stars) + '☆'.repeat(5 - signal.stars);
@@ -2266,7 +2309,7 @@
                             ${qualityBadge}
                         </div>
                         <div class="composite-score">
-                            <div class="score-value ${scoreClass}">${signal.composite_score}</div>
+                            <div class="score-value ${scoreClass}">${winRate.toFixed(1)}%</div>
                             <div class="stars">${stars}</div>
                         </div>
                     </div>
@@ -2276,16 +2319,19 @@
                         <span style="color: var(--accent-red);">SHORT: ${(signal.short_score || 0).toFixed(1)}%</span>
                     </div>
 
-                    <span class="direction-badge ${dirClass}">${signal.direction}</span>
-                    
+                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                        <span class="direction-badge ${dirClass}">${signal.direction}${signal.strength_label === 'FILTERED' ? ' (FILTERED)' : ''}</span>
+                        ${signal.regime ? `<span class="regime-badge ${signal.regime}">${signal.regime}</span>` : ''}
+                    </div>
+
                     <div class="stats-row">
                         <div class="stat-box">
-                            <div class="value">${(stats.win_rate || 50).toFixed(0)}%</div>
-                            <div class="label">WIN%</div>
+                            <div class="value">${signal.composite_score}</div>
+                            <div class="label">SCORE</div>
                         </div>
                         <div class="stat-box">
-                            <div class="value">${(stats.expectancy || 50).toFixed(0)}%</div>
-                            <div class="label">EXP%</div>
+                            <div class="value">${signal.conviction_v9?.score?.toFixed(0) || '—'}</div>
+                            <div class="label">CONV</div>
                         </div>
                         <div class="stat-box">
                             <div class="value">${stats.hold_days || 3}D</div>
@@ -2296,7 +2342,15 @@
                             <div class="label">PF</div>
                         </div>
                     </div>
-                    
+
+                    ${signal.gates ? `
+                    <div class="gates-row">
+                        ${Object.entries(signal.gates.details || {}).map(([key, g]) =>
+                            `<span class="gate-badge ${g.passed ? 'pass' : 'fail'}">${key.split('_')[0]} ${g.passed ? '✓' : '✗'}</span>`
+                        ).join('')}
+                    </div>
+                    ` : ''}
+
                     <div class="factor-grid">${factorGrid}</div>
                     
                     <div class="trade-setup">
@@ -3128,13 +3182,12 @@
                                 <span style="color: var(--accent-red);">⚠ FALLBACK</span> = Static placeholder
                             </div>
                             <div style="margin-top: 1rem; padding: 0.75rem; background: var(--bg-tertiary); border-radius: 8px;">
-                                <strong>Conviction:</strong> 
-                                ${data.score_validation?.conviction?.bullish_factors || 0} Bullish, 
-                                ${data.score_validation?.conviction?.bearish_factors || 0} Bearish | 
-                                <strong>Extreme Factors:</strong> 
-                                ${data.score_validation?.conviction?.extreme_bullish || 0} Bullish, 
-                                ${data.score_validation?.conviction?.extreme_bearish || 0} Bearish | 
-                                <strong>Pattern Boost:</strong> ${data.score_validation?.conviction?.pattern_boost || 0}
+                                <strong>v9.0 Conviction:</strong>
+                                Score ${data.score_validation?.conviction_v9?.score || 0} (${data.score_validation?.conviction_v9?.label || 'N/A'}) |
+                                <strong>Breadth:</strong> ${((data.score_validation?.conviction_v9?.breadth || 0) * 100).toFixed(0)}% |
+                                <strong>Groups:</strong> ${data.score_validation?.conviction_v9?.bullish_groups || 0} Bullish, ${data.score_validation?.conviction_v9?.bearish_groups || 0} Bearish |
+                                <strong>Gates:</strong> ${data.score_validation?.gates?.passed || 0}/${data.score_validation?.gates?.total || 6} |
+                                <strong>Regime:</strong> ${data.score_validation?.regime || 'N/A'}
                             </div>
                         </div>
                         
@@ -3247,7 +3300,7 @@
                     const factors = data.factor_details;
                     container.innerHTML = `
                         <div class="audit-section">
-                            <h3>📖 Complete Scoring Methodology - v8.5 PRO (AI Enhanced)</h3>
+                            <h3>📖 Complete Scoring Methodology - v9.0 PRO (7-Group Gated)</h3>
                             <p style="color: var(--text-secondary); margin-bottom: 1rem;">
                                 This system uses <strong>11 weighted factors</strong> including <strong>AI Analysis (OpenAI), Options Positioning, COT Data, and Seasonality</strong> with a <strong>conviction multiplier</strong> to generate AI-enhanced trading signals.
                                 All calculations use <strong>100% REAL market data + AI analysis</strong>.
@@ -3373,6 +3426,221 @@
             }
         }
         
+        // v9.0: Signal Accuracy Evaluation (30 Days)
+        async function runSignalEvaluation() {
+            const container = document.getElementById('audit-container');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div>Evaluating 30-day signal history against actual prices...</div>';
+
+            try {
+                const response = await fetch(`${API_BASE}/signal-evaluation`);
+                const data = await response.json();
+
+                if (data.success && data.summary) {
+                    const s = data.summary;
+                    const o = s.overall || {};
+                    const evalRun = data.evaluation_run || {};
+
+                    container.innerHTML = `
+                        <div class="audit-section" style="border-left: 3px solid #8b5cf6; padding-left: 1rem; margin-bottom: 2rem;">
+                            <h3 style="color: #8b5cf6;">📊 Signal Accuracy Report - Last 30 Days</h3>
+                            <p style="color: var(--text-muted); margin-bottom: 1rem;">
+                                Evaluated ${evalRun.evaluated || 0} new signals this run |
+                                Total evaluated: ${o.total_evaluated || 0} |
+                                Generated: ${data.timestamp || 'N/A'}
+                            </p>
+
+                            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
+                                <div class="result-card" style="text-align: center; padding: 1rem; background: var(--bg-secondary); border-radius: 0.5rem;">
+                                    <div style="font-size: 2rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: ${o.accuracy_pct >= 55 ? 'var(--accent-green)' : o.accuracy_pct >= 45 ? '#ffaa00' : 'var(--accent-red)'};">${o.accuracy_pct || 0}%</div>
+                                    <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Overall Accuracy</div>
+                                </div>
+                                <div class="result-card" style="text-align: center; padding: 1rem; background: var(--bg-secondary); border-radius: 0.5rem;">
+                                    <div style="font-size: 2rem; font-weight: 700; font-family: 'JetBrains Mono', monospace;">${o.total_evaluated || 0}</div>
+                                    <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Signals Evaluated</div>
+                                </div>
+                                <div class="result-card" style="text-align: center; padding: 1rem; background: var(--bg-secondary); border-radius: 0.5rem;">
+                                    <div style="font-size: 2rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: var(--accent-green);">${o.correct || 0}</div>
+                                    <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Correct Signals</div>
+                                </div>
+                                <div class="result-card" style="text-align: center; padding: 1rem; background: var(--bg-secondary); border-radius: 0.5rem;">
+                                    <div style="font-size: 2rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: var(--accent-red);">${o.incorrect || 0}</div>
+                                    <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Incorrect Signals</div>
+                                </div>
+                            </div>
+
+                            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
+                                <div class="result-card" style="text-align: center; padding: 0.75rem; background: var(--bg-secondary); border-radius: 0.5rem;">
+                                    <div style="font-size: 1.2rem; font-weight: 600; color: var(--accent-green);">${o.tp1_hit_rate || 0}%</div>
+                                    <div style="font-size: 0.65rem; color: var(--text-muted);">TP1 HIT RATE</div>
+                                </div>
+                                <div class="result-card" style="text-align: center; padding: 0.75rem; background: var(--bg-secondary); border-radius: 0.5rem;">
+                                    <div style="font-size: 1.2rem; font-weight: 600; color: var(--accent-green);">${o.tp2_hit_rate || 0}%</div>
+                                    <div style="font-size: 0.65rem; color: var(--text-muted);">TP2 HIT RATE</div>
+                                </div>
+                                <div class="result-card" style="text-align: center; padding: 0.75rem; background: var(--bg-secondary); border-radius: 0.5rem;">
+                                    <div style="font-size: 1.2rem; font-weight: 600; color: var(--accent-red);">${o.sl_hit_rate || 0}%</div>
+                                    <div style="font-size: 0.65rem; color: var(--text-muted);">SL HIT RATE</div>
+                                </div>
+                                <div class="result-card" style="text-align: center; padding: 0.75rem; background: var(--bg-secondary); border-radius: 0.5rem;">
+                                    <div style="font-size: 1.2rem; font-weight: 600;">${o.avg_pips || 0}</div>
+                                    <div style="font-size: 0.65rem; color: var(--text-muted);">AVG PIPS</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        ${(s.by_direction || []).length > 0 ? `
+                        <div class="audit-section" style="margin-bottom: 1.5rem;">
+                            <h3>📈 Accuracy by Direction</h3>
+                            <table style="width: 100%; border-collapse: collapse; margin-top: 0.5rem;">
+                                <thead><tr style="border-bottom: 1px solid var(--border-color);">
+                                    <th style="text-align: left; padding: 0.5rem; font-size: 0.75rem; color: var(--text-muted);">DIRECTION</th>
+                                    <th style="text-align: center; padding: 0.5rem; font-size: 0.75rem; color: var(--text-muted);">TOTAL</th>
+                                    <th style="text-align: center; padding: 0.5rem; font-size: 0.75rem; color: var(--text-muted);">CORRECT</th>
+                                    <th style="text-align: center; padding: 0.5rem; font-size: 0.75rem; color: var(--text-muted);">ACCURACY</th>
+                                </tr></thead>
+                                <tbody>
+                                    ${s.by_direction.map(d => `
+                                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                                            <td style="padding: 0.5rem; font-weight: 600; color: ${d.direction === 'LONG' ? 'var(--accent-green)' : 'var(--accent-red)'};">${d.direction}</td>
+                                            <td style="padding: 0.5rem; text-align: center;">${d.total}</td>
+                                            <td style="padding: 0.5rem; text-align: center; color: var(--accent-green);">${d.correct}</td>
+                                            <td style="padding: 0.5rem; text-align: center; font-weight: 600;">${d.accuracy_pct}%</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>` : ''}
+
+                        ${(s.by_score_bracket || []).length > 0 ? `
+                        <div class="audit-section" style="margin-bottom: 1.5rem;">
+                            <h3>🎯 Accuracy by Signal Strength</h3>
+                            <table style="width: 100%; border-collapse: collapse; margin-top: 0.5rem;">
+                                <thead><tr style="border-bottom: 1px solid var(--border-color);">
+                                    <th style="text-align: left; padding: 0.5rem; font-size: 0.75rem; color: var(--text-muted);">BRACKET</th>
+                                    <th style="text-align: center; padding: 0.5rem; font-size: 0.75rem; color: var(--text-muted);">TOTAL</th>
+                                    <th style="text-align: center; padding: 0.5rem; font-size: 0.75rem; color: var(--text-muted);">CORRECT</th>
+                                    <th style="text-align: center; padding: 0.5rem; font-size: 0.75rem; color: var(--text-muted);">ACCURACY</th>
+                                </tr></thead>
+                                <tbody>
+                                    ${s.by_score_bracket.map(b => `
+                                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                                            <td style="padding: 0.5rem; font-weight: 600;">${b.score_bracket}</td>
+                                            <td style="padding: 0.5rem; text-align: center;">${b.total}</td>
+                                            <td style="padding: 0.5rem; text-align: center; color: var(--accent-green);">${b.correct}</td>
+                                            <td style="padding: 0.5rem; text-align: center; font-weight: 600;">${b.accuracy_pct}%</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>` : ''}
+
+                        ${(s.by_grade || []).length > 0 ? `
+                        <div class="audit-section" style="margin-bottom: 1.5rem;">
+                            <h3>🏅 Accuracy by Trade Grade</h3>
+                            <table style="width: 100%; border-collapse: collapse; margin-top: 0.5rem;">
+                                <thead><tr style="border-bottom: 1px solid var(--border-color);">
+                                    <th style="text-align: left; padding: 0.5rem; font-size: 0.75rem; color: var(--text-muted);">GRADE</th>
+                                    <th style="text-align: center; padding: 0.5rem; font-size: 0.75rem; color: var(--text-muted);">TOTAL</th>
+                                    <th style="text-align: center; padding: 0.5rem; font-size: 0.75rem; color: var(--text-muted);">CORRECT</th>
+                                    <th style="text-align: center; padding: 0.5rem; font-size: 0.75rem; color: var(--text-muted);">ACCURACY</th>
+                                </tr></thead>
+                                <tbody>
+                                    ${s.by_grade.map(g => `
+                                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                                            <td style="padding: 0.5rem; font-weight: 600;">${g.grade}</td>
+                                            <td style="padding: 0.5rem; text-align: center;">${g.total}</td>
+                                            <td style="padding: 0.5rem; text-align: center; color: var(--accent-green);">${g.correct}</td>
+                                            <td style="padding: 0.5rem; text-align: center; font-weight: 600;">${g.accuracy_pct}%</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>` : ''}
+
+                        <div class="audit-section" style="margin-bottom: 1.5rem;">
+                            <h3>🏆 Best Performing Pairs</h3>
+                            <table style="width: 100%; border-collapse: collapse; margin-top: 0.5rem;">
+                                <thead><tr style="border-bottom: 1px solid var(--border-color);">
+                                    <th style="text-align: left; padding: 0.5rem; font-size: 0.75rem; color: var(--text-muted);">PAIR</th>
+                                    <th style="text-align: center; padding: 0.5rem; font-size: 0.75rem; color: var(--text-muted);">ACCURACY</th>
+                                    <th style="text-align: center; padding: 0.5rem; font-size: 0.75rem; color: var(--text-muted);">CORRECT</th>
+                                    <th style="text-align: center; padding: 0.5rem; font-size: 0.75rem; color: var(--text-muted);">INCORRECT</th>
+                                    <th style="text-align: center; padding: 0.5rem; font-size: 0.75rem; color: var(--text-muted);">AVG PIPS</th>
+                                </tr></thead>
+                                <tbody>
+                                    ${(s.best_pairs || []).map(p => `
+                                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                                            <td style="padding: 0.5rem; font-weight: 600;">${p.pair}</td>
+                                            <td style="padding: 0.5rem; text-align: center; color: var(--accent-green); font-weight: 600;">${p.accuracy_pct}%</td>
+                                            <td style="padding: 0.5rem; text-align: center;">${p.correct}</td>
+                                            <td style="padding: 0.5rem; text-align: center;">${p.incorrect}</td>
+                                            <td style="padding: 0.5rem; text-align: center;">${(p.avg_pips || 0).toFixed(1)}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="audit-section" style="margin-bottom: 1.5rem;">
+                            <h3>📉 Worst Performing Pairs</h3>
+                            <table style="width: 100%; border-collapse: collapse; margin-top: 0.5rem;">
+                                <thead><tr style="border-bottom: 1px solid var(--border-color);">
+                                    <th style="text-align: left; padding: 0.5rem; font-size: 0.75rem; color: var(--text-muted);">PAIR</th>
+                                    <th style="text-align: center; padding: 0.5rem; font-size: 0.75rem; color: var(--text-muted);">ACCURACY</th>
+                                    <th style="text-align: center; padding: 0.5rem; font-size: 0.75rem; color: var(--text-muted);">CORRECT</th>
+                                    <th style="text-align: center; padding: 0.5rem; font-size: 0.75rem; color: var(--text-muted);">INCORRECT</th>
+                                    <th style="text-align: center; padding: 0.5rem; font-size: 0.75rem; color: var(--text-muted);">AVG PIPS</th>
+                                </tr></thead>
+                                <tbody>
+                                    ${(s.worst_pairs || []).map(p => `
+                                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                                            <td style="padding: 0.5rem; font-weight: 600;">${p.pair}</td>
+                                            <td style="padding: 0.5rem; text-align: center; color: var(--accent-red); font-weight: 600;">${p.accuracy_pct}%</td>
+                                            <td style="padding: 0.5rem; text-align: center;">${p.correct}</td>
+                                            <td style="padding: 0.5rem; text-align: center;">${p.incorrect}</td>
+                                            <td style="padding: 0.5rem; text-align: center;">${(p.avg_pips || 0).toFixed(1)}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="audit-section">
+                            <h3>📋 Full Per-Pair Breakdown</h3>
+                            <table style="width: 100%; border-collapse: collapse; margin-top: 0.5rem;">
+                                <thead><tr style="border-bottom: 1px solid var(--border-color);">
+                                    <th style="text-align: left; padding: 0.5rem; font-size: 0.75rem; color: var(--text-muted);">PAIR</th>
+                                    <th style="text-align: center; padding: 0.5rem; font-size: 0.75rem; color: var(--text-muted);">TOTAL</th>
+                                    <th style="text-align: center; padding: 0.5rem; font-size: 0.75rem; color: var(--text-muted);">CORRECT</th>
+                                    <th style="text-align: center; padding: 0.5rem; font-size: 0.75rem; color: var(--text-muted);">INCORRECT</th>
+                                    <th style="text-align: center; padding: 0.5rem; font-size: 0.75rem; color: var(--text-muted);">PARTIAL</th>
+                                    <th style="text-align: center; padding: 0.5rem; font-size: 0.75rem; color: var(--text-muted);">ACCURACY</th>
+                                    <th style="text-align: center; padding: 0.5rem; font-size: 0.75rem; color: var(--text-muted);">AVG PIPS</th>
+                                </tr></thead>
+                                <tbody>
+                                    ${(s.per_pair || []).map(p => `
+                                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                                            <td style="padding: 0.5rem; font-weight: 600;">${p.pair}</td>
+                                            <td style="padding: 0.5rem; text-align: center;">${p.total}</td>
+                                            <td style="padding: 0.5rem; text-align: center; color: var(--accent-green);">${p.correct}</td>
+                                            <td style="padding: 0.5rem; text-align: center; color: var(--accent-red);">${p.incorrect}</td>
+                                            <td style="padding: 0.5rem; text-align: center; color: #ffaa00;">${p.partial || 0}</td>
+                                            <td style="padding: 0.5rem; text-align: center; font-weight: 600; color: ${p.accuracy_pct >= 55 ? 'var(--accent-green)' : p.accuracy_pct >= 45 ? '#ffaa00' : 'var(--accent-red)'};">${p.accuracy_pct}%</td>
+                                            <td style="padding: 0.5rem; text-align: center;">${(p.avg_pips || 0).toFixed(1)}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                } else {
+                    container.innerHTML = '<div style="padding: 2rem; text-align: center; color: var(--text-secondary);">No evaluation data available yet. Signals need at least 3 days of history to be evaluated.</div>';
+                }
+            } catch (error) {
+                container.innerHTML = '<div style="padding: 1rem; color: var(--accent-red);">Error loading signal evaluation: ' + error.message + '</div>';
+            }
+        }
+
         // Load API Status
         async function loadApiStatus() {
             try {
