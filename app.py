@@ -6128,7 +6128,7 @@ def run_system_audit():
                     'pair': pair,
                     'score': sig['composite_score'],
                     'direction': sig['direction'],
-                    'factors_count': len(sig.get('factors', {}))
+                    'factors_count': len(sig.get('factor_groups', sig.get('factors', {})))
                 })
                 
                 # Collect factor scores for distribution analysis
