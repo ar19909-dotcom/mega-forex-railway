@@ -2289,7 +2289,7 @@
             
             // Data quality indicator
             const dataQuality = signal.data_quality || signal.rate?.source || 'ESTIMATED';
-            const isRealData = dataQuality === 'POLYGON' || dataQuality === 'HIGH' || dataQuality === 'REAL';
+            const isRealData = ['POLYGON', 'HIGH', 'MEDIUM', 'REAL'].includes(dataQuality);
             const qualityBadge = isRealData 
                 ? '<span style="background: rgba(0,255,136,0.2); color: #00ff88; padding: 2px 6px; border-radius: 4px; font-size: 0.6rem; margin-left: 4px;">✓ LIVE</span>'
                 : '<span style="background: rgba(255,170,0,0.2); color: #ffaa00; padding: 2px 6px; border-radius: 4px; font-size: 0.6rem; margin-left: 4px;">~ EST</span>';

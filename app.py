@@ -5200,10 +5200,10 @@ def generate_signal(pair):
         factors_available = sum(1 for f in factors.values() if f['score'] != 50)
         
         # ─────────────────────────────────────────────────────────────────────────
-        # COMPREHENSIVE DATA QUALITY ASSESSMENT (ALL 11 FACTORS - v8.5)
+        # COMPREHENSIVE DATA QUALITY ASSESSMENT (v9.0)
         # ─────────────────────────────────────────────────────────────────────────
         data_quality_checks = {
-            'rate_source': rate.get('source', 'UNKNOWN') in ['POLYGON', 'LIVE', 'API'],
+            'rate_source': rate.get('source', 'UNKNOWN').upper() in ['POLYGON', 'LIVE', 'API', 'EXCHANGERATE'],
             'technical': tech.get('data_quality', 'UNKNOWN') == 'REAL',
             'sentiment': factors.get('sentiment', {}).get('data_quality', 'MEDIUM') in ['HIGH', 'REAL'],
             'intermarket': factors.get('intermarket', {}).get('data_quality', '') == 'REAL',
