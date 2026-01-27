@@ -2150,7 +2150,7 @@
         
         <!-- Weights Editor Tab -->
         <div class="tab-content" id="tab-weights">
-            <h2 style="margin-bottom: 1rem;">⚖️ Factor Weights Editor</h2>
+            <h2 style="margin-bottom: 1rem;">⚖️ Factor Group Weights Editor (v9.0)</h2>
             <div class="weights-editor" id="weights-editor">
                 <div class="loading"><div class="spinner"></div>Loading weights...</div>
             </div>
@@ -2494,25 +2494,39 @@
                             </div>
                         </div>
                         
-                        <h4 style="margin-bottom: 0.5rem;">11-Factor Breakdown (AI + REAL DATA)</h4>
-                        <table class="data-table" style="margin-bottom: 1.5rem;">
+                        <h4 style="margin-bottom: 0.5rem;">v9.0 Factor Groups (7 Groups)</h4>
+                        <table class="data-table" style="margin-bottom: 1rem;">
                             <thead>
-                                <tr>
-                                    <th>Factor</th>
-                                    <th>Score</th>
-                                    <th>Signal</th>
-                                </tr>
+                                <tr><th>Group</th><th>Weight</th><th>Score</th><th>Signal</th></tr>
                             </thead>
                             <tbody>
-                                ${Object.entries(signal.factors || {}).map(([name, data]) => `
+                                ${Object.entries(signal.factor_groups || {}).map(([name, g]) => `
                                     <tr>
-                                        <td style="text-transform: capitalize;">${name}</td>
-                                        <td>${data.score?.toFixed(1) || 'N/A'}</td>
-                                        <td><span class="status-badge ${data.signal === 'BULLISH' ? 'ok' : data.signal === 'BEARISH' ? 'error' : 'limited'}">${data.signal}</span></td>
+                                        <td style="text-transform: capitalize;">${name.replace(/_/g, ' ')}</td>
+                                        <td>${g.weight || '-'}%</td>
+                                        <td style="color: ${g.score >= 58 ? 'var(--accent-green)' : g.score <= 42 ? 'var(--accent-red)' : 'var(--text-primary)'}; font-weight: 600;">${g.score}</td>
+                                        <td><span class="status-badge ${g.signal === 'BULLISH' ? 'ok' : g.signal === 'BEARISH' ? 'error' : 'limited'}">${g.signal}</span></td>
                                     </tr>
                                 `).join('')}
                             </tbody>
                         </table>
+                        <details style="margin-bottom: 1rem;">
+                            <summary style="cursor: pointer; color: var(--text-muted); font-size: 0.85rem;">Show 11 Individual Factors</summary>
+                            <table class="data-table" style="margin-top: 0.5rem;">
+                                <thead>
+                                    <tr><th>Factor</th><th>Score</th><th>Signal</th></tr>
+                                </thead>
+                                <tbody>
+                                    ${Object.entries(signal.factors || {}).map(([name, data]) => `
+                                        <tr>
+                                            <td style="text-transform: capitalize;">${name}</td>
+                                            <td>${data.score?.toFixed(1) || 'N/A'}</td>
+                                            <td><span class="status-badge ${data.signal === 'BULLISH' ? 'ok' : data.signal === 'BEARISH' ? 'error' : 'limited'}">${data.signal}</span></td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </details>
                         
                         <h4 style="margin-bottom: 0.5rem;">Technical Indicators</h4>
                         <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem;">
@@ -2988,11 +3002,21 @@
                     const editor = document.getElementById('weights-editor');
                     const weights = data.weights;
                     
+                    // v9.0: Format group names nicely
+                    const groupLabels = {
+                        'trend_momentum': 'Trend & Momentum',
+                        'fundamental': 'Fundamental',
+                        'sentiment': 'Sentiment',
+                        'intermarket': 'Intermarket',
+                        'mean_reversion': 'Mean Reversion',
+                        'calendar_risk': 'Calendar Risk',
+                        'ai_synthesis': 'AI Synthesis'
+                    };
                     editor.innerHTML = `
                         ${Object.entries(weights).map(([name, value]) => `
                             <div class="weight-row">
-                                <span class="weight-label">${name.charAt(0).toUpperCase() + name.slice(1)}</span>
-                                <input type="range" class="weight-slider" id="weight-${name}" min="0" max="30" value="${value}" 
+                                <span class="weight-label">${groupLabels[name] || name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
+                                <input type="range" class="weight-slider" id="weight-${name}" min="0" max="40" value="${value}"
                                     oninput="updateWeightValue('${name}', this.value)">
                                 <span class="weight-value" id="value-${name}">${value}%</span>
                             </div>
@@ -3132,7 +3156,7 @@
                             <h3>✅ Score Validation (EUR/USD Test)</h3>
                             <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1rem;">
                                 <div class="result-card">
-                                    <div class="value" style="color: ${data.score_validation?.composite_score >= 65 ? 'var(--accent-green)' : data.score_validation?.composite_score <= 35 ? 'var(--accent-red)' : 'var(--text-primary)'};">${data.score_validation?.composite_score || 'N/A'}</div>
+                                    <div class="value" style="color: ${data.score_validation?.composite_score >= 63 ? 'var(--accent-green)' : data.score_validation?.composite_score <= 37 ? 'var(--accent-red)' : 'var(--text-primary)'};">${data.score_validation?.composite_score || 'N/A'}</div>
                                     <div class="label">Composite Score</div>
                                 </div>
                                 <div class="result-card">
@@ -3148,25 +3172,40 @@
                                     <div class="label">Strength Label</div>
                                 </div>
                             </div>
-                            <h4 style="margin-top: 1rem;">Factor Scores:</h4>
+                            <h4 style="margin-top: 1rem;">v9.0 Factor Groups (7 Groups):</h4>
                             <table class="data-table">
                                 <thead>
-                                    <tr><th>Factor</th><th>Weight</th><th>Score</th><th>Signal</th><th>Data Source</th></tr>
+                                    <tr><th>Group</th><th>Weight</th><th>Score</th><th>Signal</th></tr>
+                                </thead>
+                                <tbody>
+                                    ${Object.entries(data.score_validation?.factor_groups || {}).map(([name, g]) => `
+                                        <tr>
+                                            <td style="text-transform: capitalize;">${name.replace(/_/g, ' ')}</td>
+                                            <td>${g.weight || '-'}%</td>
+                                            <td style="color: ${g.score >= 58 ? 'var(--accent-green)' : g.score <= 42 ? 'var(--accent-red)' : 'var(--text-primary)'}; font-weight: 600;">${g.score}</td>
+                                            <td><span class="status-badge ${g.signal === 'BULLISH' ? 'ok' : g.signal === 'BEARISH' ? 'error' : 'limited'}">${g.signal}</span></td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                            <h4 style="margin-top: 1rem;">Individual Factor Scores (11 Factors):</h4>
+                            <table class="data-table">
+                                <thead>
+                                    <tr><th>Factor</th><th>Score</th><th>Signal</th><th>Data Source</th></tr>
                                 </thead>
                                 <tbody>
                                     ${Object.entries(data.score_validation?.factor_scores || {}).map(([name, f]) => {
                                         const quality = data.score_validation?.factor_data_quality?.[name] || f.data_quality || 'UNKNOWN';
-                                        const qualityColor = quality === 'REAL' || quality === 'HIGH' ? 'var(--accent-green)' : 
-                                                           quality === 'MEDIUM' || quality === 'CALCULATED' || quality === 'SCHEDULED' ? '#f59e0b' : 
+                                        const qualityColor = quality === 'REAL' || quality === 'HIGH' ? 'var(--accent-green)' :
+                                                           quality === 'MEDIUM' || quality === 'CALCULATED' || quality === 'SCHEDULED' ? '#f59e0b' :
                                                            quality === 'FALLBACK' || quality === 'NO_DATA' ? 'var(--accent-red)' : 'var(--text-muted)';
-                                        const qualityIcon = quality === 'REAL' || quality === 'HIGH' ? '✓' : 
-                                                          quality === 'MEDIUM' || quality === 'CALCULATED' ? '~' : 
+                                        const qualityIcon = quality === 'REAL' || quality === 'HIGH' ? '✓' :
+                                                          quality === 'MEDIUM' || quality === 'CALCULATED' ? '~' :
                                                           quality === 'SCHEDULED' ? '📅' : '⚠';
                                         const qualityLabel = quality === 'SCHEDULED' ? 'SCHEDULE' : quality;
                                         return `
                                         <tr>
                                             <td style="text-transform: capitalize;">${name}</td>
-                                            <td>${data.system_info?.factor_weights?.[name] || '-'}%</td>
                                             <td style="color: ${f.score >= 58 ? 'var(--accent-green)' : f.score <= 42 ? 'var(--accent-red)' : 'var(--text-primary)'}; font-weight: 600;">${f.score}</td>
                                             <td><span class="status-badge ${f.signal === 'BULLISH' ? 'ok' : f.signal === 'BEARISH' ? 'error' : 'limited'}">${f.signal}</span></td>
                                             <td style="color: ${qualityColor}; font-weight: 500;">${qualityIcon} ${qualityLabel}</td>

@@ -4,7 +4,7 @@
 ║                    Build: January 26, 2026 - Production Ready                ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
 ║  ✓ 45 Forex Pairs with guaranteed data coverage                              ║
-║  ✓ 11-Factor AI-Enhanced Scoring (NEW: GPT-4o-mini Analysis)                  ║
+║  ✓ 7-Group Gated Scoring + 6-Gate Quality Filter (v9.0)                      ║
 ║  ✓ Percentage Scoring: 0-100% for LONG and SHORT independently               ║
 ║  ✓ Entry Window: 0-8 hours based on signal strength                          ║
 ║  ✓ 16 Candlestick Pattern Recognition                                        ║
@@ -299,9 +299,10 @@ STAT_CAPS = {
 
 # Endpoint to get/update weights
 weights_file = 'factor_weights.json'
+group_weights_file = 'factor_group_weights.json'
 
 def load_weights():
-    """Load weights from file or return defaults"""
+    """Load individual factor weights from file or return defaults"""
     global FACTOR_WEIGHTS
     try:
         if os.path.exists(weights_file):
@@ -311,6 +312,18 @@ def load_weights():
     except Exception as e:
         logger.warning(f"Could not load weights: {e}")
     return FACTOR_WEIGHTS
+
+def load_group_weights():
+    """Load v9.0 group weights from file or return defaults"""
+    global FACTOR_GROUP_WEIGHTS
+    try:
+        if os.path.exists(group_weights_file):
+            with open(group_weights_file, 'r') as f:
+                saved = json.load(f)
+                FACTOR_GROUP_WEIGHTS.update(saved)
+    except Exception as e:
+        logger.warning(f"Could not load group weights: {e}")
+    return FACTOR_GROUP_WEIGHTS
 
 def save_weights(weights):
     """Save weights to file"""
@@ -322,8 +335,19 @@ def save_weights(weights):
         logger.error(f"Could not save weights: {e}")
         return False
 
+def save_group_weights(weights):
+    """Save v9.0 group weights to file"""
+    try:
+        with open(group_weights_file, 'w') as f:
+            json.dump(weights, f)
+        return True
+    except Exception as e:
+        logger.error(f"Could not save group weights: {e}")
+        return False
+
 # Load weights on startup
 load_weights()
+load_group_weights()
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # STATIC FALLBACK DATA FOR 100% COVERAGE
@@ -4869,14 +4893,14 @@ def generate_signal(pair):
 
         gate_details = {
             'G1_score_threshold': {
-                'passed': composite_score >= 68 or composite_score <= 32,
+                'passed': composite_score >= 63 or composite_score <= 37,
                 'value': round(composite_score, 1),
-                'rule': 'Score >= 68 (LONG) or <= 32 (SHORT)'
+                'rule': 'Score >= 63 (LONG) or <= 37 (SHORT)'
             },
             'G2_factor_breadth': {
-                'passed': max(bullish_groups, bearish_groups) >= 4,
+                'passed': max(bullish_groups, bearish_groups) >= 3,
                 'value': max(bullish_groups, bearish_groups),
-                'rule': '>= 4 of 7 groups agree on direction'
+                'rule': '>= 3 of 7 groups agree on direction'
             },
             'G3_trend_confirm': {
                 'passed': True,  # Will be set below based on direction
@@ -4884,9 +4908,9 @@ def generate_signal(pair):
                 'rule': 'Trend & Momentum must not contradict'
             },
             'G4_risk_reward': {
-                'passed': est_rr >= 1.5,
+                'passed': est_rr >= 1.3,
                 'value': round(est_rr, 2),
-                'rule': 'R:R >= 1.5:1'
+                'rule': 'R:R >= 1.3:1'
             },
             'G5_calendar_clear': {
                 'passed': not has_high_impact_event,
@@ -4901,13 +4925,13 @@ def generate_signal(pair):
         }
 
         # Set G3 based on potential direction
-        if composite_score >= 68:
+        if composite_score >= 63:
             gate_details['G3_trend_confirm']['passed'] = tm_signal != 'BEARISH'
-        elif composite_score <= 32:
+        elif composite_score <= 37:
             gate_details['G3_trend_confirm']['passed'] = tm_signal != 'BULLISH'
 
         gates_passed = sum(1 for g in gate_details.values() if g['passed'])
-        all_gates_pass = gates_passed == len(gate_details)
+        all_gates_pass = gates_passed >= 5  # Allow 1 gate to fail (5 of 6 minimum)
 
         # ═══════════════════════════════════════════════════════════════════════════
         # v9.0: SCORE VALIDATION
@@ -4922,51 +4946,51 @@ def generate_signal(pair):
         composite_score = max(5, min(95, composite_score))
         
         # ═══════════════════════════════════════════════════════════════════════════
-        # v9.0: DIRECTION DETERMINATION - Gate-filtered with 68/32 thresholds
-        # Signal must pass ALL 6 gates + score threshold for directional signal
+        # v9.0: DIRECTION DETERMINATION - Gate-filtered with 63/37 thresholds
+        # Signal must pass 5 of 6 gates + score threshold for directional signal
         # ═══════════════════════════════════════════════════════════════════════════
 
         gate_filtered = False  # Track if score was strong but gates blocked it
 
-        if composite_score >= 68 and all_gates_pass:
+        if composite_score >= 63 and all_gates_pass:
             direction = 'LONG'
             dominant_score = round(((composite_score - 50) / 45) * 100, 1)
             dominant_score = max(0, min(100, dominant_score))
             long_score = dominant_score
             short_score = round(max(0, 100 - dominant_score), 1)
-            if composite_score >= 82:
+            if composite_score >= 80:
                 strength_label = 'VERY STRONG'
-            elif composite_score >= 74:
+            elif composite_score >= 72:
                 strength_label = 'STRONG'
             else:
                 strength_label = 'MODERATE'
-        elif composite_score <= 32 and all_gates_pass:
+        elif composite_score <= 37 and all_gates_pass:
             direction = 'SHORT'
             dominant_score = round(((50 - composite_score) / 45) * 100, 1)
             dominant_score = max(0, min(100, dominant_score))
             short_score = dominant_score
             long_score = round(max(0, 100 - dominant_score), 1)
-            if composite_score <= 18:
+            if composite_score <= 20:
                 strength_label = 'VERY STRONG'
-            elif composite_score <= 26:
+            elif composite_score <= 28:
                 strength_label = 'STRONG'
             else:
                 strength_label = 'MODERATE'
         else:
             direction = 'NEUTRAL'
             # Check if score was directional but gates blocked it
-            if (composite_score >= 68 or composite_score <= 32) and not all_gates_pass:
+            if (composite_score >= 63 or composite_score <= 37) and not all_gates_pass:
                 gate_filtered = True
                 strength_label = 'FILTERED'
             else:
                 strength_label = 'WEAK'
             # For neutral, show distance from 50 in both directions
             if composite_score > 50:
-                dominant_score = round(((composite_score - 50) / 18) * 50, 1)
+                dominant_score = round(((composite_score - 50) / 13) * 50, 1)
                 long_score = min(50, dominant_score)
                 short_score = 0
             else:
-                dominant_score = round(((50 - composite_score) / 18) * 50, 1)
+                dominant_score = round(((50 - composite_score) / 13) * 50, 1)
                 short_score = min(50, dominant_score)
                 long_score = 0
 
@@ -5494,8 +5518,8 @@ def run_system_audit():
             'min': 5,
             'max': 95,
             'neutral': 50,
-            'bullish_threshold': 68,
-            'bearish_threshold': 32
+            'bullish_threshold': 63,
+            'bearish_threshold': 37
         },
         'total_factor_groups': 7,
         'total_weight': 100,
@@ -5511,10 +5535,10 @@ def run_system_audit():
         'quality_gates': {
             'description': 'All 6 gates must pass for LONG/SHORT signal, otherwise NEUTRAL',
             'gates': [
-                {'id': 'G1', 'rule': 'Score >= 68 (LONG) or <= 32 (SHORT)'},
-                {'id': 'G2', 'rule': '>= 4 of 7 groups agree on direction'},
+                {'id': 'G1', 'rule': 'Score >= 63 (LONG) or <= 37 (SHORT)'},
+                {'id': 'G2', 'rule': '>= 3 of 7 groups agree on direction'},
                 {'id': 'G3', 'rule': 'Trend & Momentum must not contradict direction'},
-                {'id': 'G4', 'rule': 'R:R >= 1.5:1'},
+                {'id': 'G4', 'rule': 'R:R >= 1.3:1'},
                 {'id': 'G5', 'rule': 'No high-impact calendar event imminent'},
                 {'id': 'G6', 'rule': 'ATR between 0.5x-2.5x of 20-period average'}
             ]
@@ -6037,7 +6061,12 @@ def run_system_audit():
             'stars': test_signal['stars'],
             'data_quality': test_signal.get('data_quality', 'UNKNOWN'),
             'factors_available': test_signal['factors_available'],
-            'conviction': test_signal.get('conviction', {}),
+            # v9.0: Group-level data
+            'conviction_v9': test_signal.get('conviction_v9', {}),
+            'gates': test_signal.get('gates', {}),
+            'regime': test_signal.get('regime', 'N/A'),
+            'factor_groups': test_signal.get('factor_groups', {}),
+            # Legacy: individual factor scores still available
             'factor_scores': {
                 name: {
                     'score': f['score'],
@@ -6063,15 +6092,17 @@ def run_system_audit():
             'crosses': len(PAIR_CATEGORIES['CROSS']),
             'exotics': len(PAIR_CATEGORIES['EXOTIC'])
         },
-        'total_factors': len(FACTOR_WEIGHTS),
-        'factor_weights': FACTOR_WEIGHTS,
+        'total_factor_groups': len(FACTOR_GROUP_WEIGHTS),
+        'factor_group_weights': FACTOR_GROUP_WEIGHTS,
         'features': [
             '45 Forex Pairs',
-            '11-Factor AI-Enhanced Scoring (OpenAI + Options + COT)',
-            'Conviction Multiplier',
-            'Z-Score Analysis',
+            '7-Group Gated Scoring (v9.0)',
+            '6-Gate Quality Filter',
+            'Conviction Metric (breadth x strength)',
+            'Dynamic Regime Weights',
+            '30-Day Signal Evaluation',
+            'Z-Score & Mean Reversion Analysis',
             'Support/Resistance Detection',
-            'Pivot Point Calculation',
             'Multi-Timeframe Analysis (H1/H4/D1)',
             'Interest Rate Differentials',
             '16 Candlestick Patterns',
@@ -6180,9 +6211,9 @@ def run_system_audit():
         },
         'calibration_notes': {
             'score_range': '5-95 (proper differentiation)',
-            'bullish_threshold': '>= 68 + all 6 gates pass (LONG signal)',
-            'bearish_threshold': '<= 32 + all 6 gates pass (SHORT signal)',
-            'neutral_zone': '33-67 or gate-filtered (no trade)',
+            'bullish_threshold': '>= 63 + 5 of 6 gates pass (LONG signal)',
+            'bearish_threshold': '<= 37 + 5 of 6 gates pass (SHORT signal)',
+            'neutral_zone': '38-62 or gate-filtered (no trade)',
             'conviction_metric': 'Separate breadth x strength score (0-100)',
             'quality_gates': '6 gates: score threshold, breadth, trend confirm, R:R, calendar, ATR'
         }
@@ -6201,12 +6232,13 @@ def api_info():
         'version': '9.0',
         'status': 'operational',
         'pairs': len(FOREX_PAIRS),
-        'factors': len(FACTOR_WEIGHTS),
+        'factor_groups': len(FACTOR_GROUP_WEIGHTS),
         'features': [
             '45 Forex Pairs',
-            '11-Factor AI-Enhanced Scoring (OpenAI + Options + COT)',
+            '7-Group Gated Scoring with 6-Gate Quality Filter (v9.0)',
+            'Conviction Metric + Dynamic Regime Weights',
+            '30-Day Signal Evaluation & Historical Accuracy',
             'Multi-Source News (Finnhub + RSS)',
-            'Multi-tier Data Fallbacks',
             'REAL IG Sentiment + Intermarket',
             'Complete Backtesting',
             'Dynamic Weights Editor',
@@ -6438,41 +6470,39 @@ def backtest_endpoint():
 
 @app.route('/weights', methods=['GET', 'POST'])
 def weights_endpoint():
-    global FACTOR_WEIGHTS
-    
+    """v9.0: Serve/save 7 factor group weights"""
+    global FACTOR_GROUP_WEIGHTS
+
     if request.method == 'POST':
         new_weights = request.json
-        
+
         # Validate weights sum to 100
         total = sum(new_weights.values())
         if abs(total - 100) > 0.1:
             return jsonify({'success': False, 'error': f'Weights must sum to 100 (got {total})'}), 400
-        
-        FACTOR_WEIGHTS.update(new_weights)
-        save_weights(new_weights)
-        
-        return jsonify({'success': True, 'weights': FACTOR_WEIGHTS})
-    
-    return jsonify({'success': True, 'weights': FACTOR_WEIGHTS})
+
+        FACTOR_GROUP_WEIGHTS.update(new_weights)
+        save_group_weights(new_weights)
+
+        return jsonify({'success': True, 'weights': FACTOR_GROUP_WEIGHTS})
+
+    return jsonify({'success': True, 'weights': FACTOR_GROUP_WEIGHTS})
 
 @app.route('/weights/reset')
 def reset_weights():
-    global FACTOR_WEIGHTS
-    FACTOR_WEIGHTS = {
-        'technical': 20,      # RSI, MACD, ADX, ATR, Bollinger
-        'fundamental': 14,    # Interest rate diffs, carry trade
-        'sentiment': 11,      # IG Positioning + News + COT data
-        'ai': 10,             # GPT-4o-mini AI Analysis (v8.5)
-        'intermarket': 9,     # DXY, Gold, Yields, Oil correlations
-        'mtf': 9,             # Multi-timeframe alignment (H1/H4/D1)
-        'quantitative': 7,    # Z-score, mean reversion, Bollinger %B
-        'structure': 6,       # S/R levels, pivots
-        'calendar': 5,        # Economic events + Seasonality patterns
-        'options': 6,         # 25-delta risk reversals, put/call skew
-        'confluence': 3       # Factor agreement bonus
+    """v9.0: Reset to default 7 factor group weights"""
+    global FACTOR_GROUP_WEIGHTS
+    FACTOR_GROUP_WEIGHTS = {
+        'trend_momentum': 25,     # Technical (RSI/MACD/ADX) 60% + MTF 40%
+        'fundamental': 18,        # Interest rate diffs + FRED macro data
+        'sentiment': 15,          # IG Positioning 65% + Options 35%
+        'intermarket': 14,        # DXY, Gold, Yields, Oil correlations
+        'mean_reversion': 12,     # Quantitative 55% + Structure 45%
+        'calendar_risk': 8,       # Economic events + Seasonality
+        'ai_synthesis': 8         # GPT analysis (activates when 4+ groups agree)
     }
-    save_weights(FACTOR_WEIGHTS)
-    return jsonify({'success': True, 'weights': FACTOR_WEIGHTS})
+    save_group_weights(FACTOR_GROUP_WEIGHTS)
+    return jsonify({'success': True, 'weights': FACTOR_GROUP_WEIGHTS})
 
 @app.route('/clear-cache')
 def clear_cache_endpoint():
