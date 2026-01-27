@@ -3156,7 +3156,7 @@
                             <h3>✅ Score Validation (EUR/USD Test)</h3>
                             <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1rem;">
                                 <div class="result-card">
-                                    <div class="value" style="color: ${data.score_validation?.composite_score >= 63 ? 'var(--accent-green)' : data.score_validation?.composite_score <= 37 ? 'var(--accent-red)' : 'var(--text-primary)'};">${data.score_validation?.composite_score || 'N/A'}</div>
+                                    <div class="value" style="color: ${data.score_validation?.composite_score >= 60 ? 'var(--accent-green)' : data.score_validation?.composite_score <= 40 ? 'var(--accent-red)' : 'var(--text-primary)'};">${data.score_validation?.composite_score || 'N/A'}</div>
                                     <div class="label">Composite Score</div>
                                 </div>
                                 <div class="result-card">

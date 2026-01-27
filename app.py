@@ -4869,8 +4869,21 @@ def generate_signal(pair):
             conviction_label = 'LOW'
 
         # ═══════════════════════════════════════════════════════════════════════════
+        # v9.0: MILD AGREEMENT EXPANSION
+        # When multiple groups agree, gently push score away from 50
+        # This counters the regression-to-mean from neutral groups
+        # Capped at +/-8 points (far less than old 1.1x-1.6x cascade)
+        # ═══════════════════════════════════════════════════════════════════════════
+        if agreeing_groups >= 3 and abs(composite_score - 50) >= 5:
+            expansion_bonus = min((agreeing_groups - 2) * 2.0, 8.0)
+            if composite_score > 50:
+                composite_score += expansion_bonus
+            else:
+                composite_score -= expansion_bonus
+
+        # ═══════════════════════════════════════════════════════════════════════════
         # v9.0: 6-GATE QUALITY FILTER
-        # ALL gates must pass for directional signal, otherwise NEUTRAL
+        # 4 of 6 gates must pass for directional signal, otherwise NEUTRAL
         # ═══════════════════════════════════════════════════════════════════════════
 
         # Pre-compute R:R for gate G4 (need SL/TP estimates)
@@ -4893,9 +4906,9 @@ def generate_signal(pair):
 
         gate_details = {
             'G1_score_threshold': {
-                'passed': composite_score >= 63 or composite_score <= 37,
+                'passed': composite_score >= 60 or composite_score <= 40,
                 'value': round(composite_score, 1),
-                'rule': 'Score >= 63 (LONG) or <= 37 (SHORT)'
+                'rule': 'Score >= 60 (LONG) or <= 40 (SHORT)'
             },
             'G2_factor_breadth': {
                 'passed': max(bullish_groups, bearish_groups) >= 3,
@@ -4925,13 +4938,13 @@ def generate_signal(pair):
         }
 
         # Set G3 based on potential direction
-        if composite_score >= 63:
+        if composite_score >= 60:
             gate_details['G3_trend_confirm']['passed'] = tm_signal != 'BEARISH'
-        elif composite_score <= 37:
+        elif composite_score <= 40:
             gate_details['G3_trend_confirm']['passed'] = tm_signal != 'BULLISH'
 
         gates_passed = sum(1 for g in gate_details.values() if g['passed'])
-        all_gates_pass = gates_passed >= 5  # Allow 1 gate to fail (5 of 6 minimum)
+        all_gates_pass = gates_passed >= 4  # Allow 2 gates to fail (4 of 6 minimum)
 
         # ═══════════════════════════════════════════════════════════════════════════
         # v9.0: SCORE VALIDATION
@@ -4946,13 +4959,13 @@ def generate_signal(pair):
         composite_score = max(5, min(95, composite_score))
         
         # ═══════════════════════════════════════════════════════════════════════════
-        # v9.0: DIRECTION DETERMINATION - Gate-filtered with 63/37 thresholds
-        # Signal must pass 5 of 6 gates + score threshold for directional signal
+        # v9.0: DIRECTION DETERMINATION - Gate-filtered with 60/40 thresholds
+        # Signal must pass 4 of 6 gates + score threshold for directional signal
         # ═══════════════════════════════════════════════════════════════════════════
 
         gate_filtered = False  # Track if score was strong but gates blocked it
 
-        if composite_score >= 63 and all_gates_pass:
+        if composite_score >= 60 and all_gates_pass:
             direction = 'LONG'
             dominant_score = round(((composite_score - 50) / 45) * 100, 1)
             dominant_score = max(0, min(100, dominant_score))
@@ -4960,11 +4973,11 @@ def generate_signal(pair):
             short_score = round(max(0, 100 - dominant_score), 1)
             if composite_score >= 80:
                 strength_label = 'VERY STRONG'
-            elif composite_score >= 72:
+            elif composite_score >= 70:
                 strength_label = 'STRONG'
             else:
                 strength_label = 'MODERATE'
-        elif composite_score <= 37 and all_gates_pass:
+        elif composite_score <= 40 and all_gates_pass:
             direction = 'SHORT'
             dominant_score = round(((50 - composite_score) / 45) * 100, 1)
             dominant_score = max(0, min(100, dominant_score))
@@ -4972,25 +4985,25 @@ def generate_signal(pair):
             long_score = round(max(0, 100 - dominant_score), 1)
             if composite_score <= 20:
                 strength_label = 'VERY STRONG'
-            elif composite_score <= 28:
+            elif composite_score <= 30:
                 strength_label = 'STRONG'
             else:
                 strength_label = 'MODERATE'
         else:
             direction = 'NEUTRAL'
             # Check if score was directional but gates blocked it
-            if (composite_score >= 63 or composite_score <= 37) and not all_gates_pass:
+            if (composite_score >= 60 or composite_score <= 40) and not all_gates_pass:
                 gate_filtered = True
                 strength_label = 'FILTERED'
             else:
                 strength_label = 'WEAK'
             # For neutral, show distance from 50 in both directions
             if composite_score > 50:
-                dominant_score = round(((composite_score - 50) / 13) * 50, 1)
+                dominant_score = round(((composite_score - 50) / 10) * 50, 1)
                 long_score = min(50, dominant_score)
                 short_score = 0
             else:
-                dominant_score = round(((50 - composite_score) / 13) * 50, 1)
+                dominant_score = round(((50 - composite_score) / 10) * 50, 1)
                 short_score = min(50, dominant_score)
                 long_score = 0
 
@@ -5518,8 +5531,8 @@ def run_system_audit():
             'min': 5,
             'max': 95,
             'neutral': 50,
-            'bullish_threshold': 63,
-            'bearish_threshold': 37
+            'bullish_threshold': 60,
+            'bearish_threshold': 40
         },
         'total_factor_groups': 7,
         'total_weight': 100,
@@ -5535,7 +5548,7 @@ def run_system_audit():
         'quality_gates': {
             'description': 'All 6 gates must pass for LONG/SHORT signal, otherwise NEUTRAL',
             'gates': [
-                {'id': 'G1', 'rule': 'Score >= 63 (LONG) or <= 37 (SHORT)'},
+                {'id': 'G1', 'rule': 'Score >= 60 (LONG) or <= 40 (SHORT)'},
                 {'id': 'G2', 'rule': '>= 3 of 7 groups agree on direction'},
                 {'id': 'G3', 'rule': 'Trend & Momentum must not contradict direction'},
                 {'id': 'G4', 'rule': 'R:R >= 1.3:1'},
@@ -6200,20 +6213,20 @@ def run_system_audit():
             'technical': 'RSI, MACD, ADX calculated from Polygon.io candle data',
             'fundamental': 'Interest rate differentials from central bank rates + FRED API',
             'sentiment': 'IG positioning + Finnhub news + RSS feeds + COT institutional data',
-            'ai': 'GPT-4o-mini market analysis and pattern recognition (v8.5)',
+            'ai': 'GPT-4o-mini market analysis and pattern recognition',
             'intermarket': 'DXY, Gold, Yields correlation analysis',
             'quantitative': 'Z-score and Bollinger %B from price statistics',
             'mtf': 'H1/H4/D1 EMA analysis from candle data (proper OHLC aggregation)',
             'structure': 'Swing high/low detection + pivot calculations',
             'calendar': 'Multi-tier economic calendar + Seasonality patterns (month/quarter-end flows)',
             'options': '25-delta risk reversals + Put/Call ratios (price volatility proxy)',
-            'confluence': 'Factor agreement analysis across 11 factors'
+            'confluence': 'Factor agreement analysis (feeds into 7-group scoring v9.0)'
         },
         'calibration_notes': {
             'score_range': '5-95 (proper differentiation)',
-            'bullish_threshold': '>= 63 + 5 of 6 gates pass (LONG signal)',
-            'bearish_threshold': '<= 37 + 5 of 6 gates pass (SHORT signal)',
-            'neutral_zone': '38-62 or gate-filtered (no trade)',
+            'bullish_threshold': '>= 60 + 4 of 6 gates pass (LONG signal)',
+            'bearish_threshold': '<= 40 + 4 of 6 gates pass (SHORT signal)',
+            'neutral_zone': '41-59 or gate-filtered (no trade)',
             'conviction_metric': 'Separate breadth x strength score (0-100)',
             'quality_gates': '6 gates: score threshold, breadth, trend confirm, R:R, calendar, ATR'
         }
