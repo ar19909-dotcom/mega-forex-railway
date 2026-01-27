@@ -5665,8 +5665,8 @@ def run_system_audit():
             'signal_thresholds': {'bullish': '>= 58', 'bearish': '<= 42', 'neutral': '43-57'}
         },
         'ai': {
-            'weight': 10,
-            'weight_percent': '10%',
+            'weight': 8,
+            'weight_percent': '8%',
             'description': 'GPT-4o-mini AI-powered market analysis (v9.0)',
             'data_sources': ['OpenAI API (GPT-4o-mini model)'],
             'score_range': '15-85',
