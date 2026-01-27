@@ -5546,7 +5546,7 @@ def run_system_audit():
             'ai_synthesis': {'weight': 8, 'sources': 'GPT analysis — only activates when 4+ groups agree'}
         },
         'quality_gates': {
-            'description': 'All 6 gates must pass for LONG/SHORT signal, otherwise NEUTRAL',
+            'description': '4 of 6 gates must pass for LONG/SHORT signal, otherwise NEUTRAL',
             'gates': [
                 {'id': 'G1', 'rule': 'Score >= 60 (LONG) or <= 40 (SHORT)'},
                 {'id': 'G2', 'rule': '>= 3 of 7 groups agree on direction'},
@@ -5667,7 +5667,7 @@ def run_system_audit():
         'ai': {
             'weight': 10,
             'weight_percent': '10%',
-            'description': 'GPT-4o-mini AI-powered market analysis (v8.5)',
+            'description': 'GPT-4o-mini AI-powered market analysis (v9.0)',
             'data_sources': ['OpenAI API (GPT-4o-mini model)'],
             'score_range': '15-85',
             'components': {
@@ -5865,25 +5865,25 @@ def run_system_audit():
     # ═══════════════════════════════════════════════════════════════════════════
     audit['direction_labels'] = {
         'LONG': {
-            'score_range': '>= 65',
+            'score_range': '>= 60',
             'strength_labels': [
                 {'range': '80-95', 'label': 'VERY STRONG', 'stars': 5},
-                {'range': '72-79', 'label': 'STRONG', 'stars': 4},
-                {'range': '65-71', 'label': 'MODERATE', 'stars': 3}
+                {'range': '70-79', 'label': 'STRONG', 'stars': 4},
+                {'range': '60-69', 'label': 'MODERATE', 'stars': 3}
             ]
         },
         'SHORT': {
-            'score_range': '<= 35',
+            'score_range': '<= 40',
             'strength_labels': [
                 {'range': '5-20', 'label': 'VERY STRONG', 'stars': 5},
-                {'range': '21-28', 'label': 'STRONG', 'stars': 4},
-                {'range': '29-35', 'label': 'MODERATE', 'stars': 3}
+                {'range': '21-30', 'label': 'STRONG', 'stars': 4},
+                {'range': '31-40', 'label': 'MODERATE', 'stars': 3}
             ]
         },
         'NEUTRAL': {
-            'score_range': '36-64',
+            'score_range': '41-59',
             'strength_labels': [
-                {'range': '36-64', 'label': 'WEAK', 'stars': '1-2'}
+                {'range': '41-59', 'label': 'WEAK', 'stars': '1-2'}
             ]
         }
     }

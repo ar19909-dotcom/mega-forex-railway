@@ -3247,9 +3247,9 @@
                                 </div>
                             </div>
                             <p style="margin-top: 1rem; color: var(--text-secondary);">
-                                <strong>Conviction Multiplier:</strong> When factors agree, scores are amplified (up to 1.6x for 7+ agreeing factors).
-                                <br><strong>Extreme Bonus:</strong> +5 points when 3+ factors have extreme scores.
-                                <br><strong>Pattern Boost:</strong> Candlestick patterns add additional confirmation.
+                                <strong>Conviction Metric:</strong> Separate breadth x strength score (0-100) — not a score amplifier.
+                                <br><strong>Agreement Expansion:</strong> +2 pts per agreeing group beyond 2 (max +8) to counter neutral-group dilution.
+                                <br><strong>Quality Gates:</strong> 4 of 6 gates must pass for directional signal (otherwise NEUTRAL).
                             </p>
                             <button onclick="showMethodology()" style="margin-top: 1rem;">📖 View Full Methodology Details</button>
                         </div>
@@ -3282,9 +3282,9 @@
                                     ${(data.scoring_quality?.test_pairs || []).map(p => `
                                         <tr>
                                             <td>${p.pair}</td>
-                                            <td style="color: ${p.score >= 65 ? 'var(--accent-green)' : p.score <= 35 ? 'var(--accent-red)' : 'var(--text-primary)'}; font-weight: 600;">${p.score || p.error || 'N/A'}</td>
+                                            <td style="color: ${p.score >= 60 ? 'var(--accent-green)' : p.score <= 40 ? 'var(--accent-red)' : 'var(--text-primary)'}; font-weight: 600;">${p.score || p.error || 'N/A'}</td>
                                             <td><span class="status-badge ${p.direction === 'LONG' ? 'ok' : p.direction === 'SHORT' ? 'error' : 'limited'}">${p.direction || '-'}</span></td>
-                                            <td>${p.factors_count || 0}/11</td>
+                                            <td>${p.factors_count || 0}/7</td>
                                         </tr>
                                     `).join('')}
                                 </tbody>
@@ -3341,28 +3341,96 @@
                         <div class="audit-section">
                             <h3>📖 Complete Scoring Methodology - v9.0 PRO (7-Group Gated)</h3>
                             <p style="color: var(--text-secondary); margin-bottom: 1rem;">
-                                This system uses <strong>11 weighted factors</strong> including <strong>AI Analysis (OpenAI), Options Positioning, COT Data, and Seasonality</strong> with a <strong>conviction multiplier</strong> to generate AI-enhanced trading signals.
+                                This system merges 11 individual factors into <strong>7 independent groups</strong> with <strong>regime-dynamic weights</strong>, a <strong>6-gate quality filter</strong>, and a separate <strong>conviction metric</strong> (breadth x strength).
                                 All calculations use <strong>100% REAL market data + AI analysis</strong>.
                             </p>
                         </div>
-                        
+
                         <div class="audit-section">
-                            <h3>⚡ Score Amplification System</h3>
+                            <h3>📦 7 Factor Groups (Regime-Weighted)</h3>
                             <table class="data-table">
-                                <thead><tr><th>Factors Agreeing</th><th>Multiplier</th><th>Effect</th></tr></thead>
+                                <thead><tr><th>Group</th><th>Default Weight</th><th>Sources</th></tr></thead>
                                 <tbody>
-                                    <tr><td>7+ factors</td><td style="color: var(--accent-green); font-weight: 600;">1.6x</td><td>Very strong amplification</td></tr>
-                                    <tr><td>6 factors</td><td style="color: var(--accent-green);">1.4x</td><td>Strong amplification</td></tr>
-                                    <tr><td>5 factors</td><td>1.25x</td><td>Moderate amplification</td></tr>
-                                    <tr><td>4 factors</td><td>1.1x</td><td>Slight amplification</td></tr>
+                                    <tr><td><strong>Trend & Momentum</strong></td><td style="font-weight: 600;">25%</td><td>Technical (RSI/MACD/ADX) 60% + MTF (H1/H4/D1) 40%</td></tr>
+                                    <tr><td><strong>Fundamental</strong></td><td style="font-weight: 600;">18%</td><td>Interest rate differentials + FRED macro data</td></tr>
+                                    <tr><td><strong>Sentiment</strong></td><td style="font-weight: 600;">15%</td><td>IG positioning 65% + Options proxy 35%</td></tr>
+                                    <tr><td><strong>Intermarket</strong></td><td style="font-weight: 600;">14%</td><td>DXY, Gold, Yields, Oil correlations</td></tr>
+                                    <tr><td><strong>Mean Reversion</strong></td><td style="font-weight: 600;">12%</td><td>Quantitative (Z-Score/Bollinger) 55% + Structure (S/R) 45%</td></tr>
+                                    <tr><td><strong>Calendar Risk</strong></td><td style="font-weight: 600;">8%</td><td>Economic events + Seasonality</td></tr>
+                                    <tr><td><strong>AI Synthesis</strong></td><td style="font-weight: 600;">8%</td><td>GPT analysis — activates when 4+ groups agree</td></tr>
                                 </tbody>
                             </table>
                             <p style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);">
-                                <strong>Extreme Factor Bonus:</strong> +5 points when 3+ factors have scores >75 or <25<br>
-                                <strong>Trend Alignment Bonus:</strong> +3 points when MTF and Technical agree
+                                Weights shift dynamically based on detected market regime (trending, ranging, volatile, quiet).
                             </p>
                         </div>
+
+                        <div class="audit-section">
+                            <h3>🚦 6-Gate Quality Filter</h3>
+                            <table class="data-table">
+                                <thead><tr><th>Gate</th><th>Rule</th></tr></thead>
+                                <tbody>
+                                    <tr><td><strong>G1</strong></td><td>Composite score ≥ 60 (LONG) or ≤ 40 (SHORT)</td></tr>
+                                    <tr><td><strong>G2</strong></td><td>≥ 3 of 7 groups agree on direction</td></tr>
+                                    <tr><td><strong>G3</strong></td><td>Trend & Momentum must not contradict direction</td></tr>
+                                    <tr><td><strong>G4</strong></td><td>Risk:Reward ≥ 1.3:1</td></tr>
+                                    <tr><td><strong>G5</strong></td><td>No high-impact calendar event imminent</td></tr>
+                                    <tr><td><strong>G6</strong></td><td>ATR between 0.5x–2.5x of 20-period average</td></tr>
+                                </tbody>
+                            </table>
+                            <p style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);">
+                                <strong>4 of 6 gates required</strong> for directional signal. Allows 2 environmental gates to fail (common for exotic pairs).<br>
+                                <strong>Agreement Expansion:</strong> +2 pts per agreeing group beyond 2 (max +8) to counter neutral-group dilution.
+                            </p>
+                        </div>
+
+                        <div class="audit-section">
+                            <h3>📊 Conviction Metric (Separate from Score)</h3>
+                            <table class="data-table">
+                                <thead><tr><th>Range</th><th>Label</th><th>Meaning</th></tr></thead>
+                                <tbody>
+                                    <tr><td>70+</td><td style="color: var(--accent-green); font-weight: 600;">VERY HIGH</td><td>Most groups agree strongly</td></tr>
+                                    <tr><td>50–70</td><td style="color: var(--accent-green);">HIGH</td><td>Solid agreement</td></tr>
+                                    <tr><td>30–50</td><td style="color: var(--accent-yellow);">MODERATE</td><td>Mixed agreement</td></tr>
+                                    <tr><td>&lt;30</td><td style="color: var(--text-muted);">LOW</td><td>Weak agreement</td></tr>
+                                </tbody>
+                            </table>
+                            <p style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);">
+                                Formula: <strong>breadth x strength</strong> — fraction of agreeing groups multiplied by their average deviation from 50. Not a score amplifier.
+                            </p>
+                        </div>
+
+                        <div class="audit-section">
+                            <h3>🌍 Market Regime Detection</h3>
+                            <table class="data-table">
+                                <thead><tr><th>Regime</th><th>Condition</th><th>Weight Shift</th></tr></thead>
+                                <tbody>
+                                    <tr><td style="color: var(--accent-green); font-weight: 600;">Trending</td><td>ADX ≥ 25, volatility ≥ 0.4%</td><td>Trend & Momentum → 30%</td></tr>
+                                    <tr><td style="color: var(--accent-yellow); font-weight: 600;">Ranging</td><td>ADX &lt; 20, moderate vol</td><td>Mean Reversion → 25%</td></tr>
+                                    <tr><td style="color: var(--accent-red); font-weight: 600;">Volatile</td><td>High ATR</td><td>Sentiment → 20%</td></tr>
+                                    <tr><td style="color: var(--accent-blue); font-weight: 600;">Quiet</td><td>Low ATR, low ADX</td><td>Fundamental → 20%</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="audit-section">
+                            <h3>📈 Realistic Stat Caps (FXCM 43M Trade Study)</h3>
+                            <table class="data-table">
+                                <thead><tr><th>Stat</th><th>Cap</th><th>Rationale</th></tr></thead>
+                                <tbody>
+                                    <tr><td>Win Rate</td><td style="font-weight: 600;">65%</td><td>Retail traders win &gt;50% but lose money due to R:R</td></tr>
+                                    <tr><td>Profit Factor</td><td style="font-weight: 600;">2.5</td><td>Professional benchmark ceiling</td></tr>
+                                    <tr><td>Expectancy</td><td style="font-weight: 600;">80%</td><td>Per-trade edge limit</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
                         
+                        <div class="audit-section">
+                            <details>
+                                <summary style="cursor: pointer; color: var(--accent-blue); font-size: 1.1rem; font-weight: 600;">📋 Individual Factor Details (11 Underlying Factors — merged into 7 groups above)</summary>
+                                <p style="color: var(--text-secondary); margin: 0.75rem 0; font-size: 0.85rem;">These 11 factors are the raw inputs that feed into the 7 factor groups. Click each to see scoring details.</p>
+                        </div>
+
                         ${Object.entries(factors).map(([name, f]) => `
                             <div class="audit-section" style="border-left: 4px solid var(--accent-blue); padding-left: 1rem;">
                                 <h3 style="text-transform: capitalize;">${name === 'mtf' ? 'MTF (Multi-Timeframe)' : name} - ${f.weight_percent}</h3>
@@ -3429,7 +3497,9 @@
                                 </p>
                             </div>
                         `).join('')}
-                        
+
+                            </details>
+
                         <div class="audit-section">
                             <h3>⭐ Star Rating System</h3>
                             <table class="data-table">
