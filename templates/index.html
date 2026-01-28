@@ -1993,15 +1993,6 @@
                     </select>
                 </div>
                 <div class="filter-group">
-                    <span class="filter-label">Min Strength:</span>
-                    <select id="filter-score">
-                        <option value="0">All Signals</option>
-                        <option value="15">Tradeable (15+)</option>
-                        <option value="25">Strong (25+)</option>
-                        <option value="35">Very Strong (35+)</option>
-                    </select>
-                </div>
-                <div class="filter-group">
                     <span class="filter-label">Grade:</span>
                     <select id="filter-grade">
                         <option value="all">All Grades</option>
@@ -2265,15 +2256,11 @@
             const container = document.getElementById('signals-container');
             const category = document.getElementById('filter-category').value;
             const direction = document.getElementById('filter-direction').value;
-            const minStrength = parseInt(document.getElementById('filter-score').value);
             const grade = document.getElementById('filter-grade').value;
 
             let filtered = signalsData.filter(s => {
                 if (category !== 'all' && s.category.toLowerCase() !== category) return false;
                 if (direction !== 'all' && s.direction.toLowerCase() !== direction) return false;
-                // Filter by SIGNAL STRENGTH (distance from 50) - works for both LONG and SHORT
-                const signalStrength = Math.abs(s.composite_score - 50);
-                if (signalStrength < minStrength) return false;
                 // Filter by TRADE QUALITY GRADE
                 if (grade !== 'all') {
                     const tradeQuality = s.trade_setup?.trade_quality || 'C';
@@ -3845,7 +3832,6 @@
         // Filter listeners
         document.getElementById('filter-category').addEventListener('change', renderSignals);
         document.getElementById('filter-direction').addEventListener('change', renderSignals);
-        document.getElementById('filter-score').addEventListener('change', renderSignals);
         document.getElementById('filter-grade').addEventListener('change', renderSignals);
         document.getElementById('rates-category').addEventListener('change', loadRates);
         
