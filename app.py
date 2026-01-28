@@ -435,8 +435,16 @@ def is_cache_valid(cache_type, custom_ttl=None):
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # SQLITE DATABASE - TRADE JOURNAL & SIGNAL HISTORY
+# Use Railway volume mount path if available, otherwise local file
+# To persist data on Railway: add a Volume mounted at /data in Railway dashboard
 # ═══════════════════════════════════════════════════════════════════════════════
-DATABASE_PATH = 'mega_forex_journal.db'
+RAILWAY_VOLUME_PATH = '/data'
+if os.path.exists(RAILWAY_VOLUME_PATH) and os.access(RAILWAY_VOLUME_PATH, os.W_OK):
+    DATABASE_PATH = os.path.join(RAILWAY_VOLUME_PATH, 'mega_forex_journal.db')
+    logger.info(f"📁 Using Railway persistent volume: {DATABASE_PATH}")
+else:
+    DATABASE_PATH = 'mega_forex_journal.db'
+    logger.info(f"📁 Using local database: {DATABASE_PATH}")
 
 def init_database():
     """Initialize SQLite database with all required tables"""
@@ -5433,8 +5441,10 @@ def generate_signal(pair):
         
         # Save signal to database (only for non-neutral signals with good quality)
         if direction != 'NEUTRAL' and trade_quality in ['A+', 'A', 'B']:
-            save_signal_to_db(signal_data)
-        
+            signal_id = save_signal_to_db(signal_data)
+            if signal_id:
+                logger.debug(f"📊 Signal saved to DB: {pair} {direction} Grade:{trade_quality} ID:{signal_id}")
+
         return signal_data
     
     except Exception as e:
@@ -5894,8 +5904,8 @@ def run_system_audit():
                 'ADX_Trend_Confirmation': {
                     'description': 'Trend strength confirmation',
                     'scoring': [
-                        {'condition': 'ADX > 25 + MACD bullish', 'points': '+10'},
-                        {'condition': 'ADX > 25 + MACD bearish', 'points': '-10'}
+                        {'condition': 'ADX > 25 + MACD bullish', 'points': '+10', 'meaning': 'Strong uptrend confirmed'},
+                        {'condition': 'ADX > 25 + MACD bearish', 'points': '-10', 'meaning': 'Strong downtrend confirmed'}
                     ]
                 }
             },
@@ -7053,6 +7063,54 @@ def get_performance():
     """Get trading performance statistics"""
     stats = get_performance_stats()
     return jsonify({'success': True, **stats})
+
+@app.route('/db-status')
+def get_db_status():
+    """Debug endpoint to check database status and signal count"""
+    try:
+        conn = sqlite3.connect(DATABASE_PATH)
+        cursor = conn.cursor()
+
+        # Count total signals
+        cursor.execute('SELECT COUNT(*) FROM signal_history')
+        total_signals = cursor.fetchone()[0]
+
+        # Count signals by direction
+        cursor.execute('SELECT direction, COUNT(*) FROM signal_history GROUP BY direction')
+        by_direction = {row[0]: row[1] for row in cursor.fetchall()}
+
+        # Count signals by grade
+        cursor.execute('SELECT trade_quality, COUNT(*) FROM signal_history GROUP BY trade_quality')
+        by_grade = {row[0]: row[1] for row in cursor.fetchall()}
+
+        # Get recent signals (last 5)
+        cursor.execute('SELECT pair, direction, trade_quality, timestamp FROM signal_history ORDER BY id DESC LIMIT 5')
+        recent = [{'pair': r[0], 'direction': r[1], 'grade': r[2], 'timestamp': r[3]} for r in cursor.fetchall()]
+
+        # Count evaluated signals
+        cursor.execute('SELECT COUNT(*) FROM signal_evaluation')
+        evaluated_count = cursor.fetchone()[0]
+
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'database_path': DATABASE_PATH,
+            'is_railway_volume': '/data' in DATABASE_PATH,
+            'total_signals': total_signals,
+            'by_direction': by_direction,
+            'by_grade': by_grade,
+            'evaluated_count': evaluated_count,
+            'recent_signals': recent,
+            'message': 'Database is working' if total_signals > 0 else 'No signals recorded yet - wait for Grade A/B signals to be generated'
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'database_path': DATABASE_PATH,
+            'hint': 'For Railway persistence, add a Volume mounted at /data in Railway dashboard'
+        })
 
 @app.route('/signal-history')
 def get_signals_history():
