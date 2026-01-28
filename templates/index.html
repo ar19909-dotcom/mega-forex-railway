@@ -2496,6 +2496,48 @@
                 const signal = await response.json();
                 
                 if (signal.success) {
+                    // Build AI Cross-Validation HTML before template literal
+                    let aiValidationHtml = '';
+                    const aiDet = signal.factors?.ai?.details || {};
+                    const aiVal = aiDet.validation || {};
+                    const aiFlags = aiVal.flags || [];
+                    const aiConsistent = aiVal.consistent !== false;
+                    const aiAnalysisText = aiDet.analysis || '';
+                    const aiConf = aiDet.confidence || 'N/A';
+                    const aiRecDir = aiVal.recommended_direction || 'N/A';
+
+                    if (aiAnalysisText || aiFlags.length > 0) {
+                        const borderColor = aiConsistent ? 'rgba(52, 211, 153, 0.4)' : 'rgba(239, 68, 68, 0.5)';
+                        const statusBg = aiConsistent ? 'rgba(52, 211, 153, 0.2)' : 'rgba(239, 68, 68, 0.2)';
+                        const statusColor = aiConsistent ? '#34d399' : '#ef4444';
+                        const statusText = aiConsistent ? 'CONSISTENT' : 'FLAGS FOUND';
+                        const dirColor = aiRecDir === 'LONG' ? '#34d399' : aiRecDir === 'SHORT' ? '#ef4444' : '#fbbf24';
+
+                        let flagsHtml = '';
+                        if (aiFlags.length > 0) {
+                            flagsHtml = '<div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 0.75rem;">' +
+                                '<div style="font-size: 0.8rem; font-weight: 600; color: #fbbf24; margin-bottom: 0.4rem;">Warning: Validation Flags:</div>' +
+                                aiFlags.map(f => '<div style="font-size: 0.8rem; color: var(--text-secondary); padding: 0.3rem 0 0.3rem 1rem; border-left: 2px solid #ef4444;">' + f + '</div>').join('') +
+                                '</div>';
+                        }
+
+                        aiValidationHtml = '<div style="margin-bottom: 1.5rem; padding: 1rem; background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(59, 130, 246, 0.1)); border: 1px solid ' + borderColor + '; border-radius: 0.75rem;">' +
+                            '<h4 style="margin: 0 0 0.75rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">' +
+                            '<span>AI Cross-Validation</span>' +
+                            '<span style="font-size: 0.75rem; padding: 0.2rem 0.6rem; border-radius: 1rem; background: ' + statusBg + '; color: ' + statusColor + '; font-weight: 600;">' + statusText + '</span>' +
+                            '<span style="font-size: 0.75rem; padding: 0.2rem 0.6rem; border-radius: 1rem; background: rgba(255,255,255,0.1); color: var(--text-muted);">Confidence: ' + aiConf + '</span>' +
+                            '</h4>' +
+                            '<div style="padding: 0.6rem; background: rgba(0,0,0,0.2); border-radius: 0.5rem; margin-bottom: 0.75rem;">' +
+                            '<div style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.4;"><strong style="color: #a78bfa;">AI Analysis:</strong> ' + aiAnalysisText + '</div>' +
+                            '</div>' +
+                            '<div style="display: flex; gap: 1rem; flex-wrap: wrap;">' +
+                            '<div style="font-size: 0.8rem; color: var(--text-muted);">AI Recommended Direction: <strong style="color: ' + dirColor + ';">' + aiRecDir + '</strong></div>' +
+                            '<div style="font-size: 0.8rem; color: var(--text-muted);">Factors Checked: <strong>' + (aiVal.factors_checked || 0) + '</strong></div>' +
+                            '</div>' +
+                            flagsHtml +
+                            '</div>';
+                    }
+
                     detail.innerHTML = `
                         <h3 style="margin-bottom: 1rem;">${signal.pair} Analysis</h3>
                         
@@ -2544,56 +2586,7 @@
                             </table>
                         </details>
 
-                        ${(() => {
-                            const aiDetails = signal.factors?.ai?.details || {};
-                            const validation = aiDetails.validation || {};
-                            const flags = validation.flags || [];
-                            const isConsistent = validation.consistent !== false;
-                            const aiAnalysis = aiDetails.analysis || '';
-                            const aiConfidence = aiDetails.confidence || 'N/A';
-                            const recDir = validation.recommended_direction || 'N/A';
-
-                            if (!aiAnalysis && flags.length === 0) return '';
-
-                            return \`
-                        <div style="margin-bottom: 1.5rem; padding: 1rem; background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(59, 130, 246, 0.1)); border: 1px solid \${isConsistent ? 'rgba(52, 211, 153, 0.4)' : 'rgba(239, 68, 68, 0.5)'}; border-radius: 0.75rem;">
-                            <h4 style="margin: 0 0 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
-                                <span style="font-size: 1.1rem;">🤖</span> AI Cross-Validation
-                                <span style="font-size: 0.75rem; padding: 0.2rem 0.6rem; border-radius: 1rem; background: \${isConsistent ? 'rgba(52, 211, 153, 0.2)' : 'rgba(239, 68, 68, 0.2)'}; color: \${isConsistent ? '#34d399' : '#ef4444'}; font-weight: 600;">
-                                    \${isConsistent ? 'CONSISTENT' : 'FLAGS FOUND'}
-                                </span>
-                                <span style="font-size: 0.75rem; padding: 0.2rem 0.6rem; border-radius: 1rem; background: rgba(255,255,255,0.1); color: var(--text-muted);">
-                                    Confidence: \${aiConfidence}
-                                </span>
-                            </h4>
-
-                            <div style="padding: 0.6rem; background: rgba(0,0,0,0.2); border-radius: 0.5rem; margin-bottom: 0.75rem;">
-                                <div style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.4;">
-                                    <strong style="color: #a78bfa;">AI Analysis:</strong> \${aiAnalysis}
-                                </div>
-                            </div>
-
-                            <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: \${flags.length > 0 ? '0.75rem' : '0'};">
-                                <div style="font-size: 0.8rem; color: var(--text-muted);">
-                                    AI Recommended Direction: <strong style="color: \${recDir === 'LONG' ? '#34d399' : recDir === 'SHORT' ? '#ef4444' : '#fbbf24'};">\${recDir}</strong>
-                                </div>
-                                <div style="font-size: 0.8rem; color: var(--text-muted);">
-                                    Factors Checked: <strong>\${validation.factors_checked || 0}</strong>
-                                </div>
-                            </div>
-
-                            \${flags.length > 0 ? \`
-                            <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 0.75rem;">
-                                <div style="font-size: 0.8rem; font-weight: 600; color: #fbbf24; margin-bottom: 0.4rem;">⚠️ Validation Flags:</div>
-                                \${flags.map(f => \`
-                                    <div style="font-size: 0.8rem; color: var(--text-secondary); padding: 0.3rem 0 0.3rem 1rem; border-left: 2px solid #ef4444;">
-                                        \${f}
-                                    </div>
-                                \`).join('')}
-                            </div>
-                            \` : ''}
-                        </div>\`;
-                        })()}
+                        ${aiValidationHtml}
 
                         <h4 style="margin-bottom: 0.5rem;">Technical Indicators</h4>
                         <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem;">
