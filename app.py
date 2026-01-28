@@ -3789,17 +3789,22 @@ def analyze_intermarket(pair):
 # ═══════════════════════════════════════════════════════════════════════════════
 # AI FACTOR - GPT-4o-mini Analysis (v8.5)
 # ═══════════════════════════════════════════════════════════════════════════════
-def calculate_ai_factor(pair, tech_data, sentiment_data, rate_data, preliminary_score=50):
+def calculate_ai_factor(pair, tech_data, sentiment_data, rate_data, preliminary_score=50, all_factors=None):
     """
-    AI-powered market analysis using GPT-4o-mini
+    AI-powered market analysis using GPT-4o-mini — DUAL ROLE:
 
-    Analyzes:
-    1. Technical pattern recognition
-    2. Market sentiment interpretation
-    3. Risk assessment
-    4. Trade setup quality
+    ROLE 1: Independent Analysis
+    - Technical pattern recognition
+    - Market sentiment interpretation
+    - Risk assessment
 
-    Returns score 0-100 and signal direction
+    ROLE 2: Cross-Validation (v9.0 Enhancement)
+    - Validates ALL factor scores against raw data
+    - Flags inconsistencies between factors and their data
+    - Checks scoring methodology compliance
+    - Provides corrected direction if factors are miscalculated
+
+    Returns score 0-100, signal direction, and validation results
     Cached for 30 minutes to reduce API costs
 
     STABILITY FEATURES:
@@ -3872,37 +3877,69 @@ def calculate_ai_factor(pair, tech_data, sentiment_data, rate_data, preliminary_
         us_10y = intermarket.get('us_10y', 4.5)
         oil = intermarket.get('oil', 75)
 
-        # Build enhanced prompt for GPT-4o-mini
-        prompt = f"""Analyze this forex pair and provide a trading recommendation.
+        # Build factor summary for AI cross-validation
+        factor_summary = ""
+        if all_factors:
+            factor_lines = []
+            for fname, fdata in sorted(all_factors.items()):
+                if fname == 'ai':  # Skip AI's own previous result
+                    continue
+                fscore = fdata.get('score', 50)
+                fsignal = fdata.get('signal', 'NEUTRAL')
+                fdetails = fdata.get('details', {})
+                detail_str = ', '.join(f"{k}={v}" for k, v in fdetails.items() if k not in ['articles', 'sources', 'ig_positioning', 'candles', 'patterns_found'])
+                factor_lines.append(f"  - {fname.upper()}: Score={fscore}, Signal={fsignal} | Raw: {detail_str[:120]}")
+            factor_summary = "\n".join(factor_lines)
 
+        # Build enhanced prompt for GPT-4o-mini with DUAL ROLE
+        prompt = f"""You are an expert forex analyst performing TWO roles:
+
+ROLE 1: CROSS-VALIDATE all factor scores against the raw data and scoring methodology.
+ROLE 2: Provide your own INDEPENDENT trading recommendation.
+
+═══════════════════════════════════════
 PAIR: {pair}
 CURRENT PRICE: {current_price:.5f}
-MARKET REGIME: {market_regime.upper()} (trending/ranging/volatile/quiet)
+MARKET REGIME: {market_regime.upper()}
+═══════════════════════════════════════
 
-TECHNICAL INDICATORS:
+RAW MARKET DATA:
 - RSI (14): {rsi:.1f} (Oversold <30, Overbought >70)
-- MACD Histogram: {macd_hist:.6f} (Positive = Bullish momentum)
-- ADX: {adx:.1f} (Trend strength: >25 = Strong trend)
-- Bollinger %B: {bb_pct:.1f}% (0% = Lower band, 100% = Upper band)
-- ATR: {atr:.5f} (Current volatility measure)
-
-INTERMARKET CORRELATIONS:
-- DXY (Dollar Index): {dxy:.1f} (>104 = Strong USD)
-- Gold: ${gold:.0f} (Risk-off indicator, inverse USD)
+- MACD Histogram: {macd_hist:.6f} (Positive = Bullish)
+- ADX: {adx:.1f} (>25 = Strong trend)
+- Bollinger %B: {bb_pct:.1f}% (0% = Lower band, 100% = Upper)
+- ATR: {atr:.5f}
+- DXY: {dxy:.1f} (>104 = Strong USD, bearish for EUR/xxx)
+- Gold: ${gold:.0f} (Risk-off, inverse USD)
 - US 10Y Yield: {us_10y:.2f}% (Higher = USD strength)
-- Oil (WTI): ${oil:.1f} (CAD, NOK correlation)
+- Oil: ${oil:.1f} (CAD, NOK positive correlation)
+- Sentiment: {sentiment_signal} (Score: {sentiment_score}/100)
 
-SENTIMENT: {sentiment_signal} (Score: {sentiment_score}/100)
-PRELIMINARY SCORE: {preliminary_score:.1f}/100 (from other 6 factor groups)
+═══════════════════════════════════════
+CURRENT FACTOR SCORES TO VALIDATE:
+{factor_summary}
 
-Based on ALL this data, provide your independent AI analysis:
-1. SCORE: 0-100 (0-30=Strong Short, 31-45=Weak Short, 46-54=Neutral, 55-69=Weak Long, 70-100=Strong Long)
-2. SIGNAL: LONG, SHORT, or NEUTRAL
-3. CONFIDENCE: HIGH, MEDIUM, or LOW
-4. ANALYSIS: One sentence with key reasoning
+PRELIMINARY COMPOSITE: {preliminary_score:.1f}/100
+═══════════════════════════════════════
 
-Respond in exact JSON format:
-{{"score": 65, "signal": "LONG", "confidence": "MEDIUM", "analysis": "Your analysis here"}}"""
+SCORING METHODOLOGY RULES:
+- Score >58 = BULLISH, <42 = BEARISH, 42-58 = NEUTRAL
+- RSI <30 should push Technical BULLISH (oversold bounce), RSI >70 should push BEARISH
+- Positive MACD histogram + MACD above signal = Bullish momentum
+- ADX >25 amplifies trend, ADX <15 reduces confidence
+- High DXY = Bearish for EUR/GBP/etc vs USD, Bullish for USD/xxx
+- Interest rate differential >1% favoring base = Fundamental BULLISH
+- Contrarian sentiment: if most traders are LONG, signal should lean SHORT
+
+CROSS-VALIDATION TASK:
+Check each factor score against its raw data. Flag any factor where the score seems WRONG given the data.
+
+Respond in exact JSON:
+{{"score": 65, "signal": "LONG", "confidence": "MEDIUM", "analysis": "Key reasoning in one sentence", "validation": {{"consistent": true, "flags": [], "recommended_direction": "LONG"}}}}
+
+If factors are inconsistent, set consistent=false and list flags like:
+"flags": ["Technical score 75 but RSI is 52 - should be closer to neutral", "Sentiment BULLISH but contrarian data suggests SHORT"]
+"recommended_direction" should be what the OVERALL data truly supports."""
 
         # Call OpenAI API
         headers = {
@@ -3913,11 +3950,11 @@ Respond in exact JSON format:
         payload = {
             'model': AI_FACTOR_CONFIG.get('model', 'gpt-4o-mini'),
             'messages': [
-                {'role': 'system', 'content': 'You are an expert forex analyst. Provide concise, actionable trading signals based on technical and sentiment data. Always respond in valid JSON format.'},
+                {'role': 'system', 'content': 'You are an expert forex analyst and scoring auditor. You have TWO jobs: (1) Cross-validate all factor scores against raw market data and flag any inconsistencies, (2) Provide your own independent trading recommendation. Be strict — if raw data contradicts a factor score, flag it. Always respond in valid JSON format.'},
                 {'role': 'user', 'content': prompt}
             ],
-            'max_tokens': 150,
-            'temperature': 0.3  # Low temperature for consistent analysis
+            'max_tokens': 350,  # Increased for validation response
+            'temperature': 0.2  # Lower temperature for more consistent validation
         }
 
         # Rate limiting delay
@@ -3945,12 +3982,24 @@ Respond in exact JSON format:
 
                 ai_data = json.loads(ai_response)
 
+                # Extract validation data from AI response
+                validation = ai_data.get('validation', {})
+                flags = validation.get('flags', [])
+                is_consistent = validation.get('consistent', True)
+                recommended_dir = validation.get('recommended_direction', ai_data.get('signal', 'NEUTRAL'))
+
                 ai_result = {
                     'score': max(0, min(100, float(ai_data.get('score', 50)))),
                     'signal': ai_data.get('signal', 'NEUTRAL').upper(),
                     'analysis': ai_data.get('analysis', 'AI analysis completed'),
                     'confidence': ai_data.get('confidence', 'MEDIUM').upper(),
-                    'data_quality': 'AI_REAL'
+                    'data_quality': 'AI_REAL',
+                    'validation': {
+                        'consistent': is_consistent,
+                        'flags': flags[:5] if flags else [],  # Limit to 5 flags
+                        'recommended_direction': recommended_dir.upper() if isinstance(recommended_dir, str) else 'NEUTRAL',
+                        'factors_checked': len(all_factors) - 1 if all_factors else 0  # Exclude AI itself
+                    }
                 }
 
                 # Validate signal matches score
@@ -4609,8 +4658,8 @@ def calculate_factor_scores(pair):
     else:
         preliminary_score = 50
 
-    # Call AI factor (will skip if signal strength too low or API issues)
-    ai_result = calculate_ai_factor(pair, tech, sentiment, rate, preliminary_score)
+    # Call AI factor with ALL factors for cross-validation (v9.0 dual-role)
+    ai_result = calculate_ai_factor(pair, tech, sentiment, rate, preliminary_score, all_factors=factors)
     factors['ai'] = {
         'score': round(ai_result['score'], 1),
         'signal': ai_result['signal'],
@@ -4619,7 +4668,8 @@ def calculate_factor_scores(pair):
             'analysis': ai_result.get('analysis', ''),
             'confidence': ai_result.get('confidence', 'MEDIUM'),
             'model': AI_FACTOR_CONFIG.get('model', 'gpt-4o-mini'),
-            'preliminary_score': round(preliminary_score, 1)
+            'preliminary_score': round(preliminary_score, 1),
+            'validation': ai_result.get('validation', {})
         }
     }
 
