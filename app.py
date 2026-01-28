@@ -5555,13 +5555,13 @@ def run_system_audit():
         'total_factor_groups': 7,
         'total_weight': 100,
         'factor_groups': {
-            'trend_momentum': {'weight': 25, 'sources': 'Technical (RSI/MACD/ADX) 60% + MTF (H1/H4/D1) 40%'},
-            'fundamental': {'weight': 18, 'sources': 'Interest rate differentials + FRED macro data'},
-            'sentiment': {'weight': 15, 'sources': 'IG positioning 65% + Options proxy 35%'},
+            'trend_momentum': {'weight': 23, 'sources': 'Technical (RSI/MACD/ADX) 60% + MTF (H1/H4/D1) 40%'},
+            'fundamental': {'weight': 17, 'sources': 'Interest rate differentials + FRED macro data'},
+            'sentiment': {'weight': 14, 'sources': 'IG positioning 65% + Options proxy 35%'},
             'intermarket': {'weight': 14, 'sources': 'DXY, Gold, Yields, Oil correlations'},
             'mean_reversion': {'weight': 12, 'sources': 'Quantitative (Z-Score/Bollinger) 55% + Structure (S/R) 45%'},
             'calendar_risk': {'weight': 8, 'sources': 'Economic events + Seasonality'},
-            'ai_synthesis': {'weight': 8, 'sources': 'GPT analysis — only activates when 4+ groups agree'}
+            'ai_synthesis': {'weight': 12, 'sources': 'GPT enhanced analysis — activates when 2+ groups agree'}
         },
         'quality_gates': {
             'description': '4 of 6 gates must pass for LONG/SHORT signal, otherwise NEUTRAL',
