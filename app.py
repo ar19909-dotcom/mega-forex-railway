@@ -150,15 +150,15 @@ ig_session = {
 # OpenAI API (GPT-4o-mini for AI Factor)
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '')
 
-# AI Factor Configuration
+# AI Factor Configuration (v9.0 optimized for faster loading)
 AI_FACTOR_CONFIG = {
     'enabled': True,                    # Set to False to disable AI factor
     'model': 'gpt-4o-mini',             # OpenAI model to use (gpt-4o-mini available)
     'cache_ttl': 1800,                  # 30 minutes cache
-    'min_signal_strength': 1,           # Call AI for more signals (strength >= 1 from neutral)
-    'max_pairs_per_refresh': 15,        # Max pairs to analyze with AI per refresh cycle
-    'timeout': 8,                       # API timeout in seconds
-    'rate_limit_delay': 0.1             # Delay between API calls (seconds)
+    'min_signal_strength': 5,           # Only call AI for signals with strength >= 5 (faster load)
+    'max_pairs_per_refresh': 10,        # Reduced from 15 to speed up loading
+    'timeout': 5,                       # Reduced from 8 to 5 seconds for faster failures
+    'rate_limit_delay': 0.05            # Reduced delay for faster throughput
 }
 
 # AI Factor Cache (thread-safe)
@@ -406,7 +406,7 @@ CACHE_TTL = {
     'fundamental': 3600,
     'intermarket_data': 300,  # 5 minutes
     'positioning': 120,  # 2 minutes - IG sentiment doesn't change rapidly
-    'signals': 120,   # 2 minutes - v8.5: increased for better performance with AI factor
+    'signals': 180,   # 3 minutes - v9.0: increased for faster repeat loads with AI
     'audit': 300      # 5 minutes - audit data doesn't change rapidly
 }
 
@@ -5876,19 +5876,19 @@ def run_system_audit():
                 'Support_Resistance': {
                     'description': 'Swing high/low detection over 20 periods',
                     'scoring': [
-                        {'position': 'NEAR_SUPPORT', 'points': '+25', 'meaning': 'Good for longs'},
-                        {'position': 'NEAR_RESISTANCE', 'points': '-25', 'meaning': 'Good for shorts'},
-                        {'position': 'MIDDLE', 'points': '0', 'meaning': 'Neutral zone'}
+                        {'condition': 'NEAR_SUPPORT', 'points': '+25', 'meaning': 'Good for longs'},
+                        {'condition': 'NEAR_RESISTANCE', 'points': '-25', 'meaning': 'Good for shorts'},
+                        {'condition': 'MIDDLE', 'points': '0', 'meaning': 'Neutral zone'}
                     ]
                 },
                 'Pivot_Points': {
                     'description': 'Standard Floor Trader pivots (P, R1-R3, S1-S3)',
                     'formula': 'Pivot = (High + Low + Close) / 3',
                     'scoring': [
-                        {'bias': 'BULLISH', 'points': '+15', 'meaning': 'Price above R1'},
-                        {'bias': 'SLIGHTLY_BULLISH', 'points': '+8', 'meaning': 'Price above Pivot'},
-                        {'bias': 'SLIGHTLY_BEARISH', 'points': '-8', 'meaning': 'Price below Pivot'},
-                        {'bias': 'BEARISH', 'points': '-15', 'meaning': 'Price below S1'}
+                        {'condition': 'BULLISH (above R1)', 'points': '+15', 'meaning': 'Price above R1'},
+                        {'condition': 'SLIGHTLY_BULLISH', 'points': '+8', 'meaning': 'Price above Pivot'},
+                        {'condition': 'SLIGHTLY_BEARISH', 'points': '-8', 'meaning': 'Price below Pivot'},
+                        {'condition': 'BEARISH (below S1)', 'points': '-15', 'meaning': 'Price below S1'}
                     ]
                 },
                 'ADX_Trend_Confirmation': {
@@ -6371,10 +6371,10 @@ def get_signals():
                     logger.debug("📊 Signals: Returning cached data")
                     return jsonify(cached)
 
-        # Generate fresh signals (v8.5: increased workers for faster loading)
+        # Generate fresh signals (v9.0: increased workers for faster loading)
         signals = []
 
-        with ThreadPoolExecutor(max_workers=15) as executor:
+        with ThreadPoolExecutor(max_workers=20) as executor:
             future_to_pair = {executor.submit(generate_signal, pair): pair for pair in FOREX_PAIRS}
 
             for future in as_completed(future_to_pair):
