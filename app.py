@@ -573,6 +573,42 @@ def init_database():
         )
     ''')
 
+    # ─────────────────────────────────────────────────────────────────────────
+    # TABLE 6: FACTOR PERFORMANCE - Track win rate per factor group (v9.0 AI Insights)
+    # ─────────────────────────────────────────────────────────────────────────
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS factor_performance (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            factor_group TEXT NOT NULL,
+            signal_type TEXT NOT NULL,
+            total_signals INTEGER DEFAULT 0,
+            correct_signals INTEGER DEFAULT 0,
+            incorrect_signals INTEGER DEFAULT 0,
+            avg_score_when_correct REAL DEFAULT 0,
+            avg_score_when_incorrect REAL DEFAULT 0,
+            current_win_rate REAL DEFAULT 0,
+            suggested_weight REAL DEFAULT 0,
+            last_updated TEXT,
+            UNIQUE(factor_group, signal_type)
+        )
+    ''')
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # TABLE 7: AI INSIGHTS LOG - Track AI supervisor recommendations (v9.0)
+    # ─────────────────────────────────────────────────────────────────────────
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS ai_insights_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT NOT NULL,
+            insight_type TEXT NOT NULL,
+            recommendation TEXT,
+            current_weights TEXT,
+            suggested_weights TEXT,
+            confidence_score REAL,
+            reasoning TEXT
+        )
+    ''')
+
     # Create indexes for faster queries
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_signal_pair ON signal_history(pair)')
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_signal_timestamp ON signal_history(timestamp)')
@@ -581,6 +617,8 @@ def init_database():
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_eval_pair ON signal_evaluation(pair)')
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_eval_outcome ON signal_evaluation(outcome)')
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_eval_timestamp ON signal_evaluation(entry_timestamp)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_factor_perf_group ON factor_performance(factor_group)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_ai_insights_timestamp ON ai_insights_log(timestamp)')
 
     conn.commit()
     conn.close()
@@ -1140,6 +1178,419 @@ def get_signal_evaluation_summary():
     except Exception as e:
         logger.error(f"Evaluation summary error: {e}")
         return {'error': str(e)}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# v9.0 AI PERFORMANCE MONITOR & OPTIMIZER
+# Uses GPT-4o-mini to analyze factor performance and suggest weight optimizations
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def analyze_factor_performance():
+    """
+    Analyze win rate for each factor group based on signal evaluation data.
+    Joins signal_evaluation with signal_history to extract factor scores.
+    Returns performance metrics per factor group.
+    """
+    try:
+        conn = sqlite3.connect(DATABASE_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        # Get evaluated signals with their factor data from last 90 days
+        cursor.execute('''
+            SELECT
+                se.signal_id, se.outcome, se.direction,
+                sh.factors_json, sh.composite_score
+            FROM signal_evaluation se
+            JOIN signal_history sh ON se.signal_id = sh.id
+            WHERE se.entry_timestamp >= datetime('now', '-90 days')
+            AND se.outcome IN ('CORRECT', 'INCORRECT', 'PARTIAL')
+        ''')
+        rows = cursor.fetchall()
+
+        # Define factor groups and their member factors
+        factor_group_mapping = {
+            'trend_momentum': ['technical', 'mtf'],
+            'fundamental': ['fundamental'],
+            'sentiment': ['sentiment', 'options'],
+            'intermarket': ['intermarket'],
+            'mean_reversion': ['quantitative', 'structure'],
+            'calendar_risk': ['calendar'],
+            'ai_synthesis': ['ai']
+        }
+
+        # Initialize performance tracking
+        group_performance = {g: {
+            'bullish': {'total': 0, 'correct': 0, 'scores': []},
+            'bearish': {'total': 0, 'correct': 0, 'scores': []},
+            'neutral': {'total': 0, 'correct': 0, 'scores': []}
+        } for g in factor_group_mapping.keys()}
+
+        for row in rows:
+            try:
+                factors = json.loads(row['factors_json']) if row['factors_json'] else {}
+                outcome = row['outcome']
+                is_correct = outcome in ('CORRECT', 'PARTIAL')
+
+                for group_name, factor_names in factor_group_mapping.items():
+                    # Calculate average score for this group
+                    group_scores = []
+                    for fname in factor_names:
+                        if fname in factors and isinstance(factors[fname], dict):
+                            score = factors[fname].get('score', 50)
+                            if score is not None:
+                                group_scores.append(score)
+
+                    if not group_scores:
+                        continue
+
+                    avg_score = sum(group_scores) / len(group_scores)
+
+                    # Classify signal type
+                    if avg_score >= 58:
+                        signal_type = 'bullish'
+                    elif avg_score <= 42:
+                        signal_type = 'bearish'
+                    else:
+                        signal_type = 'neutral'
+
+                    group_performance[group_name][signal_type]['total'] += 1
+                    group_performance[group_name][signal_type]['scores'].append(avg_score)
+                    if is_correct:
+                        group_performance[group_name][signal_type]['correct'] += 1
+
+            except Exception as e:
+                logger.debug(f"Factor analysis skip: {e}")
+                continue
+
+        # Calculate final metrics
+        results = {}
+        for group_name, type_data in group_performance.items():
+            results[group_name] = {
+                'current_weight': FACTOR_GROUP_WEIGHTS.get(group_name, 0),
+                'bullish': {
+                    'total': type_data['bullish']['total'],
+                    'correct': type_data['bullish']['correct'],
+                    'win_rate': round((type_data['bullish']['correct'] / max(type_data['bullish']['total'], 1)) * 100, 1),
+                    'avg_score': round(sum(type_data['bullish']['scores']) / max(len(type_data['bullish']['scores']), 1), 1)
+                },
+                'bearish': {
+                    'total': type_data['bearish']['total'],
+                    'correct': type_data['bearish']['correct'],
+                    'win_rate': round((type_data['bearish']['correct'] / max(type_data['bearish']['total'], 1)) * 100, 1),
+                    'avg_score': round(sum(type_data['bearish']['scores']) / max(len(type_data['bearish']['scores']), 1), 1)
+                },
+                'overall_win_rate': round(
+                    ((type_data['bullish']['correct'] + type_data['bearish']['correct']) /
+                     max(type_data['bullish']['total'] + type_data['bearish']['total'], 1)) * 100, 1
+                ),
+                'total_signals': type_data['bullish']['total'] + type_data['bearish']['total']
+            }
+
+        # Update factor_performance table
+        for group_name, data in results.items():
+            for sig_type in ['bullish', 'bearish']:
+                type_data = data[sig_type]
+                try:
+                    cursor.execute('''
+                        INSERT OR REPLACE INTO factor_performance
+                        (factor_group, signal_type, total_signals, correct_signals, current_win_rate, last_updated)
+                        VALUES (?, ?, ?, ?, ?, datetime('now'))
+                    ''', (group_name, sig_type, type_data['total'], type_data['correct'], type_data['win_rate']))
+                except Exception:
+                    pass
+
+        conn.commit()
+        conn.close()
+
+        return results
+
+    except Exception as e:
+        logger.error(f"Factor performance analysis error: {e}")
+        return {'error': str(e)}
+
+
+def ai_supervisor_analyze(factor_performance, overall_stats):
+    """
+    GPT-4o-mini AI Supervisor: Analyzes factor performance data and provides
+    strategic recommendations for weight optimization.
+
+    Returns:
+    - Weight adjustment suggestions
+    - Factor analysis insights
+    - Risk warnings
+    - Confidence score for recommendations
+    """
+    if not OPENAI_API_KEY:
+        return {
+            'status': 'unavailable',
+            'reason': 'No OpenAI API key configured',
+            'suggestions': []
+        }
+
+    try:
+        import requests
+
+        # Build performance summary for AI
+        perf_summary = []
+        for group, data in factor_performance.items():
+            if isinstance(data, dict) and 'overall_win_rate' in data:
+                perf_summary.append(
+                    f"- {group.upper()}: Weight={data['current_weight']}%, "
+                    f"Win Rate={data['overall_win_rate']}%, "
+                    f"Signals={data['total_signals']}, "
+                    f"Bullish WR={data['bullish']['win_rate']}%, "
+                    f"Bearish WR={data['bearish']['win_rate']}%"
+                )
+
+        perf_text = "\n".join(perf_summary) if perf_summary else "No factor data available"
+
+        # Overall stats summary
+        overall_text = "No overall stats available"
+        if overall_stats and 'overall' in overall_stats:
+            ov = overall_stats['overall']
+            overall_text = f"""
+Total Evaluated: {ov.get('total_evaluated', 0)}
+Overall Accuracy: {ov.get('accuracy_pct', 0)}%
+Correct: {ov.get('correct', 0)}, Incorrect: {ov.get('incorrect', 0)}
+TP1 Hit Rate: {ov.get('tp1_hit_rate', 0)}%, SL Hit Rate: {ov.get('sl_hit_rate', 0)}%
+"""
+
+        prompt = f"""You are an expert forex trading system optimizer. Analyze the factor performance data below and provide specific, actionable recommendations.
+
+═══════════════════════════════════════
+CURRENT FACTOR GROUP PERFORMANCE (90 days):
+{perf_text}
+
+═══════════════════════════════════════
+OVERALL SYSTEM PERFORMANCE:
+{overall_text}
+
+═══════════════════════════════════════
+CURRENT WEIGHT CONFIGURATION:
+{json.dumps(FACTOR_GROUP_WEIGHTS, indent=2)}
+
+═══════════════════════════════════════
+
+TASK: Provide optimization recommendations in this EXACT JSON format:
+{{
+    "overall_assessment": "Brief 1-sentence assessment of system health",
+    "confidence_score": 75,
+    "weight_suggestions": [
+        {{"factor": "factor_name", "current": 23, "suggested": 25, "reason": "Brief reason"}},
+        ...
+    ],
+    "top_performers": ["factor1", "factor2"],
+    "underperformers": ["factor3"],
+    "risk_warnings": ["Warning 1 if any"],
+    "action_items": ["Specific action 1", "Action 2"]
+}}
+
+RULES:
+1. Suggested weights MUST sum to 100%
+2. Only suggest changes if win rate difference is significant (>5%)
+3. Factors with <10 signals should not drive major changes
+4. Be conservative - small adjustments only (max ±3% per factor)
+5. confidence_score: 0-100 based on data quality and sample size
+
+Respond with ONLY valid JSON, no other text."""
+
+        headers = {
+            'Authorization': f'Bearer {OPENAI_API_KEY}',
+            'Content-Type': 'application/json'
+        }
+
+        response = requests.post(
+            'https://api.openai.com/v1/chat/completions',
+            headers=headers,
+            json={
+                'model': AI_FACTOR_CONFIG['model'],
+                'messages': [{'role': 'user', 'content': prompt}],
+                'max_tokens': 800,
+                'temperature': 0.3
+            },
+            timeout=10
+        )
+
+        if response.status_code == 200:
+            result = response.json()
+            ai_response = result['choices'][0]['message']['content'].strip()
+
+            # Parse JSON response
+            try:
+                # Clean response if needed
+                if ai_response.startswith('```'):
+                    ai_response = ai_response.split('```')[1]
+                    if ai_response.startswith('json'):
+                        ai_response = ai_response[4:]
+
+                insights = json.loads(ai_response)
+                insights['status'] = 'success'
+                insights['model'] = AI_FACTOR_CONFIG['model']
+                insights['timestamp'] = datetime.now().isoformat()
+
+                # Log to database
+                try:
+                    conn = sqlite3.connect(DATABASE_PATH)
+                    cursor = conn.cursor()
+                    cursor.execute('''
+                        INSERT INTO ai_insights_log
+                        (timestamp, insight_type, recommendation, current_weights, suggested_weights, confidence_score, reasoning)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                    ''', (
+                        datetime.now().isoformat(),
+                        'weight_optimization',
+                        insights.get('overall_assessment', ''),
+                        json.dumps(FACTOR_GROUP_WEIGHTS),
+                        json.dumps(insights.get('weight_suggestions', [])),
+                        insights.get('confidence_score', 0),
+                        json.dumps(insights.get('action_items', []))
+                    ))
+                    conn.commit()
+                    conn.close()
+                except Exception as db_err:
+                    logger.debug(f"AI insights log error: {db_err}")
+
+                return insights
+
+            except json.JSONDecodeError as je:
+                logger.warning(f"AI Supervisor JSON parse error: {je}")
+                return {
+                    'status': 'parse_error',
+                    'raw_response': ai_response[:500],
+                    'suggestions': []
+                }
+        else:
+            return {
+                'status': 'api_error',
+                'code': response.status_code,
+                'message': response.text[:200],
+                'suggestions': []
+            }
+
+    except Exception as e:
+        logger.error(f"AI Supervisor error: {e}")
+        return {
+            'status': 'error',
+            'message': str(e),
+            'suggestions': []
+        }
+
+
+def calculate_signal_confidence(signal_data):
+    """
+    Calculate a confidence score (0-100) for a signal based on multiple factors:
+    1. Factor agreement - how many factors agree with direction
+    2. Score strength - distance from 50
+    3. Historical accuracy - win rate for this pair/direction
+    4. Quality gate passes - how many gates passed
+    5. AI validation - if AI agrees
+
+    Returns confidence score and breakdown
+    """
+    try:
+        confidence_components = {}
+
+        factors = signal_data.get('factors', {})
+        direction = signal_data.get('direction', 'NEUTRAL')
+        composite = signal_data.get('composite_score', 50)
+        trade_setup = signal_data.get('trade_setup', {})
+        gates = trade_setup.get('quality_gates', {})
+
+        # 1. Factor Agreement (25 points max)
+        factor_signals = []
+        for fname, fdata in factors.items():
+            if isinstance(fdata, dict) and 'signal' in fdata:
+                factor_signals.append(fdata['signal'])
+
+        if direction == 'LONG':
+            agreement_count = factor_signals.count('BULLISH')
+        elif direction == 'SHORT':
+            agreement_count = factor_signals.count('BEARISH')
+        else:
+            agreement_count = factor_signals.count('NEUTRAL')
+
+        factor_agreement_score = min(25, round((agreement_count / max(len(factor_signals), 1)) * 25))
+        confidence_components['factor_agreement'] = {
+            'score': factor_agreement_score,
+            'max': 25,
+            'detail': f"{agreement_count}/{len(factor_signals)} factors agree"
+        }
+
+        # 2. Score Strength (20 points max)
+        score_distance = abs(composite - 50)
+        strength_score = min(20, round((score_distance / 35) * 20))  # 35 = max practical distance
+        confidence_components['score_strength'] = {
+            'score': strength_score,
+            'max': 20,
+            'detail': f"Score distance: {score_distance:.1f} from neutral"
+        }
+
+        # 3. Quality Gates (25 points max)
+        gates_passed = sum(1 for g in gates.values() if isinstance(g, dict) and g.get('passed', False))
+        total_gates = len(gates)
+        gates_score = min(25, round((gates_passed / max(total_gates, 1)) * 25))
+        confidence_components['quality_gates'] = {
+            'score': gates_score,
+            'max': 25,
+            'detail': f"{gates_passed}/{total_gates} gates passed"
+        }
+
+        # 4. AI Validation (20 points max)
+        ai_factor = factors.get('ai', {})
+        ai_signal = ai_factor.get('signal', 'NEUTRAL') if isinstance(ai_factor, dict) else 'NEUTRAL'
+        ai_validation = ai_factor.get('details', {}).get('validation', {}) if isinstance(ai_factor, dict) else {}
+        ai_status = ai_validation.get('status', 'UNCHECKED')
+
+        ai_score = 0
+        if ai_status == 'CONSISTENT':
+            ai_score = 20
+        elif ai_status == 'FLAGS_FOUND':
+            ai_score = 10
+        elif direction == 'LONG' and ai_signal == 'BULLISH':
+            ai_score = 15
+        elif direction == 'SHORT' and ai_signal == 'BEARISH':
+            ai_score = 15
+        elif ai_signal == 'NEUTRAL':
+            ai_score = 8
+
+        confidence_components['ai_validation'] = {
+            'score': ai_score,
+            'max': 20,
+            'detail': f"AI: {ai_signal}, Status: {ai_status}"
+        }
+
+        # 5. Trade Quality Bonus (10 points max)
+        quality = trade_setup.get('trade_quality', 'C')
+        quality_bonus = {'A+': 10, 'A': 8, 'B': 5, 'C': 2}.get(quality, 0)
+        confidence_components['trade_quality'] = {
+            'score': quality_bonus,
+            'max': 10,
+            'detail': f"Grade: {quality}"
+        }
+
+        # Calculate total confidence
+        total_confidence = sum(c['score'] for c in confidence_components.values())
+        max_confidence = sum(c['max'] for c in confidence_components.values())
+
+        # Normalize to 0-100
+        confidence_pct = round((total_confidence / max_confidence) * 100)
+
+        return {
+            'confidence_score': confidence_pct,
+            'confidence_label': 'HIGH' if confidence_pct >= 70 else 'MEDIUM' if confidence_pct >= 50 else 'LOW',
+            'components': confidence_components,
+            'total_points': total_confidence,
+            'max_points': max_confidence
+        }
+
+    except Exception as e:
+        logger.error(f"Confidence calculation error: {e}")
+        return {
+            'confidence_score': 50,
+            'confidence_label': 'UNKNOWN',
+            'error': str(e)
+        }
 
 
 def get_performance_stats():
@@ -5438,7 +5889,11 @@ def generate_signal(pair):
             'factors_available': factors_available,
             'timestamp': datetime.now().isoformat()
         }
-        
+
+        # v9.0: Calculate confidence score for the signal
+        confidence_result = calculate_signal_confidence(signal_data)
+        signal_data['confidence'] = confidence_result
+
         # Save signal to database (only for non-neutral signals with good quality)
         if direction != 'NEUTRAL' and trade_quality in ['A+', 'A', 'B']:
             signal_id = save_signal_to_db(signal_data)
@@ -7140,6 +7595,63 @@ def signal_evaluation_endpoint():
         })
     except Exception as e:
         logger.error(f"Signal evaluation endpoint error: {e}")
+        return jsonify({'success': False, 'error': str(e)})
+
+
+@app.route('/ai-insights')
+def ai_insights_endpoint():
+    """
+    v9.0 AI Performance Monitor & Optimizer Endpoint
+
+    Returns:
+    - Factor group performance analysis (win rates per factor)
+    - AI Supervisor recommendations (GPT-4o-mini analysis)
+    - Weight optimization suggestions
+    - Risk warnings and action items
+    """
+    try:
+        # 1. Analyze factor performance from historical data
+        factor_performance = analyze_factor_performance()
+
+        # 2. Get overall system stats for context
+        overall_stats = get_signal_evaluation_summary()
+
+        # 3. Get AI Supervisor recommendations
+        ai_recommendations = ai_supervisor_analyze(factor_performance, overall_stats)
+
+        # 4. Calculate some quick insights
+        insights_summary = {
+            'total_factors_analyzed': len([f for f in factor_performance if isinstance(factor_performance.get(f), dict)]),
+            'best_performing_factor': None,
+            'worst_performing_factor': None,
+            'avg_system_win_rate': overall_stats.get('overall', {}).get('accuracy_pct', 0)
+        }
+
+        # Find best/worst
+        best_wr = 0
+        worst_wr = 100
+        for group, data in factor_performance.items():
+            if isinstance(data, dict) and 'overall_win_rate' in data:
+                wr = data['overall_win_rate']
+                if wr > best_wr and data['total_signals'] >= 5:
+                    best_wr = wr
+                    insights_summary['best_performing_factor'] = {'name': group, 'win_rate': wr}
+                if wr < worst_wr and data['total_signals'] >= 5:
+                    worst_wr = wr
+                    insights_summary['worst_performing_factor'] = {'name': group, 'win_rate': wr}
+
+        return jsonify({
+            'success': True,
+            'timestamp': datetime.now().isoformat(),
+            'factor_performance': factor_performance,
+            'ai_recommendations': ai_recommendations,
+            'insights_summary': insights_summary,
+            'current_weights': FACTOR_GROUP_WEIGHTS,
+            'model_used': AI_FACTOR_CONFIG['model']
+        })
+
+    except Exception as e:
+        logger.error(f"AI Insights endpoint error: {e}")
         return jsonify({'success': False, 'error': str(e)})
 
 
