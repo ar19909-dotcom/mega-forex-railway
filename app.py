@@ -3857,39 +3857,51 @@ def calculate_ai_factor(pair, tech_data, sentiment_data, rate_data, preliminary_
         }
 
     try:
-        # Prepare market data for AI analysis
-        rsi = tech_data.get('rsi', 50)
-        macd_hist = tech_data.get('macd', {}).get('histogram', 0)
-        adx = tech_data.get('adx', 20)
-        bb_pct = tech_data.get('bollinger', {}).get('percent_b', 50)
-        atr = tech_data.get('atr', 0)
+        # Prepare market data for AI analysis (use 'or' to handle None values from .get())
+        rsi = tech_data.get('rsi') if tech_data else None
+        rsi = rsi if rsi is not None else 50.0
+        macd_hist = (tech_data.get('macd') or {}).get('histogram') if tech_data else None
+        macd_hist = macd_hist if macd_hist is not None else 0.0
+        adx = tech_data.get('adx') if tech_data else None
+        adx = adx if adx is not None else 20.0
+        bb_pct = (tech_data.get('bollinger') or {}).get('percent_b') if tech_data else None
+        bb_pct = bb_pct if bb_pct is not None else 50.0
+        atr = tech_data.get('atr') if tech_data else None
+        atr = atr if atr is not None else 0.001
 
-        sentiment_score = sentiment_data.get('score', 50) if sentiment_data else 50
-        sentiment_signal = sentiment_data.get('signal', 'NEUTRAL') if sentiment_data else 'NEUTRAL'
+        sentiment_score = (sentiment_data.get('score') if sentiment_data else None) or 50
+        sentiment_signal = (sentiment_data.get('signal') if sentiment_data else None) or 'NEUTRAL'
 
-        current_price = rate_data.get('mid', 0) if rate_data else 0
+        current_price = (rate_data.get('mid') if rate_data else None) or 0.0
 
         # v9.0 Enhanced: Get market regime and intermarket data
-        market_regime = detect_market_regime(adx, atr, current_price)
-        intermarket = get_real_intermarket_data()
-        dxy = intermarket.get('dxy', 104)
-        gold = intermarket.get('gold', 2000)
-        us_10y = intermarket.get('us_10y', 4.5)
-        oil = intermarket.get('oil', 75)
+        market_regime = detect_market_regime(adx, atr, current_price) or 'quiet'
+        intermarket = get_real_intermarket_data() or {}
+        dxy = intermarket.get('dxy') or 104.0
+        gold = intermarket.get('gold') or 2000.0
+        us_10y = intermarket.get('us_10y') or 4.5
+        oil = intermarket.get('oil') or 75.0
 
         # Build factor summary for AI cross-validation
         factor_summary = ""
         if all_factors:
-            factor_lines = []
-            for fname, fdata in sorted(all_factors.items()):
-                if fname == 'ai':  # Skip AI's own previous result
-                    continue
-                fscore = fdata.get('score', 50)
-                fsignal = fdata.get('signal', 'NEUTRAL')
-                fdetails = fdata.get('details', {})
-                detail_str = ', '.join(f"{k}={v}" for k, v in fdetails.items() if k not in ['articles', 'sources', 'ig_positioning', 'candles', 'patterns_found'])
-                factor_lines.append(f"  - {fname.upper()}: Score={fscore}, Signal={fsignal} | Raw: {detail_str[:120]}")
-            factor_summary = "\n".join(factor_lines)
+            try:
+                factor_lines = []
+                for fname, fdata in sorted(all_factors.items()):
+                    if fname == 'ai':  # Skip AI's own previous result
+                        continue
+                    fscore = fdata.get('score', 50) if isinstance(fdata, dict) else 50
+                    fsignal = fdata.get('signal', 'NEUTRAL') if isinstance(fdata, dict) else 'NEUTRAL'
+                    fdetails = fdata.get('details', {}) if isinstance(fdata, dict) else {}
+                    if isinstance(fdetails, dict):
+                        detail_str = ', '.join(f"{k}={v}" for k, v in fdetails.items() if k not in ['articles', 'sources', 'ig_positioning', 'candles', 'patterns_found'] and v is not None)
+                    else:
+                        detail_str = str(fdetails)[:120]
+                    factor_lines.append(f"  - {fname.upper()}: Score={fscore}, Signal={fsignal} | Raw: {str(detail_str)[:120]}")
+                factor_summary = "\n".join(factor_lines)
+            except Exception as e:
+                factor_summary = f"  (Factor summary unavailable: {str(e)[:80]})"
+                logger.warning(f"AI Factor: Could not build factor summary: {e}")
 
         # Build enhanced prompt for GPT-4o-mini with DUAL ROLE
         prompt = f"""You are an expert forex analyst performing TWO roles:
@@ -5671,7 +5683,7 @@ def run_system_audit():
     audit['factor_details'] = {
         'technical': {
             'weight': 15,
-            'weight_percent': '60% of Trend & Momentum (25%)',
+            'weight_percent': '60% of Trend & Momentum (23%)',
             'description': 'RSI, MACD, ADX trend analysis',
             'data_sources': ['Polygon.io candles', 'Calculated indicators'],
             'score_range': '10-90',
@@ -5713,7 +5725,7 @@ def run_system_audit():
         },
         'fundamental': {
             'weight': 18,
-            'weight_percent': '100% of Fundamental (18%)',
+            'weight_percent': '100% of Fundamental (17%)',
             'description': 'Interest rate differentials and carry trade analysis',
             'data_sources': ['Central bank rates database', 'FRED API'],
             'score_range': '15-85',
@@ -5736,7 +5748,7 @@ def run_system_audit():
         },
         'sentiment': {
             'weight': 10,
-            'weight_percent': '65% of Sentiment (15%)',
+            'weight_percent': '65% of Sentiment (14%)',
             'description': 'IG Client Positioning + News sentiment analysis',
             'data_sources': ['IG Markets API (client positioning)', 'Finnhub API (news)', 'RSS feeds (ForexLive, FXStreet, Investing.com)'],
             'score_range': '15-85',
@@ -5755,8 +5767,8 @@ def run_system_audit():
             'signal_thresholds': {'bullish': '>= 58', 'bearish': '<= 42', 'neutral': '43-57'}
         },
         'ai': {
-            'weight': 8,
-            'weight_percent': '100% of AI Synthesis (8%)',
+            'weight': 12,
+            'weight_percent': '100% of AI Synthesis (12%)',
             'description': 'GPT-4o-mini AI-powered market analysis (v9.0)',
             'data_sources': ['OpenAI API (GPT-4o-mini model)'],
             'score_range': '15-85',
@@ -5771,9 +5783,9 @@ def run_system_audit():
                 }
             },
             'cost_control': {
-                'min_signal_strength': 10,
+                'min_signal_strength': 1,
                 'cache_ttl': 1800,
-                'skip_neutral_signals': True
+                'max_pairs_per_refresh': 15
             },
             'signal_thresholds': {'bullish': '>= 58', 'bearish': '<= 42', 'neutral': '43-57'}
         },
@@ -5829,7 +5841,7 @@ def run_system_audit():
         },
         'mtf': {
             'weight': 10,
-            'weight_percent': '40% of Trend & Momentum (25%)',
+            'weight_percent': '40% of Trend & Momentum (23%)',
             'description': 'Multi-Timeframe trend alignment (H1, H4, D1)',
             'data_sources': ['Polygon.io candles (hourly, daily)'],
             'score_range': '12-88',
@@ -5903,7 +5915,7 @@ def run_system_audit():
         },
         'options': {
             'weight': 5,
-            'weight_percent': '35% of Sentiment (15%)',
+            'weight_percent': '35% of Sentiment (14%)',
             'description': '25-Delta Risk Reversals & Put/Call Ratio analysis',
             'data_sources': ['CME FX Options (when available)', 'Price volatility structure proxy'],
             'score_range': '15-85 (REAL), 40-60 (PROXY)',
