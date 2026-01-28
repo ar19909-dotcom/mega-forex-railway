@@ -4901,7 +4901,7 @@ def generate_signal(pair):
 
         # ═══════════════════════════════════════════════════════════════════════════
         # v9.0: 6-GATE QUALITY FILTER
-        # 4 of 6 gates must pass for directional signal, otherwise NEUTRAL
+        # 5 of 7 gates must pass for directional signal, otherwise NEUTRAL
         # ═══════════════════════════════════════════════════════════════════════════
 
         # Pre-compute R:R for gate G4 (need SL/TP estimates)
@@ -4919,8 +4919,13 @@ def generate_signal(pair):
         cal_score = factors.get('calendar', {}).get('score', 50)
         has_high_impact_event = cal_score <= 30  # Low cal score = high-impact event imminent
 
-        # Trend contradiction check for gate G3
+        # Trend confirmation check for gate G3 (v9.0 fix: require CONFIRMATION, not just "not contradict")
         tm_signal = factor_groups.get('trend_momentum', {}).get('signal', 'NEUTRAL')
+        tm_score = factor_groups.get('trend_momentum', {}).get('score', 50)
+
+        # AI contradiction check for gate G7 (v9.0 fix: AI should not strongly contradict direction)
+        ai_signal = factor_groups.get('ai_synthesis', {}).get('signal', 'NEUTRAL')
+        ai_score = factor_groups.get('ai_synthesis', {}).get('score', 50)
 
         gate_details = {
             'G1_score_threshold': {
@@ -4935,8 +4940,8 @@ def generate_signal(pair):
             },
             'G3_trend_confirm': {
                 'passed': True,  # Will be set below based on direction
-                'value': tm_signal,
-                'rule': 'Trend & Momentum must not contradict'
+                'value': f"{tm_signal} ({tm_score})",
+                'rule': 'Trend & Momentum must CONFIRM direction (not neutral)'
             },
             'G4_risk_reward': {
                 'passed': est_rr >= 1.3,
@@ -4952,17 +4957,33 @@ def generate_signal(pair):
                 'passed': 0.5 <= atr_ratio <= 2.5,
                 'value': round(atr_ratio, 2),
                 'rule': 'ATR between 0.5x-2.5x of average'
+            },
+            'G7_ai_align': {
+                'passed': True,  # Will be set below based on direction
+                'value': f"{ai_signal} ({ai_score})",
+                'rule': 'AI must not strongly contradict direction'
             }
         }
 
-        # Set G3 based on potential direction
-        if composite_score >= 60:
-            gate_details['G3_trend_confirm']['passed'] = tm_signal != 'BEARISH'
-        elif composite_score <= 40:
-            gate_details['G3_trend_confirm']['passed'] = tm_signal != 'BULLISH'
+        # Set G3 based on potential direction - v9.0: require CONFIRMATION (score threshold)
+        # Trend must actively support the direction, not just be neutral
+        if composite_score >= 60:  # LONG direction
+            # Trend must be BULLISH (score > 52) to confirm LONG
+            gate_details['G3_trend_confirm']['passed'] = tm_score > 52
+        elif composite_score <= 40:  # SHORT direction
+            # Trend must be BEARISH (score < 48) to confirm SHORT
+            gate_details['G3_trend_confirm']['passed'] = tm_score < 48
+
+        # Set G7 based on AI alignment - AI should not strongly contradict
+        if composite_score >= 60:  # LONG direction
+            # AI must not be strongly BEARISH (score < 40) to allow LONG
+            gate_details['G7_ai_align']['passed'] = ai_score >= 40
+        elif composite_score <= 40:  # SHORT direction
+            # AI must not be strongly BULLISH (score > 60) to allow SHORT
+            gate_details['G7_ai_align']['passed'] = ai_score <= 60
 
         gates_passed = sum(1 for g in gate_details.values() if g['passed'])
-        all_gates_pass = gates_passed >= 4  # Allow 2 gates to fail (4 of 6 minimum)
+        all_gates_pass = gates_passed >= 5  # 5 of 7 gates must pass (increased from 4 of 6)
 
         # ═══════════════════════════════════════════════════════════════════════════
         # v9.0: SCORE VALIDATION
@@ -4978,7 +4999,7 @@ def generate_signal(pair):
         
         # ═══════════════════════════════════════════════════════════════════════════
         # v9.0: DIRECTION DETERMINATION - Gate-filtered with 60/40 thresholds
-        # Signal must pass 4 of 6 gates + score threshold for directional signal
+        # Signal must pass 5 of 7 gates + score threshold for directional signal
         # ═══════════════════════════════════════════════════════════════════════════
 
         gate_filtered = False  # Track if score was strong but gates blocked it
@@ -5564,14 +5585,15 @@ def run_system_audit():
             'ai_synthesis': {'weight': 12, 'sources': 'GPT enhanced analysis — activates when 2+ groups agree'}
         },
         'quality_gates': {
-            'description': '4 of 6 gates must pass for LONG/SHORT signal, otherwise NEUTRAL',
+            'description': '5 of 7 gates must pass for LONG/SHORT signal, otherwise NEUTRAL',
             'gates': [
                 {'id': 'G1', 'rule': 'Score >= 60 (LONG) or <= 40 (SHORT)'},
                 {'id': 'G2', 'rule': '>= 3 of 7 groups agree on direction'},
-                {'id': 'G3', 'rule': 'Trend & Momentum must not contradict direction'},
+                {'id': 'G3', 'rule': 'Trend & Momentum must CONFIRM direction (score > 52 for LONG, < 48 for SHORT)'},
                 {'id': 'G4', 'rule': 'R:R >= 1.3:1'},
                 {'id': 'G5', 'rule': 'No high-impact calendar event imminent'},
-                {'id': 'G6', 'rule': 'ATR between 0.5x-2.5x of 20-period average'}
+                {'id': 'G6', 'rule': 'ATR between 0.5x-2.5x of 20-period average'},
+                {'id': 'G7', 'rule': 'AI must not strongly contradict (AI <= 60 for SHORT, >= 40 for LONG)'}
             ]
         },
         'conviction_metric': {
@@ -6224,11 +6246,11 @@ def run_system_audit():
         },
         'calibration_notes': {
             'score_range': '5-95 (proper differentiation)',
-            'bullish_threshold': '>= 60 + 4 of 6 gates pass (LONG signal)',
-            'bearish_threshold': '<= 40 + 4 of 6 gates pass (SHORT signal)',
+            'bullish_threshold': '>= 60 + 5 of 7 gates pass (LONG signal)',
+            'bearish_threshold': '<= 40 + 5 of 7 gates pass (SHORT signal)',
             'neutral_zone': '41-59 or gate-filtered (no trade)',
             'conviction_metric': 'Separate breadth x strength score (0-100)',
-            'quality_gates': '6 gates: score threshold, breadth, trend confirm, R:R, calendar, ATR'
+            'quality_gates': '7 gates: score threshold, breadth, trend confirm, R:R, calendar, ATR, AI alignment'
         }
     }
     
