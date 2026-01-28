@@ -4672,16 +4672,22 @@ def calculate_factor_scores(pair):
 
     # Call AI factor with ALL factors for cross-validation (v9.0 dual-role)
     ai_result = calculate_ai_factor(pair, tech, sentiment, rate, preliminary_score, all_factors=factors)
+
+    # Apply standard signal thresholds (same as all other factors) - NOT GPT's raw signal
+    ai_score = round(ai_result['score'], 1)
+    ai_signal = 'BULLISH' if ai_score >= 58 else 'BEARISH' if ai_score <= 42 else 'NEUTRAL'
+
     factors['ai'] = {
-        'score': round(ai_result['score'], 1),
-        'signal': ai_result['signal'],
+        'score': ai_score,
+        'signal': ai_signal,
         'data_quality': ai_result.get('data_quality', 'AI_REAL'),
         'details': {
             'analysis': ai_result.get('analysis', ''),
             'confidence': ai_result.get('confidence', 'MEDIUM'),
             'model': AI_FACTOR_CONFIG.get('model', 'gpt-4o-mini'),
             'preliminary_score': round(preliminary_score, 1),
-            'validation': ai_result.get('validation', {})
+            'validation': ai_result.get('validation', {}),
+            'gpt_raw_signal': ai_result.get('signal', 'N/A')  # Keep GPT's original signal for reference
         }
     }
 
