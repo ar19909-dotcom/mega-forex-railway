@@ -2001,6 +2001,15 @@
                         <option value="35">Very Strong (35+)</option>
                     </select>
                 </div>
+                <div class="filter-group">
+                    <span class="filter-label">Grade:</span>
+                    <select id="filter-grade">
+                        <option value="all">All Grades</option>
+                        <option value="grade-a">Grade A (A+ & A)</option>
+                        <option value="grade-b">Grade B</option>
+                        <option value="grade-c">Grade C</option>
+                    </select>
+                </div>
                 <button onclick="loadSignals()">🔄 Refresh</button>
             </div>
             <div class="signals-grid" id="signals-container">
@@ -2161,7 +2170,7 @@
             <h2 style="margin-bottom: 1rem;">🔍 System Audit & Scoring Methodology</h2>
             <button onclick="runAudit()" style="margin-bottom: 1rem; margin-right: 0.5rem;">▶ Run Full Audit</button>
             <button onclick="showMethodology()" style="margin-bottom: 1rem; margin-right: 0.5rem;">📖 View Scoring Methodology</button>
-            <button onclick="runSignalEvaluation()" style="margin-bottom: 1rem; background: linear-gradient(135deg, #3b82f6, #8b5cf6);">📊 Signal Accuracy (30 Days)</button>
+            <button onclick="runSignalEvaluation()" style="margin-bottom: 1rem; background: linear-gradient(135deg, #3b82f6, #8b5cf6);">📊 Signal Accuracy (90 Days)</button>
             <div id="audit-container">
                 <p style="color: var(--text-secondary);">Click Run Audit to check system health or View Methodology to see scoring details</p>
             </div>
@@ -2257,6 +2266,7 @@
             const category = document.getElementById('filter-category').value;
             const direction = document.getElementById('filter-direction').value;
             const minStrength = parseInt(document.getElementById('filter-score').value);
+            const grade = document.getElementById('filter-grade').value;
 
             let filtered = signalsData.filter(s => {
                 if (category !== 'all' && s.category.toLowerCase() !== category) return false;
@@ -2264,12 +2274,18 @@
                 // Filter by SIGNAL STRENGTH (distance from 50) - works for both LONG and SHORT
                 const signalStrength = Math.abs(s.composite_score - 50);
                 if (signalStrength < minStrength) return false;
+                // Filter by TRADE QUALITY GRADE
+                if (grade !== 'all') {
+                    const tradeQuality = s.trade_setup?.trade_quality || 'C';
+                    if (grade === 'grade-a' && !['A+', 'A'].includes(tradeQuality)) return false;
+                    if (grade === 'grade-b' && tradeQuality !== 'B') return false;
+                    if (grade === 'grade-c' && tradeQuality !== 'C') return false;
+                }
                 return true;
             });
             
-            // Sort by SIGNAL STRENGTH (best trades first regardless of direction)
-            // Strongest signals = furthest from 50 (neutral)
-            filtered.sort((a, b) => Math.abs(b.composite_score - 50) - Math.abs(a.composite_score - 50));
+            // Sort by WIN RATE (highest win rate first)
+            filtered.sort((a, b) => (b.statistics?.win_rate || 50) - (a.statistics?.win_rate || 50));
             
             if (filtered.length === 0) {
                 container.innerHTML = '<div class="loading">No signals match your filters</div>';
@@ -3535,10 +3551,10 @@
             }
         }
         
-        // v9.0: Signal Accuracy Evaluation (30 Days)
+        // v9.0: Signal Accuracy Evaluation (90 Days)
         async function runSignalEvaluation() {
             const container = document.getElementById('audit-container');
-            container.innerHTML = '<div class="loading"><div class="spinner"></div>Evaluating 30-day signal history against actual prices...</div>';
+            container.innerHTML = '<div class="loading"><div class="spinner"></div>Evaluating 90-day signal history against actual prices...</div>';
 
             try {
                 const response = await fetch(`${API_BASE}/signal-evaluation`);
@@ -3551,7 +3567,7 @@
 
                     container.innerHTML = `
                         <div class="audit-section" style="border-left: 3px solid #8b5cf6; padding-left: 1rem; margin-bottom: 2rem;">
-                            <h3 style="color: #8b5cf6;">📊 Signal Accuracy Report - Last 30 Days</h3>
+                            <h3 style="color: #8b5cf6;">📊 Signal Accuracy Report - Last 90 Days</h3>
                             <p style="color: var(--text-muted); margin-bottom: 1rem;">
                                 Evaluated ${evalRun.evaluated || 0} new signals this run |
                                 Total evaluated: ${o.total_evaluated || 0} |
@@ -3785,6 +3801,7 @@
         document.getElementById('filter-category').addEventListener('change', renderSignals);
         document.getElementById('filter-direction').addEventListener('change', renderSignals);
         document.getElementById('filter-score').addEventListener('change', renderSignals);
+        document.getElementById('filter-grade').addEventListener('change', renderSignals);
         document.getElementById('rates-category').addEventListener('change', loadRates);
         
         // Countdown timer

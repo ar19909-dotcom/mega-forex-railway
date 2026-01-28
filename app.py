@@ -155,7 +155,7 @@ AI_FACTOR_CONFIG = {
     'enabled': True,                    # Set to False to disable AI factor
     'model': 'gpt-4o-mini',             # OpenAI model to use (gpt-4o-mini available)
     'cache_ttl': 1800,                  # 30 minutes cache
-    'min_signal_strength': 3,           # Call AI for most signals (strength >= 3 from neutral)
+    'min_signal_strength': 1,           # Call AI for more signals (strength >= 1 from neutral)
     'max_pairs_per_refresh': 15,        # Max pairs to analyze with AI per refresh cycle
     'timeout': 8,                       # API timeout in seconds
     'rate_limit_delay': 0.1             # Delay between API calls (seconds)
@@ -259,13 +259,13 @@ FACTOR_WEIGHTS = {
 # Research: 3-4 non-correlated factors is the sweet spot (CME Group 2019)
 # ═══════════════════════════════════════════════════════════════════════════════
 FACTOR_GROUP_WEIGHTS = {
-    'trend_momentum': 25,     # Technical (RSI, MACD, ADX) + MTF (H1/H4/D1) merged
-    'fundamental': 18,        # Interest rate diffs + FRED data (independent)
-    'sentiment': 15,          # IG positioning + News + Options merged (contrarian)
+    'trend_momentum': 23,     # Technical (RSI, MACD, ADX) + MTF (H1/H4/D1) merged (-2)
+    'fundamental': 17,        # Interest rate diffs + FRED data (independent) (-1)
+    'sentiment': 14,          # IG positioning + News + Options merged (contrarian) (-1)
     'intermarket': 14,        # DXY, Gold, Yields, Oil (independent)
     'mean_reversion': 12,     # Z-Score + Bollinger %B + S/R merged
     'calendar_risk': 8,       # Economic events + Seasonality (independent)
-    'ai_synthesis': 8         # GPT analysis (activates only when 4+ groups agree)
+    'ai_synthesis': 12        # GPT enhanced analysis (activates when 2+ groups agree) (+4)
 }
 # Total: 100%
 
@@ -273,20 +273,20 @@ FACTOR_GROUP_WEIGHTS = {
 # Research: +0.29 Sharpe improvement (Northern Trust)
 REGIME_WEIGHTS = {
     'trending': {
-        'trend_momentum': 30, 'fundamental': 18, 'sentiment': 12,
-        'intermarket': 14, 'mean_reversion': 8, 'calendar_risk': 8, 'ai_synthesis': 10
+        'trend_momentum': 28, 'fundamental': 16, 'sentiment': 10,
+        'intermarket': 14, 'mean_reversion': 8, 'calendar_risk': 8, 'ai_synthesis': 16
     },
     'ranging': {
-        'trend_momentum': 15, 'fundamental': 15, 'sentiment': 15,
-        'intermarket': 12, 'mean_reversion': 25, 'calendar_risk': 8, 'ai_synthesis': 10
+        'trend_momentum': 13, 'fundamental': 14, 'sentiment': 14,
+        'intermarket': 12, 'mean_reversion': 23, 'calendar_risk': 8, 'ai_synthesis': 16
     },
     'volatile': {
-        'trend_momentum': 20, 'fundamental': 15, 'sentiment': 20,
-        'intermarket': 15, 'mean_reversion': 10, 'calendar_risk': 12, 'ai_synthesis': 8
+        'trend_momentum': 18, 'fundamental': 14, 'sentiment': 18,
+        'intermarket': 14, 'mean_reversion': 10, 'calendar_risk': 12, 'ai_synthesis': 14
     },
     'quiet': {
-        'trend_momentum': 25, 'fundamental': 20, 'sentiment': 12,
-        'intermarket': 15, 'mean_reversion': 15, 'calendar_risk': 5, 'ai_synthesis': 8
+        'trend_momentum': 23, 'fundamental': 18, 'sentiment': 10,
+        'intermarket': 15, 'mean_reversion': 14, 'calendar_risk': 6, 'ai_synthesis': 14
     }
 }
 
@@ -834,7 +834,7 @@ def get_signal_history(pair=None, direction=None, limit=100):
 
 def evaluate_historical_signals():
     """
-    v9.0: Evaluate signals from the last 30 days against actual price movement.
+    v9.0: Evaluate signals from the last 90 days against actual price movement.
     For each unevaluated signal:
     1. Get the entry price (stored in signal_history)
     2. Get actual candle data for the holding period
@@ -847,8 +847,8 @@ def evaluate_historical_signals():
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
 
-        # Get signals from last 30 days that haven't been evaluated yet
-        thirty_days_ago = (datetime.now() - timedelta(days=30)).isoformat()
+        # Get signals from last 90 days that haven't been evaluated yet
+        ninety_days_ago = (datetime.now() - timedelta(days=90)).isoformat()
 
         cursor.execute('''
             SELECT sh.* FROM signal_history sh
@@ -860,7 +860,7 @@ def evaluate_historical_signals():
             AND sh.entry_price > 0
             ORDER BY sh.timestamp ASC
             LIMIT 200
-        ''', (thirty_days_ago,))
+        ''', (ninety_days_ago,))
 
         signals = [dict(row) for row in cursor.fetchall()]
         evaluated = 0
@@ -1003,7 +1003,7 @@ def evaluate_historical_signals():
 
 
 def get_signal_evaluation_summary():
-    """v9.0: Get summary of signal evaluation results for last 30 days"""
+    """v9.0: Get summary of signal evaluation results for last 90 days"""
     try:
         conn = sqlite3.connect(DATABASE_PATH)
         conn.row_factory = sqlite3.Row
@@ -1021,7 +1021,7 @@ def get_signal_evaluation_summary():
                 SUM(hit_tp2) as total_tp2_hits,
                 SUM(hit_sl) as total_sl_hits
             FROM signal_evaluation
-            WHERE entry_timestamp >= datetime('now', '-30 days')
+            WHERE entry_timestamp >= datetime('now', '-90 days')
             AND outcome != 'PENDING'
         ''')
         row = cursor.fetchone()
@@ -1039,7 +1039,7 @@ def get_signal_evaluation_summary():
                 ROUND(CAST(SUM(CASE WHEN outcome IN ('CORRECT', 'PARTIAL') THEN 1 ELSE 0 END) AS FLOAT) /
                       NULLIF(COUNT(*), 0) * 100, 1) as accuracy_pct
             FROM signal_evaluation
-            WHERE entry_timestamp >= datetime('now', '-30 days')
+            WHERE entry_timestamp >= datetime('now', '-90 days')
             AND outcome != 'PENDING'
             GROUP BY pair
             ORDER BY accuracy_pct DESC
@@ -1055,7 +1055,7 @@ def get_signal_evaluation_summary():
                 ROUND(CAST(SUM(CASE WHEN outcome IN ('CORRECT', 'PARTIAL') THEN 1 ELSE 0 END) AS FLOAT) /
                       NULLIF(COUNT(*), 0) * 100, 1) as accuracy_pct
             FROM signal_evaluation
-            WHERE entry_timestamp >= datetime('now', '-30 days')
+            WHERE entry_timestamp >= datetime('now', '-90 days')
             AND outcome != 'PENDING'
             GROUP BY direction
         ''')
@@ -1075,7 +1075,7 @@ def get_signal_evaluation_summary():
                 ROUND(CAST(SUM(CASE WHEN outcome IN ('CORRECT', 'PARTIAL') THEN 1 ELSE 0 END) AS FLOAT) /
                       NULLIF(COUNT(*), 0) * 100, 1) as accuracy_pct
             FROM signal_evaluation
-            WHERE entry_timestamp >= datetime('now', '-30 days')
+            WHERE entry_timestamp >= datetime('now', '-90 days')
             AND outcome != 'PENDING'
             GROUP BY score_bracket
             ORDER BY accuracy_pct DESC
@@ -1091,7 +1091,7 @@ def get_signal_evaluation_summary():
                 ROUND(CAST(SUM(CASE WHEN outcome IN ('CORRECT', 'PARTIAL') THEN 1 ELSE 0 END) AS FLOAT) /
                       NULLIF(COUNT(*), 0) * 100, 1) as accuracy_pct
             FROM signal_evaluation
-            WHERE entry_timestamp >= datetime('now', '-30 days')
+            WHERE entry_timestamp >= datetime('now', '-90 days')
             AND outcome != 'PENDING'
             AND trade_quality IS NOT NULL
             GROUP BY trade_quality
@@ -3857,33 +3857,51 @@ def calculate_ai_factor(pair, tech_data, sentiment_data, rate_data, preliminary_
         macd_hist = tech_data.get('macd', {}).get('histogram', 0)
         adx = tech_data.get('adx', 20)
         bb_pct = tech_data.get('bollinger', {}).get('percent_b', 50)
+        atr = tech_data.get('atr', 0)
 
         sentiment_score = sentiment_data.get('score', 50) if sentiment_data else 50
         sentiment_signal = sentiment_data.get('signal', 'NEUTRAL') if sentiment_data else 'NEUTRAL'
 
         current_price = rate_data.get('mid', 0) if rate_data else 0
 
-        # Build prompt for GPT-4o-mini
+        # v9.0 Enhanced: Get market regime and intermarket data
+        market_regime = detect_market_regime(adx, atr, current_price)
+        intermarket = get_real_intermarket_data()
+        dxy = intermarket.get('dxy', 104)
+        gold = intermarket.get('gold', 2000)
+        us_10y = intermarket.get('us_10y', 4.5)
+        oil = intermarket.get('oil', 75)
+
+        # Build enhanced prompt for GPT-4o-mini
         prompt = f"""Analyze this forex pair and provide a trading recommendation.
 
 PAIR: {pair}
 CURRENT PRICE: {current_price:.5f}
+MARKET REGIME: {market_regime.upper()} (trending/ranging/volatile/quiet)
 
 TECHNICAL INDICATORS:
 - RSI (14): {rsi:.1f} (Oversold <30, Overbought >70)
 - MACD Histogram: {macd_hist:.6f} (Positive = Bullish momentum)
 - ADX: {adx:.1f} (Trend strength: >25 = Strong trend)
 - Bollinger %B: {bb_pct:.1f}% (0% = Lower band, 100% = Upper band)
+- ATR: {atr:.5f} (Current volatility measure)
 
-SENTIMENT: {sentiment_signal} (Score: {sentiment_score})
+INTERMARKET CORRELATIONS:
+- DXY (Dollar Index): {dxy:.1f} (>104 = Strong USD)
+- Gold: ${gold:.0f} (Risk-off indicator, inverse USD)
+- US 10Y Yield: {us_10y:.2f}% (Higher = USD strength)
+- Oil (WTI): ${oil:.1f} (CAD, NOK correlation)
 
-Based on this data, provide:
-1. SCORE: A number from 0-100 (0-30 = Strong Short, 31-45 = Weak Short, 46-54 = Neutral, 55-69 = Weak Long, 70-100 = Strong Long)
+SENTIMENT: {sentiment_signal} (Score: {sentiment_score}/100)
+PRELIMINARY SCORE: {preliminary_score:.1f}/100 (from other 6 factor groups)
+
+Based on ALL this data, provide your independent AI analysis:
+1. SCORE: 0-100 (0-30=Strong Short, 31-45=Weak Short, 46-54=Neutral, 55-69=Weak Long, 70-100=Strong Long)
 2. SIGNAL: LONG, SHORT, or NEUTRAL
 3. CONFIDENCE: HIGH, MEDIUM, or LOW
-4. BRIEF ANALYSIS: One sentence explaining the reasoning
+4. ANALYSIS: One sentence with key reasoning
 
-Respond in this exact JSON format:
+Respond in exact JSON format:
 {{"score": 65, "signal": "LONG", "confidence": "MEDIUM", "analysis": "Your analysis here"}}"""
 
         # Call OpenAI API
@@ -4073,7 +4091,7 @@ def build_factor_groups(factors):
     ai_s = factors.get('ai', {}).get('score', 50)
     directional_groups = sum(1 for g in factor_groups.values() if g['signal'] != 'NEUTRAL')
 
-    if directional_groups >= 4:
+    if directional_groups >= 2:
         factor_groups['ai_synthesis'] = {
             'score': round(ai_s, 1),
             'signal': 'BULLISH' if ai_s >= 58 else 'BEARISH' if ai_s <= 42 else 'NEUTRAL',
@@ -6095,7 +6113,7 @@ def run_system_audit():
             '6-Gate Quality Filter',
             'Conviction Metric (breadth x strength)',
             'Dynamic Regime Weights',
-            '30-Day Signal Evaluation',
+            '90-Day Signal Evaluation',
             'Z-Score & Mean Reversion Analysis',
             'Support/Resistance Detection',
             'Multi-Timeframe Analysis (H1/H4/D1)',
@@ -6232,7 +6250,7 @@ def api_info():
             '45 Forex Pairs',
             '7-Group Gated Scoring with 6-Gate Quality Filter (v9.0)',
             'Conviction Metric + Dynamic Regime Weights',
-            '30-Day Signal Evaluation & Historical Accuracy',
+            '90-Day Signal Evaluation & Historical Accuracy',
             'Multi-Source News (Finnhub + RSS)',
             'REAL IG Sentiment + Intermarket',
             'Complete Backtesting',
@@ -7069,7 +7087,7 @@ if __name__ == '__main__':
     print("    ✨ Conviction Metric (breadth x strength, separate from score)")
     print("    ✨ Dynamic Regime Weights (trending/ranging/volatile/quiet)")
     print("    ✨ Realistic Stat Caps (65% win rate max, 2.5 PF max)")
-    print("    ✨ 30-Day Signal Evaluation & Historical Accuracy Tracking")
+    print("    ✨ 90-Day Signal Evaluation & Historical Accuracy Tracking")
     print("    ✨ Smart Dynamic SL/TP (Variable ATR)")
     print("    ✨ REAL IG Client Sentiment + Institutional COT Data")
     print("    ✨ Complete Backtesting Module")
