@@ -5525,7 +5525,11 @@ def generate_signal(pair):
             gate_details['G7_ai_align']['passed'] = ai_score <= 60
 
         gates_passed = sum(1 for g in gate_details.values() if g['passed'])
-        all_gates_pass = gates_passed >= 6  # 6 of 8 gates must pass (G8 added for data quality)
+        # v9.1.1: G3 (trend) and G8 (data) are MANDATORY - must pass for any directional signal
+        g3_passed = gate_details['G3_trend_confirm']['passed']
+        g8_passed = gate_details['G8_data_quality']['passed']
+        mandatory_gates_pass = g3_passed and g8_passed
+        all_gates_pass = gates_passed >= 6 and mandatory_gates_pass  # 6/8 gates + G3 + G8 mandatory
 
         # ═══════════════════════════════════════════════════════════════════════════
         # v9.0: SCORE VALIDATION
