@@ -5497,14 +5497,24 @@ def generate_signal(pair):
             }
         }
 
-        # Set G3 based on potential direction - v9.0: require CONFIRMATION (score threshold)
-        # Trend must actively support the direction, not just be neutral
+        # Set G3 based on potential direction - v9.1: STRICT trend confirmation
+        # 1. Trend & Momentum score must support direction
+        # 2. EMA signal must NOT contradict direction (prevents counter-trend trades)
+        ema_signal = tech.get('ema_signal', 'NEUTRAL')
+
         if composite_score >= 60:  # LONG direction
-            # Trend must be BULLISH (score > 52) to confirm LONG
-            gate_details['G3_trend_confirm']['passed'] = tm_score > 52
+            # Trend must be BULLISH (score > 52) AND EMA not BEARISH
+            tm_confirms = tm_score > 52
+            ema_ok = ema_signal != 'BEARISH'
+            gate_details['G3_trend_confirm']['passed'] = tm_confirms and ema_ok
+            gate_details['G3_trend_confirm']['value'] = f"{tm_signal} ({tm_score}) | EMA: {ema_signal}"
         elif composite_score <= 40:  # SHORT direction
-            # Trend must be BEARISH (score < 48) to confirm SHORT
-            gate_details['G3_trend_confirm']['passed'] = tm_score < 48
+            # Trend must be BEARISH (score < 48) AND EMA not BULLISH
+            tm_confirms = tm_score < 48
+            ema_ok = ema_signal != 'BULLISH'
+            gate_details['G3_trend_confirm']['passed'] = tm_confirms and ema_ok
+            gate_details['G3_trend_confirm']['value'] = f"{tm_signal} ({tm_score}) | EMA: {ema_signal}"
+            gate_details['G3_trend_confirm']['rule'] = 'Trend must confirm AND EMA must not contradict'
 
         # Set G7 based on AI alignment - AI should not strongly contradict
         if composite_score >= 60:  # LONG direction
