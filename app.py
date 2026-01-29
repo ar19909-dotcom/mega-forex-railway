@@ -6723,8 +6723,8 @@ def run_system_audit():
         'factor_group_weights': FACTOR_GROUP_WEIGHTS,
         'features': [
             '45 Forex Pairs',
-            '7-Group Gated Scoring (v9.0)',
-            '6-Gate Quality Filter',
+            '7-Group Gated Scoring (v9.2.1)',
+            '8-Gate Quality Filter (G3/G5/G8 Mandatory)',
             'Conviction Metric (breadth x strength)',
             'Dynamic Regime Weights',
             '90-Day Signal Evaluation',
