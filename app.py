@@ -236,6 +236,26 @@ interest_rates_cache = {
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# v9.2: CENTRAL BANK POLICY BIAS - Forward-looking fundamental analysis
+# HAWKISH = likely to raise rates (bullish for currency)
+# DOVISH = likely to cut rates (bearish for currency)
+# NEUTRAL = holding steady
+# Updated regularly based on central bank communications and market expectations
+# ═══════════════════════════════════════════════════════════════════════════════
+CENTRAL_BANK_POLICY_BIAS = {
+    'USD': {'bias': 'HAWKISH', 'score_adj': +8, 'outlook': 'Higher for longer, inflation focus'},
+    'EUR': {'bias': 'DOVISH', 'score_adj': -5, 'outlook': 'Cutting cycle started'},
+    'GBP': {'bias': 'NEUTRAL', 'score_adj': 0, 'outlook': 'Cautious, data-dependent'},
+    'JPY': {'bias': 'HAWKISH', 'score_adj': +10, 'outlook': 'Finally raising rates, yen recovery'},
+    'CHF': {'bias': 'DOVISH', 'score_adj': -5, 'outlook': 'Surprise cuts possible'},
+    'AUD': {'bias': 'NEUTRAL', 'score_adj': 0, 'outlook': 'On hold, watching inflation'},
+    'NZD': {'bias': 'DOVISH', 'score_adj': -8, 'outlook': 'Cutting cycle, weak economy'},
+    'CAD': {'bias': 'DOVISH', 'score_adj': -6, 'outlook': 'Multiple cuts expected'},
+    'MXN': {'bias': 'DOVISH', 'score_adj': -5, 'outlook': 'Easing cycle'},
+    'ZAR': {'bias': 'NEUTRAL', 'score_adj': 0, 'outlook': 'Stable for now'},
+}
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # FACTOR WEIGHTS v8.5 - 11 FACTORS (AI-ENHANCED)
 # Includes: Options Positioning (6%), COT Data (in sentiment), AI Analysis (10%)
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -4760,45 +4780,63 @@ def calculate_factor_scores(pair):
     }
     
     # ═══════════════════════════════════════════════════════════════════════════
-    # 2. FUNDAMENTAL (18%) - Interest Rate Differentials - EXPANDED
-    # Score range: 15-85
+    # 2. FUNDAMENTAL (17%) - Interest Rates + Policy Bias (v9.2 Enhanced)
+    # Now considers: Rate differentials + Central bank policy direction
+    # This makes fundamental analysis forward-looking, not just current rates
     # ═══════════════════════════════════════════════════════════════════════════
     rate_diff = get_interest_rate_differential(base, quote)
     differential = rate_diff['differential']
-    
-    # More aggressive scoring based on rate differential
+
+    # Base score from rate differential
     if differential >= 4.0:
-        fund_score = 85  # Very strong carry trade
+        fund_score = 82  # Very strong carry trade
     elif differential >= 3.0:
-        fund_score = 78
+        fund_score = 75
     elif differential >= 2.0:
-        fund_score = 70
+        fund_score = 68
     elif differential >= 1.0:
-        fund_score = 62
+        fund_score = 60
     elif differential >= 0.5:
         fund_score = 55
     elif differential <= -4.0:
-        fund_score = 15
+        fund_score = 18
     elif differential <= -3.0:
-        fund_score = 22
+        fund_score = 25
     elif differential <= -2.0:
-        fund_score = 30
+        fund_score = 32
     elif differential <= -1.0:
-        fund_score = 38
+        fund_score = 40
     elif differential <= -0.5:
         fund_score = 45
     else:
         fund_score = 50  # Near neutral differential
-    
+
+    # v9.2: Apply Central Bank Policy Bias adjustments
+    # This makes the score forward-looking based on rate expectations
+    base_policy = CENTRAL_BANK_POLICY_BIAS.get(base, {'bias': 'NEUTRAL', 'score_adj': 0})
+    quote_policy = CENTRAL_BANK_POLICY_BIAS.get(quote, {'bias': 'NEUTRAL', 'score_adj': 0})
+
+    # Net policy adjustment: positive if base currency is more hawkish than quote
+    policy_adjustment = base_policy['score_adj'] - quote_policy['score_adj']
+    fund_score += policy_adjustment
+
+    # Clamp to valid range
+    fund_score = max(15, min(85, fund_score))
+
     factors['fundamental'] = {
         'score': round(fund_score, 1),
         'signal': 'BULLISH' if fund_score >= 58 else 'BEARISH' if fund_score <= 42 else 'NEUTRAL',
-        'data_quality': 'REAL',  # Central bank rates are always real (hardcoded but accurate)
+        'data_quality': 'REAL',
         'details': {
             'base_rate': rate_diff['base_rate'],
             'quote_rate': rate_diff['quote_rate'],
             'differential': differential,
-            'carry_direction': rate_diff['carry_direction']
+            'carry_direction': rate_diff['carry_direction'],
+            'base_policy': base_policy['bias'],
+            'quote_policy': quote_policy['bias'],
+            'policy_adjustment': policy_adjustment,
+            'base_outlook': base_policy.get('outlook', 'N/A'),
+            'quote_outlook': quote_policy.get('outlook', 'N/A')
         }
     }
     
@@ -5525,10 +5563,12 @@ def generate_signal(pair):
             gate_details['G7_ai_align']['passed'] = ai_score <= 60
 
         gates_passed = sum(1 for g in gate_details.values() if g['passed'])
-        # v9.1.1: G3 (trend) and G8 (data) are MANDATORY - must pass for any directional signal
+        # v9.2: G3 (trend), G5 (calendar), G8 (data) are MANDATORY - must pass for any directional signal
+        # This protects capital from: counter-trend trades, news events, and fake data
         g3_passed = gate_details['G3_trend_confirm']['passed']
+        g5_passed = gate_details['G5_calendar_clear']['passed']
         g8_passed = gate_details['G8_data_quality']['passed']
-        mandatory_gates_pass = g3_passed and g8_passed
+        mandatory_gates_pass = g3_passed and g5_passed and g8_passed
         all_gates_pass = gates_passed >= 6 and mandatory_gates_pass  # 6/8 gates + G3 + G8 mandatory
 
         # ═══════════════════════════════════════════════════════════════════════════
