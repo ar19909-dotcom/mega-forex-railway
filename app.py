@@ -5489,6 +5489,11 @@ def generate_signal(pair):
                 'passed': True,  # Will be set below based on direction
                 'value': f"{ai_signal} ({ai_score})",
                 'rule': 'AI must not strongly contradict direction'
+            },
+            'G8_data_quality': {
+                'passed': tech.get('data_quality', 'UNKNOWN') == 'REAL',
+                'value': tech.get('data_quality', 'UNKNOWN'),
+                'rule': 'Technical data must be REAL (not fallback/estimated)'
             }
         }
 
@@ -5510,7 +5515,7 @@ def generate_signal(pair):
             gate_details['G7_ai_align']['passed'] = ai_score <= 60
 
         gates_passed = sum(1 for g in gate_details.values() if g['passed'])
-        all_gates_pass = gates_passed >= 5  # 5 of 7 gates must pass (increased from 4 of 6)
+        all_gates_pass = gates_passed >= 6  # 6 of 8 gates must pass (G8 added for data quality)
 
         # ═══════════════════════════════════════════════════════════════════════════
         # v9.0: SCORE VALIDATION
