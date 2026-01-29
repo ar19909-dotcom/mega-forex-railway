@@ -1950,7 +1950,7 @@
         </div>
         <div class="refresh-timer">
             <span>Refresh in:</span>
-            <span id="refresh-countdown">120s</span>
+            <span id="refresh-countdown">60s</span>
         </div>
     </header>
     
@@ -2185,7 +2185,7 @@
             : window.location.origin;
         let signalsData = [];
         let refreshInterval;
-        let countdown = 120;
+        let countdown = 60;  // Reduced from 120s for fresher data (v9.2.1)
         
         // All 45 Forex Pairs for Pair Analyzer
         const ALL_PAIRS = [
@@ -2227,20 +2227,25 @@
         });
         
         // Load Signals - Uses /signals endpoint
+        let lastSignalsUpdate = null;
         async function loadSignals() {
             const container = document.getElementById('signals-container');
             container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading signals...</div>';
-            
+
             try {
-                const response = await fetch(`${API_BASE}/signals`);
+                // Cache-bust to ensure fresh data
+                const response = await fetch(`${API_BASE}/signals?t=${Date.now()}`);
                 const data = await response.json();
-                
+
                 if (data.success && data.signals) {
                     signalsData = data.signals;
+                    lastSignalsUpdate = new Date();
                     renderSignals();
                     updateStats();
                     document.getElementById('connection-dot').style.background = 'var(--accent-green)';
                     document.getElementById('connection-text').textContent = 'Connected';
+                    // Update refresh timer display
+                    updateRefreshTimer();
                 } else {
                     throw new Error('No signals data');
                 }
@@ -3998,16 +4003,24 @@
         document.getElementById('filter-grade').addEventListener('change', renderSignals);
         document.getElementById('rates-category').addEventListener('change', loadRates);
         
-        // Countdown timer
+        // Countdown timer - reduced to 60s for fresher data (v9.2.1)
         function updateCountdown() {
             countdown--;
             if (countdown <= 0) {
-                countdown = 120;
+                countdown = 60;
                 loadSignals();
             }
             document.getElementById('refresh-countdown').textContent = `${countdown}s`;
         }
-        
+
+        // Update refresh timer display (called after loadSignals)
+        function updateRefreshTimer() {
+            if (lastSignalsUpdate) {
+                const timeStr = lastSignalsUpdate.toLocaleTimeString();
+                console.log(`Signals updated at ${timeStr}`);
+            }
+        }
+
         // Initialize
         loadSignals();
         setInterval(updateCountdown, 1000);
