@@ -87,7 +87,7 @@ def health_check():
     """Health check endpoint"""
     return jsonify({
         'status': 'healthy',
-        'version': '9.0 PRO - AI ENHANCED',
+        'version': '9.2.1 PRO - AI ENHANCED',
         'pairs': 45,
         'timestamp': datetime.now().isoformat()
     })
@@ -6143,7 +6143,7 @@ def run_system_audit():
     """Run comprehensive system audit with complete scoring methodology"""
     audit = {
         'timestamp': datetime.now().isoformat(),
-        'version': '9.0 PRO',
+        'version': '9.2.1 PRO',
         'api_status': {},
         'data_quality': {},
         'score_validation': {},
@@ -6151,13 +6151,13 @@ def run_system_audit():
         'factor_details': {},
         'errors': []
     }
-    
+
     # ═══════════════════════════════════════════════════════════════════════════
     # SCORING METHODOLOGY DOCUMENTATION
     # ═══════════════════════════════════════════════════════════════════════════
     audit['scoring_methodology'] = {
-        'version': '9.0 PRO',
-        'description': 'v9.0 — 7 merged factor groups, 6-gate quality filter, conviction metric, regime-dynamic weights',
+        'version': '9.2.1 PRO',
+        'description': 'v9.2.1 — 7 merged factor groups, 8-gate quality filter (G3/G5/G8 mandatory), conviction metric, regime-dynamic weights',
         'score_range': {
             'min': 5,
             'max': 95,
@@ -6855,14 +6855,14 @@ def run_system_audit():
 @app.route('/api-info')
 def api_info():
     return jsonify({
-        'name': 'MEGA FOREX v9.0 PRO - AI Enhanced',
-        'version': '9.0',
+        'name': 'MEGA FOREX v9.2.1 PRO - AI Enhanced',
+        'version': '9.2.1',
         'status': 'operational',
         'pairs': len(FOREX_PAIRS),
         'factor_groups': len(FACTOR_GROUP_WEIGHTS),
         'features': [
             '45 Forex Pairs',
-            '7-Group Gated Scoring with 6-Gate Quality Filter (v9.0)',
+            '7-Group Gated Scoring with 8-Gate Quality Filter (v9.2.1) - G3/G5/G8 Mandatory',
             'Conviction Metric + Dynamic Regime Weights',
             '90-Day Signal Evaluation & Historical Accuracy',
             'Multi-Source News (Finnhub + RSS)',
@@ -7783,14 +7783,15 @@ def is_port_available(port):
 # INITIALIZE DATABASE ON STARTUP (for Railway)
 # ═══════════════════════════════════════════════════════════════════════════════
 init_database()
-logger.info("🚀 MEGA FOREX v9.0 PRO - AI ENHANCED initialized")
+logger.info("🚀 MEGA FOREX v9.2.1 PRO - AI ENHANCED initialized")
 
 if __name__ == '__main__':
     print("=" * 70)
-    print("      MEGA FOREX v9.0 PRO - AI ENHANCED SYSTEM")
+    print("      MEGA FOREX v9.2.1 PRO - AI ENHANCED SYSTEM")
     print("=" * 70)
     print(f"  Pairs:           {len(FOREX_PAIRS)}")
     print(f"  Factor Groups:   7 (merged from 11 individual factors)")
+    print(f"  Quality Gates:   8 (G3/G5/G8 mandatory)")
     print(f"  Database:        {DATABASE_PATH}")
     print(f"  Polygon API:     {'✓' if POLYGON_API_KEY else '✗'}")
     print(f"  Finnhub API:     {'✓' if FINNHUB_API_KEY else '✗'}")
@@ -7800,9 +7801,9 @@ if __name__ == '__main__':
     print(f"  OpenAI API:      {'✓ (gpt-4o-mini)' if OPENAI_API_KEY else '✗'}")
     print(f"  ExchangeRate:    ✓ (Free, no key needed)")
     print("=" * 70)
-    print("  v9.0 PRO FEATURES:")
+    print("  v9.2.1 PRO FEATURES:")
     print("    ✨ 7-Group Scoring (11 factors merged into independent groups)")
-    print("    ✨ 6-Gate Quality Filter (score + breadth + trend + R:R + cal + ATR)")
+    print("    ✨ 8-Gate Quality Filter (G3 Trend, G5 Calendar, G8 Data = MANDATORY)")
     print("    ✨ Conviction Metric (breadth x strength, separate from score)")
     print("    ✨ Dynamic Regime Weights (trending/ranging/volatile/quiet)")
     print("    ✨ Realistic Stat Caps (65% win rate max, 2.5 PF max)")
