@@ -5952,94 +5952,138 @@ def generate_signal(pair):
             final_tp1_mult = final_sl_mult * 1.3
         
         # ─────────────────────────────────────────────────────────────────────────
-        # 6. SMART SL/TP CALCULATION (v9.2.1)
-        # Reasonable SL with achievable TP, category-specific limits
+        # 6. SMART ATR-BASED SL/TP CALCULATION (v9.2.1)
+        # Uses ATR as primary guide - not too close (avoid noise), not too wide
         # ─────────────────────────────────────────────────────────────────────────
         pip_size = 0.0001 if 'JPY' not in pair else 0.01
         entry = current_price
 
-        # Determine pair category for pip limits
+        # Convert ATR to pips for this pair
+        atr_pips = atr / pip_size
+
+        # Determine pair category
         pair_category = 'MAJOR'
         for cat, pairs_list in PAIR_CATEGORIES.items():
             if pair in pairs_list:
                 pair_category = cat
                 break
 
-        # v9.2.1: Smart pip limits by category (reasonable SL, achievable TP)
+        # v9.2.1: ATR-SMART MULTIPLIERS
+        # SL: minimum 1.5x ATR (avoid noise), maximum 2.5x ATR (not too wide)
+        # TP: minimum 2x ATR (achievable), scaled by trend strength
+        ATR_MULTIPLIERS = {
+            'MAJOR':  {'sl_min_mult': 1.3, 'sl_max_mult': 2.0, 'tp1_mult': 2.0, 'tp2_mult': 3.5},
+            'MINOR':  {'sl_min_mult': 1.4, 'sl_max_mult': 2.2, 'tp1_mult': 2.2, 'tp2_mult': 3.8},
+            'CROSS':  {'sl_min_mult': 1.5, 'sl_max_mult': 2.5, 'tp1_mult': 2.5, 'tp2_mult': 4.0},
+            'EXOTIC': {'sl_min_mult': 1.6, 'sl_max_mult': 3.0, 'tp1_mult': 3.0, 'tp2_mult': 5.0}
+        }
+        atr_mult = ATR_MULTIPLIERS.get(pair_category, ATR_MULTIPLIERS['CROSS'])
+
+        # Hard pip limits as safety net (never exceed these)
         PIP_LIMITS = {
-            'MAJOR': {'sl_min': 15, 'sl_max': 50, 'tp1_max': 80, 'tp2_max': 150},
-            'MINOR': {'sl_min': 20, 'sl_max': 70, 'tp1_max': 120, 'tp2_max': 200},
-            'CROSS': {'sl_min': 25, 'sl_max': 80, 'tp1_max': 140, 'tp2_max': 220},
-            'EXOTIC': {'sl_min': 30, 'sl_max': 120, 'tp1_max': 200, 'tp2_max': 350}
+            'MAJOR':  {'sl_abs_min': 12, 'sl_abs_max': 60,  'tp1_abs_max': 100, 'tp2_abs_max': 180},
+            'MINOR':  {'sl_abs_min': 15, 'sl_abs_max': 80,  'tp1_abs_max': 140, 'tp2_abs_max': 240},
+            'CROSS':  {'sl_abs_min': 18, 'sl_abs_max': 100, 'tp1_abs_max': 180, 'tp2_abs_max': 300},
+            'EXOTIC': {'sl_abs_min': 25, 'sl_abs_max': 150, 'tp1_abs_max': 250, 'tp2_abs_max': 400}
         }
         limits = PIP_LIMITS.get(pair_category, PIP_LIMITS['CROSS'])
 
-        # Calculate raw SL/TP based on ATR
-        raw_sl_pips = (atr * final_sl_mult) / pip_size
-        raw_tp1_pips = (atr * final_tp1_mult) / pip_size
-        raw_tp2_pips = (atr * final_tp2_mult) / pip_size
+        # Calculate ATR-based SL (the smart part)
+        # SL should be between min and max ATR multipliers, adjusted by volatility
+        atr_sl_base = atr_pips * final_sl_mult  # Already includes volatility adjustments
 
-        # Apply smart limits - cap excessive values
-        sl_pips = max(limits['sl_min'], min(limits['sl_max'], raw_sl_pips))
-        tp1_pips = max(sl_pips * 1.3, min(limits['tp1_max'], raw_tp1_pips))  # TP1 at least 1.3x SL
-        tp2_pips = max(tp1_pips * 1.5, min(limits['tp2_max'], raw_tp2_pips))  # TP2 at least 1.5x TP1
+        # Ensure SL is at least minimum ATR distance (avoid being stopped by noise)
+        sl_min_by_atr = atr_pips * atr_mult['sl_min_mult']
+        sl_max_by_atr = atr_pips * atr_mult['sl_max_mult']
 
-        # Ensure minimum R:R of 1.3
-        if tp1_pips / sl_pips < 1.3:
-            tp1_pips = sl_pips * 1.3
-        if tp2_pips / sl_pips < 2.0:
-            tp2_pips = sl_pips * 2.0
+        # Smart SL: use ATR-based calculation, bounded by ATR multipliers AND absolute limits
+        sl_pips = max(sl_min_by_atr, min(sl_max_by_atr, atr_sl_base))
+        sl_pips = max(limits['sl_abs_min'], min(limits['sl_abs_max'], sl_pips))
 
-        # Use Bollinger Bands for structure-based refinement
-        bb_sl_pips = None
-        bb_tp_pips = None
+        # Calculate ATR-based TP (achievable targets)
+        # TP1: target 2-2.5x ATR (commonly reached within trend moves)
+        # TP2: target 3.5-5x ATR (extended move target)
+        atr_tp1_base = atr_pips * atr_mult['tp1_mult'] * (final_tp1_mult / 2.5)  # Normalize
+        atr_tp2_base = atr_pips * atr_mult['tp2_mult'] * (final_tp2_mult / 4.0)
+
+        # TP should be at least 1.5x SL (minimum R:R)
+        tp1_pips = max(sl_pips * 1.5, atr_tp1_base)
+        tp1_pips = min(limits['tp1_abs_max'], tp1_pips)
+
+        tp2_pips = max(sl_pips * 2.5, atr_tp2_base)
+        tp2_pips = min(limits['tp2_abs_max'], tp2_pips)
+
+        # Adjust TP based on trend strength (stronger trend = wider TP)
+        if adx > 30:  # Strong trend
+            tp1_pips = min(tp1_pips * 1.2, limits['tp1_abs_max'])
+            tp2_pips = min(tp2_pips * 1.2, limits['tp2_abs_max'])
+        elif adx < 20:  # Weak trend / ranging
+            tp1_pips = tp1_pips * 0.85  # More conservative TP in ranging market
+            tp2_pips = tp2_pips * 0.85
+
+        # ─────────────────────────────────────────────────────────────────────────
+        # STRUCTURE-BASED REFINEMENT (Bollinger Bands)
+        # Use BB as reference but ensure minimum ATR distance
+        # ─────────────────────────────────────────────────────────────────────────
+        min_sl_distance = atr_pips * 1.2  # Never closer than 1.2x ATR
 
         if direction == 'LONG':
-            # For LONG: SL below entry, TP above
             sl = entry - (sl_pips * pip_size)
             tp1 = entry + (tp1_pips * pip_size)
             tp2 = entry + (tp2_pips * pip_size)
 
-            # If BB lower is close, use it as SL reference
+            # Check BB lower for SL - only use if it gives adequate distance
             bb_lower_distance = (entry - bb_lower) / pip_size
-            if 10 < bb_lower_distance < limits['sl_max']:
-                sl_pips = bb_lower_distance + 5  # 5 pips below BB lower
-                sl = bb_lower - (5 * pip_size)
+            if bb_lower_distance >= min_sl_distance and bb_lower_distance <= limits['sl_abs_max']:
+                # Use BB lower + buffer as SL
+                buffer = max(5, atr_pips * 0.3)  # At least 5 pips or 0.3x ATR buffer
+                sl_pips = bb_lower_distance + buffer
+                sl = bb_lower - (buffer * pip_size)
 
-            # If BB upper is achievable, use it as TP reference
+            # Check BB upper for TP1 - only if achievable
             bb_upper_distance = (bb_upper - entry) / pip_size
-            if bb_upper_distance > 20 and bb_upper_distance < limits['tp1_max']:
-                tp1_pips = bb_upper_distance - 5  # 5 pips below BB upper
-                tp1 = bb_upper - (5 * pip_size)
+            if bb_upper_distance >= sl_pips * 1.3 and bb_upper_distance <= limits['tp1_abs_max']:
+                buffer = max(3, atr_pips * 0.2)
+                tp1_pips = bb_upper_distance - buffer
+                tp1 = bb_upper - (buffer * pip_size)
 
         elif direction == 'SHORT':
-            # For SHORT: SL above entry, TP below
             sl = entry + (sl_pips * pip_size)
             tp1 = entry - (tp1_pips * pip_size)
             tp2 = entry - (tp2_pips * pip_size)
 
-            # If BB upper is close, use it as SL reference
+            # Check BB upper for SL
             bb_upper_distance = (bb_upper - entry) / pip_size
-            if 10 < bb_upper_distance < limits['sl_max']:
-                sl_pips = bb_upper_distance + 5  # 5 pips above BB upper
-                sl = bb_upper + (5 * pip_size)
+            if bb_upper_distance >= min_sl_distance and bb_upper_distance <= limits['sl_abs_max']:
+                buffer = max(5, atr_pips * 0.3)
+                sl_pips = bb_upper_distance + buffer
+                sl = bb_upper + (buffer * pip_size)
 
-            # If BB lower is achievable, use it as TP reference
+            # Check BB lower for TP1
             bb_lower_distance = (entry - bb_lower) / pip_size
-            if bb_lower_distance > 20 and bb_lower_distance < limits['tp1_max']:
-                tp1_pips = bb_lower_distance - 5  # 5 pips above BB lower
-                tp1 = bb_lower + (5 * pip_size)
+            if bb_lower_distance >= sl_pips * 1.3 and bb_lower_distance <= limits['tp1_abs_max']:
+                buffer = max(3, atr_pips * 0.2)
+                tp1_pips = bb_lower_distance - buffer
+                tp1 = bb_lower + (buffer * pip_size)
 
         else:
-            # Neutral - use defaults
+            # Neutral - use ATR-based defaults
             sl = entry - (sl_pips * pip_size)
             tp1 = entry + (tp1_pips * pip_size)
             tp2 = entry + (tp2_pips * pip_size)
 
-        # Recalculate final pip values after BB adjustments
+        # Final recalculation
         sl_pips = abs(entry - sl) / pip_size
         tp1_pips = abs(tp1 - entry) / pip_size
         tp2_pips = abs(tp2 - entry) / pip_size
+
+        # Final safety check - ensure minimum R:R
+        if tp1_pips < sl_pips * 1.3:
+            tp1_pips = sl_pips * 1.5
+            tp1 = entry + (tp1_pips * pip_size) if direction == 'LONG' else entry - (tp1_pips * pip_size)
+        if tp2_pips < sl_pips * 2.0:
+            tp2_pips = sl_pips * 2.5
+            tp2 = entry + (tp2_pips * pip_size) if direction == 'LONG' else entry - (tp2_pips * pip_size)
 
         # ─────────────────────────────────────────────────────────────────────────
         # 7. CALCULATE FINAL METRICS
