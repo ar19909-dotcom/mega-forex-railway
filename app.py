@@ -3082,42 +3082,226 @@ def analyze_sentiment(pair):
                 }
     
     # ═══════════════════════════════════════════════════════════════════════════
-    # SOURCE 2: Finnhub News Sentiment (40% weight)
+    # SOURCE 2: Finnhub News Sentiment (40% weight) - ENHANCED QUALITY ANALYSIS
     # ═══════════════════════════════════════════════════════════════════════════
     news_sentiment = 50
     news = get_finnhub_news()
     relevant_articles = []
-    
-    # Enhanced sentiment keywords with weights
-    strong_bullish = ['surge', 'soar', 'rally', 'breakout', 'boom', 'skyrocket']
-    mild_bullish = ['gain', 'rise', 'up', 'bullish', 'strong', 'positive', 'higher', 'buy', 'support']
-    strong_bearish = ['crash', 'plunge', 'collapse', 'crisis', 'plummet', 'tumble']
-    mild_bearish = ['fall', 'drop', 'decline', 'weak', 'bearish', 'negative', 'lower', 'sell', 'resistance']
-    
+    high_impact_count = 0
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # HIGH-IMPACT ECONOMIC EVENTS (10x weight) - These move markets significantly
+    # ─────────────────────────────────────────────────────────────────────────
+    high_impact_bullish = {
+        # Central Bank Actions (bullish for currency)
+        'rate hike': 10, 'raises rates': 10, 'rate increase': 10, 'hawkish': 8,
+        'tightening': 7, 'rate raise': 10, 'hikes rates': 10, 'interest rate up': 10,
+        'taper': 6, 'quantitative tightening': 8, 'qt': 5, 'reduces stimulus': 6,
+        # Employment Strength
+        'nfp beats': 9, 'payrolls beat': 9, 'jobs surge': 8, 'employment gains': 7,
+        'unemployment falls': 8, 'jobless claims fall': 7, 'wage growth': 6,
+        # Inflation Control
+        'inflation falls': 7, 'cpi lower': 7, 'inflation cools': 7, 'price pressure ease': 6,
+        # GDP/Growth
+        'gdp beats': 8, 'gdp growth': 7, 'economy expands': 7, 'growth accelerates': 7,
+        'recession avoided': 6, 'soft landing': 6,
+        # Trade & Policy
+        'trade surplus': 5, 'fiscal stimulus': 5, 'budget surplus': 4
+    }
+
+    high_impact_bearish = {
+        # Central Bank Actions (bearish for currency)
+        'rate cut': 10, 'cuts rates': 10, 'rate reduction': 10, 'dovish': 8,
+        'easing': 7, 'rate lower': 10, 'lowers rates': 10, 'interest rate down': 10,
+        'stimulus': 6, 'quantitative easing': 8, 'qe': 5, 'more stimulus': 6,
+        # Employment Weakness
+        'nfp misses': 9, 'payrolls miss': 9, 'jobs plunge': 8, 'employment falls': 7,
+        'unemployment rises': 8, 'jobless claims rise': 7, 'wage stagnation': 6,
+        # Inflation Concerns
+        'inflation rises': 7, 'cpi higher': 7, 'inflation spikes': 8, 'price pressure': 6,
+        'stagflation': 9, 'hyperinflation': 10,
+        # GDP/Growth
+        'gdp misses': 8, 'gdp contracts': 9, 'economy shrinks': 8, 'recession': 9,
+        'growth slows': 7, 'hard landing': 8,
+        # Trade & Policy
+        'trade deficit': 5, 'fiscal crisis': 7, 'debt crisis': 8, 'default': 10
+    }
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # MEDIUM-IMPACT MARKET SENTIMENT (3x weight)
+    # ─────────────────────────────────────────────────────────────────────────
+    medium_bullish = {
+        'surge': 3, 'soar': 3, 'rally': 3, 'breakout': 3, 'boom': 3, 'skyrocket': 3,
+        'outperform': 3, 'accelerate': 2, 'momentum': 2, 'all-time high': 3,
+        'record high': 3, 'beat expectations': 3, 'exceeds forecast': 3
+    }
+
+    medium_bearish = {
+        'crash': 3, 'plunge': 3, 'collapse': 3, 'crisis': 3, 'plummet': 3, 'tumble': 3,
+        'underperform': 3, 'decelerate': 2, 'stall': 2, 'all-time low': 3,
+        'record low': 3, 'miss expectations': 3, 'below forecast': 3
+    }
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # LOW-IMPACT GENERAL SENTIMENT (1x weight)
+    # ─────────────────────────────────────────────────────────────────────────
+    low_bullish = {
+        'gain': 1, 'rise': 1, 'bullish': 1, 'strong': 1, 'positive': 1, 'higher': 1,
+        'buy': 1, 'support': 1, 'improve': 1, 'optimism': 1, 'confidence': 1
+    }
+
+    low_bearish = {
+        'fall': 1, 'drop': 1, 'bearish': 1, 'weak': 1, 'negative': 1, 'lower': 1,
+        'sell': 1, 'resistance': 1, 'decline': 1, 'pessimism': 1, 'concern': 1
+    }
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # CURRENCY-SPECIFIC KEYWORDS for better relevance matching
+    # ─────────────────────────────────────────────────────────────────────────
+    currency_keywords = {
+        'USD': ['dollar', 'usd', 'greenback', 'fed', 'federal reserve', 'fomc', 'powell', 'us economy', 'american'],
+        'EUR': ['euro', 'eur', 'ecb', 'lagarde', 'eurozone', 'european', 'germany', 'france'],
+        'GBP': ['pound', 'gbp', 'sterling', 'boe', 'bank of england', 'uk', 'britain', 'british'],
+        'JPY': ['yen', 'jpy', 'boj', 'bank of japan', 'japan', 'japanese', 'ueda'],
+        'AUD': ['aussie', 'aud', 'rba', 'reserve bank australia', 'australia', 'australian'],
+        'CAD': ['loonie', 'cad', 'boc', 'bank of canada', 'canada', 'canadian'],
+        'NZD': ['kiwi', 'nzd', 'rbnz', 'new zealand'],
+        'CHF': ['franc', 'chf', 'snb', 'swiss', 'switzerland']
+    }
+
+    # Get keywords for this pair's currencies
+    base_keywords = currency_keywords.get(base, [base.lower()])
+    quote_keywords = currency_keywords.get(quote, [quote.lower()])
+    pair_normalized = pair.replace('/', '').lower()
+
+    # Current timestamp for time decay calculation
+    current_time = datetime.now()
+
+    total_weight = 0
+    weighted_sentiment = 0
+
     for article in news.get('articles', []):
         headline = article.get('headline', '').lower()
         summary = article.get('summary', '').lower()
         text = headline + ' ' + summary
-        
-        # Check if article mentions this currency pair
-        if base.lower() in text or quote.lower() in text or pair.replace('/', '').lower() in text:
-            relevant_articles.append(article)
-            
-            # Calculate weighted sentiment
-            strong_bull = sum(3 for w in strong_bullish if w in text)
-            mild_bull = sum(1 for w in mild_bullish if w in text)
-            strong_bear = sum(3 for w in strong_bearish if w in text)
-            mild_bear = sum(1 for w in mild_bearish if w in text)
-            
-            net_sentiment = (strong_bull + mild_bull) - (strong_bear + mild_bear)
-            news_sentiment += net_sentiment * 2
-    
+
+        # ─────────────────────────────────────────────────────────────────────
+        # RELEVANCE CHECK: Is this article about our currency pair?
+        # ─────────────────────────────────────────────────────────────────────
+        base_relevant = any(kw in text for kw in base_keywords)
+        quote_relevant = any(kw in text for kw in quote_keywords)
+        pair_mentioned = pair_normalized in text
+
+        # Article must mention at least one currency in the pair
+        if not (base_relevant or quote_relevant or pair_mentioned):
+            continue
+
+        relevant_articles.append(article)
+
+        # ─────────────────────────────────────────────────────────────────────
+        # TIME DECAY: Recent news matters more
+        # - < 6 hours: 100% weight
+        # - 6-24 hours: 70% weight
+        # - 24-48 hours: 40% weight
+        # - > 48 hours: 20% weight
+        # ─────────────────────────────────────────────────────────────────────
+        time_decay = 1.0
+        article_time = article.get('datetime')
+        if article_time:
+            try:
+                if isinstance(article_time, (int, float)):
+                    article_dt = datetime.fromtimestamp(article_time)
+                else:
+                    article_dt = datetime.fromisoformat(str(article_time).replace('Z', '+00:00'))
+                hours_old = (current_time - article_dt.replace(tzinfo=None)).total_seconds() / 3600
+
+                if hours_old <= 6:
+                    time_decay = 1.0
+                elif hours_old <= 24:
+                    time_decay = 0.7
+                elif hours_old <= 48:
+                    time_decay = 0.4
+                else:
+                    time_decay = 0.2
+            except:
+                time_decay = 0.5  # Default if can't parse time
+
+        # ─────────────────────────────────────────────────────────────────────
+        # SENTIMENT SCORING with impact weighting
+        # ─────────────────────────────────────────────────────────────────────
+        article_bull_score = 0
+        article_bear_score = 0
+        is_high_impact = False
+
+        # HIGH-IMPACT events (check headline only for these - more reliable)
+        for phrase, weight in high_impact_bullish.items():
+            if phrase in headline:
+                article_bull_score += weight
+                is_high_impact = True
+        for phrase, weight in high_impact_bearish.items():
+            if phrase in headline:
+                article_bear_score += weight
+                is_high_impact = True
+
+        # MEDIUM-IMPACT sentiment (headline + summary)
+        for word, weight in medium_bullish.items():
+            if word in text:
+                article_bull_score += weight
+        for word, weight in medium_bearish.items():
+            if word in text:
+                article_bear_score += weight
+
+        # LOW-IMPACT sentiment (headline only to avoid noise)
+        for word, weight in low_bullish.items():
+            if word in headline:
+                article_bull_score += weight
+        for word, weight in low_bearish.items():
+            if word in headline:
+                article_bear_score += weight
+
+        # ─────────────────────────────────────────────────────────────────────
+        # DIRECTIONAL ADJUSTMENT: Which currency does sentiment apply to?
+        # If bullish news for BASE currency = bullish for pair
+        # If bullish news for QUOTE currency = bearish for pair
+        # ─────────────────────────────────────────────────────────────────────
+        if base_relevant and not quote_relevant:
+            # News is about base currency - sentiment applies directly
+            net_score = article_bull_score - article_bear_score
+        elif quote_relevant and not base_relevant:
+            # News is about quote currency - invert sentiment
+            net_score = article_bear_score - article_bull_score
+        else:
+            # Both or neither - use direct sentiment
+            net_score = article_bull_score - article_bear_score
+
+        # Apply time decay and add to weighted average
+        article_weight = (1.5 if is_high_impact else 1.0) * time_decay
+        if is_high_impact:
+            high_impact_count += 1
+
+        weighted_sentiment += net_score * article_weight
+        total_weight += article_weight
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # FINAL SCORE CALCULATION
+    # ─────────────────────────────────────────────────────────────────────────
+    if total_weight > 0:
+        # Normalize: Scale sentiment impact based on article count and weights
+        # More articles = more confidence, but diminishing returns after 5
+        confidence_multiplier = min(total_weight / 3, 2.0)  # Cap at 2x
+        avg_sentiment = weighted_sentiment / total_weight
+
+        # Convert to 0-100 scale (each point = ~2 score units)
+        news_sentiment = 50 + (avg_sentiment * confidence_multiplier * 2)
+
     news_sentiment = max(0, min(100, news_sentiment))
-    
+
     sentiment_sources['news_analysis'] = {
-        'score': news_sentiment,
+        'score': round(news_sentiment, 1),
         'articles_analyzed': len(relevant_articles),
-        'source': 'FINNHUB_NEWS'
+        'high_impact_articles': high_impact_count,
+        'source': 'FINNHUB_NEWS_ENHANCED',
+        'quality': 'HIGH' if high_impact_count >= 2 else 'MEDIUM' if len(relevant_articles) >= 3 else 'LOW'
     }
     
     # ═══════════════════════════════════════════════════════════════════════════
