@@ -4046,13 +4046,14 @@
                             ${Object.entries(data).filter(([k]) => k !== 'success').map(([name, info]) => `
                                 <div class="result-card">
                                     <div class="value">
-                                        <span class="status-badge ${info.status === 'OK' ? 'ok' : info.status === 'NOT_CONFIGURED' ? 'limited' : 'error'}">
+                                        <span class="status-badge ${info.status === 'OK' ? 'ok' : ['NOT_CONFIGURED', 'RATE_LIMITED', 'SCHEDULED'].includes(info.status) ? 'limited' : 'error'}">
                                             ${info.status}
                                         </span>
                                     </div>
                                     <div class="label">${name.toUpperCase()}</div>
                                     <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">
                                         ${info.configured ? 'Configured' : 'Not Configured'}
+                                        ${info.cooldown_min ? ` (${info.cooldown_min}m cooldown)` : ''}
                                     </div>
                                 </div>
                             `).join('')}
