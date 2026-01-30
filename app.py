@@ -333,6 +333,60 @@ def calculate_currency_strength(rates_dict):
     return result
 
 
+def get_currency_strength_score(pair, rates_dict=None):
+    """
+    v9.2.2: Calculate currency strength factor score for a pair.
+    Uses 45-pair data to determine if base currency is stronger than quote.
+
+    Returns: dict with score (0-100), signal, and details
+    - Score > 58: Base stronger than quote (favors LONG)
+    - Score < 42: Quote stronger than base (favors SHORT)
+    - Score 42-58: Similar strength (neutral)
+    """
+    try:
+        if rates_dict is None:
+            rates_dict = get_all_rates()
+
+        if not rates_dict or '/' not in pair:
+            return {'score': 50, 'signal': 'NEUTRAL', 'base_strength': 50, 'quote_strength': 50, 'details': 'No data'}
+
+        base, quote = pair.split('/')
+
+        # Calculate strength for all currencies
+        currency_strength = calculate_currency_strength(rates_dict)
+
+        base_strength = currency_strength.get(base, 50)
+        quote_strength = currency_strength.get(quote, 50)
+
+        # Strength differential: positive = base stronger, negative = quote stronger
+        differential = base_strength - quote_strength
+
+        # Convert to 0-100 score
+        # Max differential is typically ±10, scale to ±25 points from 50
+        score = 50 + (differential * 2.5)
+        score = max(15, min(85, score))  # Clamp to reasonable range
+
+        # Determine signal
+        if score >= 58:
+            signal = 'BULLISH'  # Base is stronger - favors LONG
+        elif score <= 42:
+            signal = 'BEARISH'  # Quote is stronger - favors SHORT
+        else:
+            signal = 'NEUTRAL'
+
+        return {
+            'score': round(score, 1),
+            'signal': signal,
+            'base_strength': round(base_strength, 1),
+            'quote_strength': round(quote_strength, 1),
+            'differential': round(differential, 1),
+            'details': f"{base}={base_strength:.0f} vs {quote}={quote_strength:.0f}"
+        }
+    except Exception as e:
+        logger.warning(f"Currency strength calc failed for {pair}: {e}")
+        return {'score': 50, 'signal': 'NEUTRAL', 'base_strength': 50, 'quote_strength': 50, 'details': 'Error'}
+
+
 def detect_triangle_deviation(rates_dict, threshold=0.002):
     """
     Detect triangle arbitrage opportunities.
@@ -479,34 +533,36 @@ FACTOR_WEIGHTS = {
 # Research: 3-4 non-correlated factors is the sweet spot (CME Group 2019)
 # ═══════════════════════════════════════════════════════════════════════════════
 FACTOR_GROUP_WEIGHTS = {
-    'trend_momentum': 23,     # Technical (RSI, MACD, ADX) + MTF (H1/H4/D1) merged (-2)
-    'fundamental': 17,        # Interest rate diffs + FRED data (independent) (-1)
-    'sentiment': 14,          # IG positioning + News + Options merged (contrarian) (-1)
-    'intermarket': 14,        # DXY, Gold, Yields, Oil (independent)
-    'mean_reversion': 12,     # Z-Score + Bollinger %B + S/R merged
+    'trend_momentum': 21,     # Technical (RSI, MACD, ADX) + MTF (H1/H4/D1) merged
+    'fundamental': 15,        # Interest rate diffs + FRED data (independent)
+    'sentiment': 13,          # IG positioning + News + Options merged (contrarian)
+    'intermarket': 12,        # DXY, Gold, Yields, Oil (independent)
+    'mean_reversion': 11,     # Z-Score + Bollinger %B + S/R merged
     'calendar_risk': 8,       # Economic events + Seasonality (independent)
-    'ai_synthesis': 12        # GPT enhanced analysis (activates when 2+ groups agree) (+4)
+    'ai_synthesis': 10,       # GPT enhanced analysis (activates when 2+ groups agree)
+    'currency_strength': 10   # v9.2.2: 45-pair currency strength analysis (NEW)
 }
 # Total: 100%
 
-# v9.0 DYNAMIC REGIME WEIGHTS - Adapt to market conditions
+# v9.2.2 DYNAMIC REGIME WEIGHTS - Adapt to market conditions
 # Research: +0.29 Sharpe improvement (Northern Trust)
+# Now includes currency_strength (10%) from 45-pair analysis
 REGIME_WEIGHTS = {
     'trending': {
-        'trend_momentum': 28, 'fundamental': 16, 'sentiment': 10,
-        'intermarket': 14, 'mean_reversion': 8, 'calendar_risk': 8, 'ai_synthesis': 16
+        'trend_momentum': 26, 'fundamental': 14, 'sentiment': 8,
+        'intermarket': 12, 'mean_reversion': 6, 'calendar_risk': 6, 'ai_synthesis': 14, 'currency_strength': 14
     },
     'ranging': {
-        'trend_momentum': 13, 'fundamental': 14, 'sentiment': 14,
-        'intermarket': 12, 'mean_reversion': 23, 'calendar_risk': 8, 'ai_synthesis': 16
+        'trend_momentum': 11, 'fundamental': 12, 'sentiment': 12,
+        'intermarket': 10, 'mean_reversion': 21, 'calendar_risk': 6, 'ai_synthesis': 14, 'currency_strength': 14
     },
     'volatile': {
-        'trend_momentum': 18, 'fundamental': 14, 'sentiment': 18,
-        'intermarket': 14, 'mean_reversion': 10, 'calendar_risk': 12, 'ai_synthesis': 14
+        'trend_momentum': 16, 'fundamental': 12, 'sentiment': 16,
+        'intermarket': 12, 'mean_reversion': 8, 'calendar_risk': 10, 'ai_synthesis': 12, 'currency_strength': 14
     },
     'quiet': {
-        'trend_momentum': 23, 'fundamental': 18, 'sentiment': 10,
-        'intermarket': 15, 'mean_reversion': 14, 'calendar_risk': 6, 'ai_synthesis': 14
+        'trend_momentum': 21, 'fundamental': 16, 'sentiment': 8,
+        'intermarket': 13, 'mean_reversion': 12, 'calendar_risk': 4, 'ai_synthesis': 12, 'currency_strength': 14
     }
 }
 
@@ -5589,6 +5645,18 @@ def generate_signal(pair):
         # Build 7 independent factor groups from 11 individual factors
         factor_groups = build_factor_groups(factors)
 
+        # v9.2.2: Add Currency Strength as 8th factor group (10% weight)
+        # Uses 45-pair data to determine if direction aligns with currency strength
+        currency_strength_data = get_currency_strength_score(pair)
+        factor_groups['currency_strength'] = {
+            'score': currency_strength_data['score'],
+            'signal': currency_strength_data['signal'],
+            'weight': FACTOR_GROUP_WEIGHTS.get('currency_strength', 10),
+            'details': currency_strength_data['details'],
+            'base_strength': currency_strength_data.get('base_strength', 50),
+            'quote_strength': currency_strength_data.get('quote_strength', 50)
+        }
+
         # Detect market regime for dynamic weight selection
         atr_raw = tech.get('atr') or DEFAULT_ATR.get(pair, 0.005)
         adx_raw = tech.get('adx', 20)
@@ -6496,16 +6564,17 @@ def run_system_audit():
             'bullish_threshold': 60,
             'bearish_threshold': 40
         },
-        'total_factor_groups': 7,
+        'total_factor_groups': 8,
         'total_weight': 100,
         'factor_groups': {
-            'trend_momentum': {'weight': 23, 'sources': 'Technical (RSI/MACD/ADX) 60% + MTF (H1/H4/D1) 40%'},
-            'fundamental': {'weight': 17, 'sources': 'Interest rate differentials + FRED macro data'},
-            'sentiment': {'weight': 14, 'sources': 'IG positioning 65% + Options proxy 35%'},
-            'intermarket': {'weight': 14, 'sources': 'DXY, Gold, Yields, Oil correlations'},
-            'mean_reversion': {'weight': 12, 'sources': 'Quantitative (Z-Score/Bollinger) 55% + Structure (S/R) 45%'},
+            'trend_momentum': {'weight': 21, 'sources': 'Technical (RSI/MACD/ADX) 60% + MTF (H1/H4/D1) 40%'},
+            'fundamental': {'weight': 15, 'sources': 'Interest rate differentials + FRED macro data'},
+            'sentiment': {'weight': 13, 'sources': 'IG positioning 65% + Options proxy 35%'},
+            'intermarket': {'weight': 12, 'sources': 'DXY, Gold, Yields, Oil correlations'},
+            'mean_reversion': {'weight': 11, 'sources': 'Quantitative (Z-Score/Bollinger) 55% + Structure (S/R) 45%'},
             'calendar_risk': {'weight': 8, 'sources': 'Economic events + Seasonality'},
-            'ai_synthesis': {'weight': 12, 'sources': 'GPT enhanced analysis — activates when 2+ groups agree'}
+            'ai_synthesis': {'weight': 10, 'sources': 'GPT enhanced analysis — activates when 2+ groups agree'},
+            'currency_strength': {'weight': 10, 'sources': 'v9.2.2: 45-pair analysis — base vs quote currency strength'}
         },
         'quality_gates': {
             'description': '5 of 7 gates must pass for LONG/SHORT signal, otherwise NEUTRAL',
@@ -7539,13 +7608,14 @@ def reset_weights():
     """v9.0: Reset to default 7 factor group weights"""
     global FACTOR_GROUP_WEIGHTS
     FACTOR_GROUP_WEIGHTS = {
-        'trend_momentum': 25,     # Technical (RSI/MACD/ADX) 60% + MTF 40%
-        'fundamental': 18,        # Interest rate diffs + FRED macro data
-        'sentiment': 15,          # IG Positioning 65% + Options 35%
-        'intermarket': 14,        # DXY, Gold, Yields, Oil correlations
-        'mean_reversion': 12,     # Quantitative 55% + Structure 45%
+        'trend_momentum': 21,     # Technical (RSI/MACD/ADX) 60% + MTF 40%
+        'fundamental': 15,        # Interest rate diffs + FRED macro data
+        'sentiment': 13,          # IG Positioning 65% + Options 35%
+        'intermarket': 12,        # DXY, Gold, Yields, Oil correlations
+        'mean_reversion': 11,     # Quantitative 55% + Structure 45%
         'calendar_risk': 8,       # Economic events + Seasonality
-        'ai_synthesis': 8         # GPT analysis (activates when 4+ groups agree)
+        'ai_synthesis': 10,       # GPT analysis (activates when 2+ groups agree)
+        'currency_strength': 10   # v9.2.2: 45-pair currency strength analysis
     }
     save_group_weights(FACTOR_GROUP_WEIGHTS)
     return jsonify({'success': True, 'weights': FACTOR_GROUP_WEIGHTS})
