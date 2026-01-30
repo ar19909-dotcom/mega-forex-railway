@@ -7371,11 +7371,30 @@ def get_subscription_signals():
 
 @app.route('/signal/<pair>')
 def get_single_signal(pair):
+    """
+    Get signal for a single pair.
+    By default, returns cached data (consistent with Overview cards).
+    Add ?fresh=true to force fresh data generation.
+    """
     pair = pair.replace('_', '/')
+    force_fresh = request.args.get('fresh', 'false').lower() == 'true'
+
+    # v9.2.2: Use cached data by default for consistency with Overview cards
+    if not force_fresh and is_cache_valid('signals'):
+        with cache_lock:
+            cached = cache['signals'].get('data', {})
+            if cached:
+                signals_list = cached.get('signals', [])
+                for s in signals_list:
+                    if s.get('pair') == pair:
+                        logger.debug(f"📊 Signal/{pair}: Returning cached data (consistent with cards)")
+                        return jsonify({'success': True, 'from_cache': True, **s})
+
+    # Generate fresh signal if no cache or force_fresh
     signal = generate_signal(pair)
-    
+
     if signal:
-        return jsonify({'success': True, **signal})
+        return jsonify({'success': True, 'from_cache': False, **signal})
     return jsonify({'success': False, 'error': f'Could not generate signal for {pair}'}), 404
 
 @app.route('/technical/<pair>')

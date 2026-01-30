@@ -2486,9 +2486,10 @@
         }
         
         // Analyze Signal
-        async function analyzeSignal(pair) {
+        async function analyzeSignal(pair, forceFresh = false) {
             const detail = document.getElementById('analyzer-detail');
-            detail.innerHTML = '<div class="loading"><div class="spinner"></div>Loading FRESH analysis...</div>';
+            const loadingText = forceFresh ? 'Fetching FRESH data from market...' : 'Loading analysis...';
+            detail.innerHTML = `<div class="loading"><div class="spinner"></div>${loadingText}</div>`;
 
             // Switch to analyzer tab
             document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
@@ -2497,9 +2498,10 @@
             document.getElementById('tab-analyzer').classList.add('active');
 
             try {
-                // Cache-bust: add timestamp to ensure fresh data
-                const cacheBuster = Date.now();
-                const response = await fetch(`${API_BASE}/signal/${pair.replace('/', '_')}?t=${cacheBuster}`);
+                // v9.2.2: Use cached data by default (matches Overview cards)
+                // Pass fresh=true to force fresh market data
+                const freshParam = forceFresh ? '&fresh=true' : '';
+                const response = await fetch(`${API_BASE}/signal/${pair.replace('/', '_')}?t=${Date.now()}${freshParam}`);
                 const signal = await response.json();
                 
                 if (signal.success) {
@@ -2546,9 +2548,12 @@
                     }
 
                     const fetchTime = new Date().toLocaleTimeString();
+                    const cacheStatus = signal.from_cache
+                        ? `<span style="color: var(--accent-blue);">📋 Cached data (matches Overview cards)</span> <button onclick="analyzeSignal('${signal.pair}', true)" style="margin-left: 0.5rem; padding: 0.25rem 0.5rem; font-size: 0.7rem; background: var(--accent-purple); border: none; border-radius: 4px; color: white; cursor: pointer;">🔄 Get Fresh</button>`
+                        : `<span style="color: var(--accent-green);">🔄 Fresh data fetched at ${fetchTime}</span>`;
                     detail.innerHTML = `
                         <h3 style="margin-bottom: 0.5rem;">${signal.pair} Analysis</h3>
-                        <div style="font-size: 0.75rem; color: var(--accent-green); margin-bottom: 1rem;">🔄 Fresh data fetched at ${fetchTime}</div>
+                        <div style="font-size: 0.75rem; margin-bottom: 1rem;">${cacheStatus}</div>
                         
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
                             <div class="result-card">
