@@ -298,20 +298,29 @@ def calculate_currency_strength(rates_dict):
     currencies = ['USD', 'EUR', 'GBP', 'JPY', 'CHF', 'AUD', 'NZD', 'CAD']
     strength = {c: [] for c in currencies}
 
-    for pair, rate in rates_dict.items():
-        if '/' not in pair or rate <= 0:
+    for pair, rate_data in rates_dict.items():
+        if '/' not in pair:
             continue
+
+        # Get mid price from rate data
+        if isinstance(rate_data, dict):
+            mid = rate_data.get('mid', 0)
+        elif isinstance(rate_data, (int, float)):
+            mid = rate_data
+        else:
+            continue
+
+        if mid <= 0:
+            continue
+
         base, quote = pair.split('/')
         if base not in currencies or quote not in currencies:
             continue
 
-        # Normalize rate to percentage change from reference (simplified)
-        # Positive = base stronger, Negative = quote stronger
-        # We track relative performance
-        mid = rate if isinstance(rate, (int, float)) else rate.get('mid', 0)
-        if mid > 0:
-            strength[base].append(60)   # Base is being bought
-            strength[quote].append(40)  # Quote is being sold
+        # Track relative performance based on price level
+        # Higher price = base stronger relative to quote
+        strength[base].append(55)   # Base currency score
+        strength[quote].append(45)  # Quote currency score
 
     # Calculate average strength per currency
     result = {}
@@ -5733,29 +5742,34 @@ def generate_signal(pair):
 
         if composite_score >= 60:  # LONG direction
             tm_confirms = tm_score > 52  # T&M supports LONG
-            tm_neutral = 48 <= tm_score <= 52  # T&M is neutral
-            ema_ok = ema_signal != 'BEARISH'  # EMA not against LONG
-            ema_supports = ema_signal == 'BULLISH'  # EMA confirms LONG
+            ema_ok = ema_signal != 'BEARISH'  # EMA must NOT be BEARISH for LONG
 
-            # Pass if: T&M confirms, OR EMA supports, OR both are neutral/mixed
-            # Only fail if T&M is bearish AND EMA is bearish (strong counter-trend)
-            strong_counter = (tm_score < 48) and (ema_signal == 'BEARISH')
-            gate_details['G3_trend_confirm']['passed'] = not strong_counter and (tm_confirms or ema_ok)
-            gate_details['G3_trend_confirm']['value'] = f"{tm_signal} ({tm_score}) | EMA: {ema_signal}"
+            # v9.2.1 FIX: EMA BEARISH = NO LONG (strict protection)
+            # If EMA shows downtrend, DO NOT go long regardless of T&M
+            # This prevents counter-trend losses like GBP/NZD
+            if ema_signal == 'BEARISH':
+                gate_details['G3_trend_confirm']['passed'] = False
+                gate_details['G3_trend_confirm']['value'] = f"{tm_signal} ({tm_score}) | EMA: {ema_signal} ⚠️ BLOCKED"
+            else:
+                # EMA is BULLISH or NEUTRAL - check T&M confirmation
+                gate_details['G3_trend_confirm']['passed'] = tm_confirms or (ema_signal == 'BULLISH')
+                gate_details['G3_trend_confirm']['value'] = f"{tm_signal} ({tm_score}) | EMA: {ema_signal}"
 
         elif composite_score <= 40:  # SHORT direction
             tm_confirms = tm_score < 48  # T&M supports SHORT
-            tm_neutral = 48 <= tm_score <= 52  # T&M is neutral
-            ema_ok = ema_signal != 'BULLISH'  # EMA not against SHORT
-            ema_supports = ema_signal == 'BEARISH'  # EMA confirms SHORT
+            ema_ok = ema_signal != 'BULLISH'  # EMA must NOT be BULLISH for SHORT
 
-            # Pass if: T&M confirms, OR EMA supports, OR both are neutral/mixed
-            # Only fail if T&M is bullish AND EMA is bullish (strong counter-trend)
-            strong_counter = (tm_score > 52) and (ema_signal == 'BULLISH')
-            gate_details['G3_trend_confirm']['passed'] = not strong_counter and (tm_confirms or ema_ok)
-            gate_details['G3_trend_confirm']['value'] = f"{tm_signal} ({tm_score}) | EMA: {ema_signal}"
+            # v9.2.1 FIX: EMA BULLISH = NO SHORT (strict protection)
+            # If EMA shows uptrend, DO NOT go short regardless of T&M
+            if ema_signal == 'BULLISH':
+                gate_details['G3_trend_confirm']['passed'] = False
+                gate_details['G3_trend_confirm']['value'] = f"{tm_signal} ({tm_score}) | EMA: {ema_signal} ⚠️ BLOCKED"
+            else:
+                # EMA is BEARISH or NEUTRAL - check T&M confirmation
+                gate_details['G3_trend_confirm']['passed'] = tm_confirms or (ema_signal == 'BEARISH')
+                gate_details['G3_trend_confirm']['value'] = f"{tm_signal} ({tm_score}) | EMA: {ema_signal}"
 
-        gate_details['G3_trend_confirm']['rule'] = 'Block only if BOTH T&M AND EMA strongly contradict'
+        gate_details['G3_trend_confirm']['rule'] = 'EMA must not contradict direction (BEARISH blocks LONG, BULLISH blocks SHORT)'
 
         # Set G7 based on AI alignment - AI should not strongly contradict
         if composite_score >= 60:  # LONG direction
@@ -7364,9 +7378,8 @@ def get_correlation_analysis():
     Uses 45-pair data for advanced signal confirmation.
     """
     try:
-        # Get all current rates
-        rates = get_all_rates()
-        rates_dict = {r['pair']: r for r in rates}
+        # Get all current rates (returns dict: {pair: rate_data})
+        rates_dict = get_all_rates()
 
         # Calculate currency strength
         currency_strength = calculate_currency_strength(rates_dict)
