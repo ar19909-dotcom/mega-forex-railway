@@ -2278,8 +2278,19 @@
                 return true;
             });
             
-            // Sort by WIN RATE (highest win rate first)
-            filtered.sort((a, b) => (b.statistics?.win_rate || 50) - (a.statistics?.win_rate || 50));
+            // Sort: LONG/SHORT first (best trades), NEUTRAL last
+            // Within each group, sort by win rate (highest first)
+            filtered.sort((a, b) => {
+                const dirA = a.direction || 'NEUTRAL';
+                const dirB = b.direction || 'NEUTRAL';
+                // Priority: LONG/SHORT = 0, NEUTRAL = 1
+                const priorityA = (dirA === 'LONG' || dirA === 'SHORT') ? 0 : 1;
+                const priorityB = (dirB === 'LONG' || dirB === 'SHORT') ? 0 : 1;
+                // First sort by priority (actionable first)
+                if (priorityA !== priorityB) return priorityA - priorityB;
+                // Then by win rate (highest first)
+                return (b.statistics?.win_rate || 50) - (a.statistics?.win_rate || 50);
+            });
             
             if (filtered.length === 0) {
                 container.innerHTML = '<div class="loading">No signals match your filters</div>';
