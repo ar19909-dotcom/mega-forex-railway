@@ -7939,6 +7939,14 @@ def get_positioning():
     # Try to get REAL data from IG API
     ig_configured = all([IG_API_KEY, IG_USERNAME, IG_PASSWORD])
 
+    # v9.2.2: If rate limited, clear any old cached data to show rate limit message
+    if ig_session.get('rate_limited', False):
+        with cache_lock:
+            if cache['positioning'].get('data', {}).get('source') not in ['RATE_LIMITED', 'FALLBACK']:
+                cache['positioning']['data'] = None
+                cache['positioning']['timestamp'] = None
+                logger.info("Cleared old positioning cache due to rate limit")
+
     if ig_configured:
         # Check if rate limited BEFORE trying
         if not ig_session.get('rate_limited', False):
