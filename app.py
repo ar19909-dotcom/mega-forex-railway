@@ -7208,9 +7208,16 @@ def get_signals():
                     pair = future_to_pair.get(future, 'UNKNOWN')
                     logger.debug(f"Signal generation failed for {pair}: {e}")
 
-        # Sort by SIGNAL STRENGTH (best trades first regardless of LONG/SHORT)
-        # Strongest signals = furthest deviation from 50 (neutral)
-        signals.sort(key=lambda x: abs(x.get('composite_score', 50) - 50), reverse=True)
+        # Sort: LONG/SHORT first (best trades), then NEUTRAL at bottom
+        # Within each group, sort by signal strength (furthest from 50)
+        def signal_sort_key(x):
+            direction = x.get('direction', 'NEUTRAL')
+            strength = abs(x.get('composite_score', 50) - 50)
+            # Priority: 0 = LONG/SHORT (actionable), 1 = NEUTRAL
+            priority = 0 if direction in ['LONG', 'SHORT'] else 1
+            return (priority, -strength)  # Lower priority first, higher strength first
+
+        signals.sort(key=signal_sort_key)
 
         result = {
             'success': True,
@@ -7303,8 +7310,13 @@ def get_subscription_signals():
                     pair = future_to_pair.get(future, 'UNKNOWN')
                     logger.debug(f"Signal generation failed for {pair}: {e}")
 
-        # Sort by SIGNAL STRENGTH (best trades first regardless of LONG/SHORT)
-        signals.sort(key=lambda x: abs(x.get('composite_score', 50) - 50), reverse=True)
+        # Sort: LONG/SHORT first (best trades), then NEUTRAL at bottom
+        def signal_sort_key(x):
+            direction = x.get('direction', 'NEUTRAL')
+            strength = abs(x.get('composite_score', 50) - 50)
+            priority = 0 if direction in ['LONG', 'SHORT'] else 1
+            return (priority, -strength)
+        signals.sort(key=signal_sort_key)
 
         # Strip all scoring data before returning
         stripped_signals = [strip_scoring_data(s) for s in signals]
