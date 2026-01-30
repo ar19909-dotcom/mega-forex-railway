@@ -7937,7 +7937,10 @@ def get_positioning():
                 return jsonify(cached_data)
 
     # Try to get REAL data from IG API
-    if all([IG_API_KEY, IG_USERNAME, IG_PASSWORD]):
+    ig_configured = all([IG_API_KEY, IG_USERNAME, IG_PASSWORD])
+    ig_rate_limited = ig_session.get('rate_limited', False)
+
+    if ig_configured and not ig_rate_limited:
         ig_data = get_all_ig_sentiment()
 
         if ig_data and len(ig_data) > 0:
@@ -7954,28 +7957,86 @@ def get_positioning():
                 cache['positioning']['timestamp'] = datetime.now()
             return jsonify(result)
 
-    # Fallback: Return message that IG is not configured
-    logger.warning("⚠️ Positioning: IG API not configured, returning placeholder")
+    # v9.2.2: Handle rate limit - show estimated data instead of "NOT_CONFIGURED"
+    if ig_rate_limited:
+        cooldown_remaining = 0
+        if ig_session.get('rate_limit_until'):
+            cooldown_remaining = max(0, (ig_session['rate_limit_until'] - datetime.now()).total_seconds() / 60)
 
+        logger.warning(f"⚠️ Positioning: IG API rate limited, using estimated data ({cooldown_remaining:.0f} min cooldown)")
+
+        # Generate estimated positioning based on price momentum
+        positioning = []
+        for pair in FOREX_PAIRS[:15]:
+            # Estimate: typically retail is ~60% long on falling pairs, ~40% long on rising
+            # We'll show neutral estimates since we can't know actual positioning
+            positioning.append({
+                'pair': pair,
+                'long_percentage': 50,
+                'short_percentage': 50,
+                'contrarian_signal': 'NEUTRAL',
+                'source': 'ESTIMATED',
+                'message': f'IG rate limited - cooldown {cooldown_remaining:.0f} min'
+            })
+
+        result = {
+            'success': True,
+            'count': len(positioning),
+            'source': 'RATE_LIMITED',
+            'message': f'IG API rate limited. Cooldown: {cooldown_remaining:.0f} minutes remaining. Using neutral estimates.',
+            'data': positioning
+        }
+        # Cache for shorter time when rate limited
+        with cache_lock:
+            cache['positioning']['data'] = result
+            cache['positioning']['timestamp'] = datetime.now()
+        return jsonify(result)
+
+    # Fallback: Return message that IG is not configured
+    if not ig_configured:
+        logger.warning("⚠️ Positioning: IG API not configured, returning placeholder")
+
+        positioning = []
+        for pair in FOREX_PAIRS[:15]:
+            positioning.append({
+                'pair': pair,
+                'long_percentage': 'N/A',
+                'short_percentage': 'N/A',
+                'contrarian_signal': 'N/A',
+                'source': 'NOT_CONFIGURED',
+                'message': 'Configure IG API for real data'
+            })
+
+        result = {
+            'success': True,
+            'count': len(positioning),
+            'source': 'NOT_CONFIGURED',
+            'message': 'Add IG_USERNAME and IG_PASSWORD to .env for real positioning data',
+            'data': positioning
+        }
+        # Don't cache NOT_CONFIGURED so it retries when credentials are added
+        return jsonify(result)
+
+    # IG configured but no data returned (temporary error)
+    logger.warning("⚠️ Positioning: IG API error, using neutral estimates")
     positioning = []
     for pair in FOREX_PAIRS[:15]:
         positioning.append({
             'pair': pair,
-            'long_percentage': 'N/A',
-            'short_percentage': 'N/A',
-            'contrarian_signal': 'N/A',
-            'source': 'NOT_CONFIGURED',
-            'message': 'Configure IG API for real data'
+            'long_percentage': 50,
+            'short_percentage': 50,
+            'contrarian_signal': 'NEUTRAL',
+            'source': 'FALLBACK',
+            'message': 'IG API temporarily unavailable'
         })
 
     result = {
         'success': True,
         'count': len(positioning),
-        'source': 'NOT_CONFIGURED',
-        'message': 'Add IG_USERNAME and IG_PASSWORD to .env for real positioning data',
+        'source': 'FALLBACK',
+        'message': 'IG API temporarily unavailable. Using neutral estimates.',
         'data': positioning
     }
-    # Don't cache NOT_CONFIGURED so it retries when credentials are added
     return jsonify(result)
 
 @app.route('/api-status')
