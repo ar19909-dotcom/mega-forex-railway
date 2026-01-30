@@ -144,7 +144,9 @@ ig_session = {
     'x_security_token': None,
     'logged_in': False,
     'last_login': None,
-    'last_error': None
+    'last_error': None,
+    'rate_limited': False,
+    'rate_limit_until': None  # Datetime when rate limit expires
 }
 
 # OpenAI API (GPT-4o-mini for AI Factor)
@@ -681,7 +683,7 @@ CACHE_TTL = {
     'calendar': 1800, # 30 minutes - increased for stability
     'fundamental': 3600,
     'intermarket_data': 300,  # 5 minutes
-    'positioning': 120,  # 2 minutes - IG sentiment doesn't change rapidly
+    'positioning': 900,  # 15 minutes - IG sentiment doesn't change rapidly + avoid rate limits
     'signals': 120,   # 2 minutes - balanced refresh rate
     'audit': 300      # 5 minutes - audit data doesn't change rapidly
 }
@@ -7762,11 +7764,23 @@ def test_ig():
 def ig_login():
     """Login to IG Markets API and get session tokens"""
     global ig_session
-    
+
     if not all([IG_API_KEY, IG_USERNAME, IG_PASSWORD]):
         logger.warning("IG API credentials not configured")
         return False
-    
+
+    # v9.2.2: Check if rate limited - skip API calls during cooldown (1 hour)
+    if ig_session.get('rate_limited') and ig_session.get('rate_limit_until'):
+        if datetime.now() < ig_session['rate_limit_until']:
+            remaining = (ig_session['rate_limit_until'] - datetime.now()).total_seconds() / 60
+            logger.debug(f"IG API rate limited - cooldown {remaining:.0f} min remaining")
+            return False
+        else:
+            # Cooldown expired, reset rate limit
+            ig_session['rate_limited'] = False
+            ig_session['rate_limit_until'] = None
+            logger.info("IG API rate limit cooldown expired - retrying")
+
     # Check if already logged in (tokens valid for ~6 hours)
     if ig_session['logged_in'] and ig_session['last_login']:
         elapsed = (datetime.now() - ig_session['last_login']).total_seconds()
@@ -7808,6 +7822,13 @@ def ig_login():
             error_msg = response.text[:200] if response.text else 'No error message'
             logger.error(f"IG login failed: {response.status_code} - {error_msg}")
             ig_session['last_error'] = f"{response.status_code}: {error_msg}"
+
+            # v9.2.2: Detect rate limit and set cooldown (1 hour)
+            if response.status_code == 403 and 'exceeded-api-key-allowance' in error_msg:
+                ig_session['rate_limited'] = True
+                ig_session['rate_limit_until'] = datetime.now() + timedelta(hours=1)
+                logger.warning("⚠️ IG API rate limit exceeded - cooldown for 1 hour")
+
             return False
             
     except req_lib.exceptions.Timeout:
@@ -7851,9 +7872,16 @@ def get_ig_client_sentiment(market_id):
                 'short_percentage': data.get('shortPositionPercentage', 50),
                 'market_id': data.get('marketId', market_id)
             }
+        elif response.status_code == 403:
+            # v9.2.2: Detect rate limit on sentiment API
+            error_msg = response.text[:200] if response.text else ''
+            if 'exceeded-api-key-allowance' in error_msg:
+                ig_session['rate_limited'] = True
+                ig_session['rate_limit_until'] = datetime.now() + timedelta(hours=1)
+                logger.warning("⚠️ IG API rate limit exceeded on sentiment call - cooldown 1 hour")
     except Exception as e:
         logger.debug(f"IG sentiment fetch failed for {market_id}: {e}")
-    
+
     return None
 
 def get_all_ig_sentiment():
