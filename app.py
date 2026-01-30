@@ -7449,17 +7449,32 @@ def get_single_signal(pair):
     force_fresh = request.args.get('fresh', 'false').lower() == 'true'
 
     # v9.2.2: Use cached data by default for consistency with Overview cards
-    if not force_fresh and is_cache_valid('signals'):
+    # Single lock acquisition to avoid race conditions
+    if not force_fresh:
         with cache_lock:
-            cached = cache['signals'].get('data', {})
-            if cached:
-                signals_list = cached.get('signals', [])
-                for s in signals_list:
-                    if s.get('pair') == pair:
-                        logger.debug(f"📊 Signal/{pair}: Returning cached data (consistent with cards)")
-                        return jsonify({'success': True, 'from_cache': True, **s})
+            try:
+                cache_entry = cache.get('signals', {})
+                timestamp = cache_entry.get('timestamp')
+                if timestamp:
+                    elapsed = (datetime.now() - timestamp).total_seconds()
+                    ttl = CACHE_TTL.get('signals', 120)
+                    if elapsed < ttl:
+                        cached_data = cache_entry.get('data', {})
+                        signals_list = cached_data.get('signals', [])
+                        for s in signals_list:
+                            if s.get('pair') == pair:
+                                logger.info(f"📊 Signal/{pair}: Returning cached data (age: {elapsed:.0f}s)")
+                                return jsonify({'success': True, 'from_cache': True, 'cache_age': round(elapsed), **s})
+                        logger.warning(f"📊 Signal/{pair}: Pair not found in {len(signals_list)} cached signals")
+                    else:
+                        logger.info(f"📊 Signal/{pair}: Cache expired (age: {elapsed:.0f}s > ttl: {ttl}s)")
+                else:
+                    logger.info(f"📊 Signal/{pair}: No cache timestamp")
+            except Exception as e:
+                logger.warning(f"📊 Signal/{pair}: Cache read error: {e}")
 
-    # Generate fresh signal if no cache or force_fresh
+    # Generate fresh signal if no cache, cache miss, or force_fresh
+    logger.info(f"📊 Signal/{pair}: Generating fresh data (force_fresh={force_fresh})")
     signal = generate_signal(pair)
 
     if signal:
