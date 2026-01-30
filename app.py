@@ -7960,38 +7960,38 @@ def get_positioning():
 
         # Re-check rate_limited flag AFTER API call (might have just been set)
         if ig_session.get('rate_limited', False):
-        cooldown_remaining = 0
-        if ig_session.get('rate_limit_until'):
-            cooldown_remaining = max(0, (ig_session['rate_limit_until'] - datetime.now()).total_seconds() / 60)
+            cooldown_remaining = 0
+            if ig_session.get('rate_limit_until'):
+                cooldown_remaining = max(0, (ig_session['rate_limit_until'] - datetime.now()).total_seconds() / 60)
 
-        logger.warning(f"⚠️ Positioning: IG API rate limited, using estimated data ({cooldown_remaining:.0f} min cooldown)")
+            logger.warning(f"⚠️ Positioning: IG API rate limited, using estimated data ({cooldown_remaining:.0f} min cooldown)")
 
-        # Generate estimated positioning based on price momentum
-        positioning = []
-        for pair in FOREX_PAIRS[:15]:
-            # Estimate: typically retail is ~60% long on falling pairs, ~40% long on rising
-            # We'll show neutral estimates since we can't know actual positioning
-            positioning.append({
-                'pair': pair,
-                'long_percentage': 50,
-                'short_percentage': 50,
-                'contrarian_signal': 'NEUTRAL',
-                'source': 'ESTIMATED',
-                'message': f'IG rate limited - cooldown {cooldown_remaining:.0f} min'
-            })
+            # Generate estimated positioning based on price momentum
+            positioning = []
+            for pair in FOREX_PAIRS[:15]:
+                # Estimate: typically retail is ~60% long on falling pairs, ~40% long on rising
+                # We'll show neutral estimates since we can't know actual positioning
+                positioning.append({
+                    'pair': pair,
+                    'long_percentage': 50,
+                    'short_percentage': 50,
+                    'contrarian_signal': 'NEUTRAL',
+                    'source': 'ESTIMATED',
+                    'message': f'IG rate limited - cooldown {cooldown_remaining:.0f} min'
+                })
 
-        result = {
-            'success': True,
-            'count': len(positioning),
-            'source': 'RATE_LIMITED',
-            'message': f'IG API rate limited. Cooldown: {cooldown_remaining:.0f} minutes remaining. Using neutral estimates.',
-            'data': positioning
-        }
-        # Cache for shorter time when rate limited
-        with cache_lock:
-            cache['positioning']['data'] = result
-            cache['positioning']['timestamp'] = datetime.now()
-        return jsonify(result)
+            result = {
+                'success': True,
+                'count': len(positioning),
+                'source': 'RATE_LIMITED',
+                'message': f'IG API rate limited. Cooldown: {cooldown_remaining:.0f} minutes remaining. Using neutral estimates.',
+                'data': positioning
+            }
+            # Cache for shorter time when rate limited
+            with cache_lock:
+                cache['positioning']['data'] = result
+                cache['positioning']['timestamp'] = datetime.now()
+            return jsonify(result)
 
     # Fallback: Return message that IG is not configured
     if not ig_configured:
