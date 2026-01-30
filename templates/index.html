@@ -2488,8 +2488,6 @@
         // Analyze Signal
         async function analyzeSignal(pair, forceFresh = false) {
             const detail = document.getElementById('analyzer-detail');
-            const loadingText = forceFresh ? 'Fetching FRESH data from market...' : 'Loading analysis...';
-            detail.innerHTML = `<div class="loading"><div class="spinner"></div>${loadingText}</div>`;
 
             // Switch to analyzer tab
             document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
@@ -2497,12 +2495,35 @@
             document.querySelector('[data-tab="analyzer"]').classList.add('active');
             document.getElementById('tab-analyzer').classList.add('active');
 
+            // v9.2.2: Use LOCAL signalsData first (guarantees consistency with cards)
+            // Only fetch from server if forceFresh or pair not in local data
+            let signal = null;
+
+            if (!forceFresh && signalsData && signalsData.length > 0) {
+                // Find the signal in our already-loaded data
+                const cachedSignal = signalsData.find(s => s.pair === pair);
+                if (cachedSignal) {
+                    signal = { success: true, from_local: true, ...cachedSignal };
+                    console.log(`📋 Using local data for ${pair} (matches card exactly)`);
+                }
+            }
+
+            if (!signal) {
+                // Need to fetch from server
+                const loadingText = forceFresh ? 'Fetching FRESH data from market...' : 'Loading analysis...';
+                detail.innerHTML = `<div class="loading"><div class="spinner"></div>${loadingText}</div>`;
+
+                try {
+                    const freshParam = forceFresh ? '&fresh=true' : '';
+                    const response = await fetch(`${API_BASE}/signal/${pair.replace('/', '_')}?t=${Date.now()}${freshParam}`);
+                    signal = await response.json();
+                } catch (err) {
+                    detail.innerHTML = `<div class="error">Failed to load analysis: ${err.message}</div>`;
+                    return;
+                }
+            }
+
             try {
-                // v9.2.2: Use cached data by default (matches Overview cards)
-                // Pass fresh=true to force fresh market data
-                const freshParam = forceFresh ? '&fresh=true' : '';
-                const response = await fetch(`${API_BASE}/signal/${pair.replace('/', '_')}?t=${Date.now()}${freshParam}`);
-                const signal = await response.json();
                 
                 if (signal.success) {
                     // Build AI Cross-Validation HTML before template literal
@@ -2548,9 +2569,17 @@
                     }
 
                     const fetchTime = new Date().toLocaleTimeString();
-                    const cacheStatus = signal.from_cache
-                        ? `<span style="color: var(--accent-blue);">📋 Cached data (matches Overview cards)</span> <button onclick="analyzeSignal('${signal.pair}', true)" style="margin-left: 0.5rem; padding: 0.25rem 0.5rem; font-size: 0.7rem; background: var(--accent-purple); border: none; border-radius: 4px; color: white; cursor: pointer;">🔄 Get Fresh</button>`
-                        : `<span style="color: var(--accent-green);">🔄 Fresh data fetched at ${fetchTime}</span>`;
+                    let cacheStatus;
+                    if (signal.from_local) {
+                        // Data from local signalsData array - 100% matches the card
+                        cacheStatus = `<span style="color: var(--accent-green);">✓ Same data as Overview card</span> <button onclick="analyzeSignal('${signal.pair}', true)" style="margin-left: 0.5rem; padding: 0.25rem 0.5rem; font-size: 0.7rem; background: var(--accent-purple); border: none; border-radius: 4px; color: white; cursor: pointer;">🔄 Get Fresh</button>`;
+                    } else if (signal.from_cache) {
+                        // Data from server cache
+                        cacheStatus = `<span style="color: var(--accent-blue);">📋 Server cached data</span> <button onclick="analyzeSignal('${signal.pair}', true)" style="margin-left: 0.5rem; padding: 0.25rem 0.5rem; font-size: 0.7rem; background: var(--accent-purple); border: none; border-radius: 4px; color: white; cursor: pointer;">🔄 Get Fresh</button>`;
+                    } else {
+                        // Fresh data from server
+                        cacheStatus = `<span style="color: var(--accent-purple);">🔄 Fresh data at ${fetchTime}</span>`;
+                    }
                     detail.innerHTML = `
                         <h3 style="margin-bottom: 0.5rem;">${signal.pair} Analysis</h3>
                         <div style="font-size: 0.75rem; margin-bottom: 1rem;">${cacheStatus}</div>
