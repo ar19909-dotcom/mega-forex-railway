@@ -2229,13 +2229,15 @@
         
         // Load Signals - Uses /signals endpoint
         let lastSignalsUpdate = null;
-        async function loadSignals() {
+        async function loadSignals(forceRefresh = false) {
             const container = document.getElementById('signals-container');
-            container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading signals...</div>';
+            const loadingText = forceRefresh ? 'Auto-refreshing signals...' : 'Loading signals...';
+            container.innerHTML = `<div class="loading"><div class="spinner"></div>${loadingText}</div>`;
 
             try {
-                // Cache-bust to ensure fresh data
-                const response = await fetch(`${API_BASE}/signals?t=${Date.now()}`);
+                // v9.2.2: Add refresh=true on auto-refresh to clear server cache
+                const refreshParam = forceRefresh ? '&refresh=true' : '';
+                const response = await fetch(`${API_BASE}/signals?t=${Date.now()}${refreshParam}`);
                 const data = await response.json();
 
                 if (data.success && data.signals) {
@@ -4156,7 +4158,8 @@
             countdown--;
             if (countdown <= 0) {
                 countdown = 120;
-                loadSignals();
+                // v9.2.2: Force refresh to clear server cache on auto-refresh
+                loadSignals(true);
             }
             document.getElementById('refresh-countdown').textContent = `${countdown}s`;
         }

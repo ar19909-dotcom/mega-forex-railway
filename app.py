@@ -7287,13 +7287,19 @@ def get_rates_endpoint():
 def get_signals():
     """Get all trading signals with caching for fast loading"""
     try:
-        # Check cache first (thread-safe)
-        if is_cache_valid('signals'):
+        # v9.2.2: Force refresh parameter clears cache (used by auto-refresh)
+        force_refresh = request.args.get('refresh', 'false').lower() == 'true'
+
+        # Check cache first (thread-safe) - skip if force_refresh
+        if not force_refresh and is_cache_valid('signals'):
             with cache_lock:
                 cached = cache['signals'].get('data')
                 if cached:
                     logger.debug("📊 Signals: Returning cached data")
                     return jsonify(cached)
+
+        if force_refresh:
+            logger.info("📊 Signals: Force refresh requested - regenerating all signals")
 
         # Generate fresh signals (v9.0: increased workers for faster loading)
         signals = []
