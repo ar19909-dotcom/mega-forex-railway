@@ -87,7 +87,7 @@ def health_check():
     """Health check endpoint"""
     return jsonify({
         'status': 'healthy',
-        'version': '9.2.1 PRO - AI ENHANCED',
+        'version': '9.2.2 PRO - AI ENHANCED',
         'pairs': 45,
         'timestamp': datetime.now().isoformat()
     })
@@ -5735,41 +5735,60 @@ def generate_signal(pair):
             }
         }
 
-        # Set G3 based on potential direction - v9.2.1: BALANCED trend confirmation
+        # Set G3 based on potential direction - v9.2.2: BALANCED trend confirmation
         # Pass if: T&M confirms OR EMA neutral/supportive (not BOTH required)
         # Only BLOCK if BOTH T&M AND EMA strongly contradict (real counter-trend)
         ema_signal = tech.get('ema_signal', 'NEUTRAL')
 
-        if composite_score >= 60:  # LONG direction
-            tm_confirms = tm_score > 52  # T&M supports LONG
-            ema_ok = ema_signal != 'BEARISH'  # EMA must NOT be BEARISH for LONG
+        # v9.2.2 BALANCED G3 GATE - Not too strict, not too loose
+        # Logic: Block counter-trend ONLY when BOTH EMA contradicts AND T&M is weak
+        # Allow trade if: EMA confirms, EMA neutral, OR T&M strongly confirms (momentum override)
 
-            # v9.2.1 FIX: EMA BEARISH = NO LONG (strict protection)
-            # If EMA shows downtrend, DO NOT go long regardless of T&M
-            # This prevents counter-trend losses like GBP/NZD
+        if composite_score >= 60:  # LONG direction
+            tm_strong = tm_score >= 58  # Strong momentum confirmation
+            tm_confirms = tm_score > 52  # T&M supports LONG
+
             if ema_signal == 'BEARISH':
-                gate_details['G3_trend_confirm']['passed'] = False
-                gate_details['G3_trend_confirm']['value'] = f"{tm_signal} ({tm_score}) | EMA: {ema_signal} ⚠️ BLOCKED"
-            else:
-                # EMA is BULLISH or NEUTRAL - check T&M confirmation
-                gate_details['G3_trend_confirm']['passed'] = tm_confirms or (ema_signal == 'BULLISH')
+                # EMA contradicts LONG - check if T&M strongly overrides
+                if tm_strong:
+                    # Strong momentum can override weak EMA contradiction
+                    gate_details['G3_trend_confirm']['passed'] = True
+                    gate_details['G3_trend_confirm']['value'] = f"{tm_signal} ({tm_score}) | EMA: {ema_signal} ⚡ T&M Override"
+                else:
+                    # Weak T&M + EMA contradiction = risky counter-trend trade
+                    gate_details['G3_trend_confirm']['passed'] = False
+                    gate_details['G3_trend_confirm']['value'] = f"{tm_signal} ({tm_score}) | EMA: {ema_signal} ⚠️ Counter-trend"
+            elif ema_signal == 'NEUTRAL':
+                # No clear EMA direction - allow if T&M confirms
+                gate_details['G3_trend_confirm']['passed'] = tm_confirms
                 gate_details['G3_trend_confirm']['value'] = f"{tm_signal} ({tm_score}) | EMA: {ema_signal}"
+            else:  # EMA BULLISH - confirms LONG
+                gate_details['G3_trend_confirm']['passed'] = True
+                gate_details['G3_trend_confirm']['value'] = f"{tm_signal} ({tm_score}) | EMA: {ema_signal} ✓ Aligned"
 
         elif composite_score <= 40:  # SHORT direction
+            tm_strong = tm_score <= 42  # Strong momentum confirmation for SHORT
             tm_confirms = tm_score < 48  # T&M supports SHORT
-            ema_ok = ema_signal != 'BULLISH'  # EMA must NOT be BULLISH for SHORT
 
-            # v9.2.1 FIX: EMA BULLISH = NO SHORT (strict protection)
-            # If EMA shows uptrend, DO NOT go short regardless of T&M
             if ema_signal == 'BULLISH':
-                gate_details['G3_trend_confirm']['passed'] = False
-                gate_details['G3_trend_confirm']['value'] = f"{tm_signal} ({tm_score}) | EMA: {ema_signal} ⚠️ BLOCKED"
-            else:
-                # EMA is BEARISH or NEUTRAL - check T&M confirmation
-                gate_details['G3_trend_confirm']['passed'] = tm_confirms or (ema_signal == 'BEARISH')
+                # EMA contradicts SHORT - check if T&M strongly overrides
+                if tm_strong:
+                    # Strong momentum can override weak EMA contradiction
+                    gate_details['G3_trend_confirm']['passed'] = True
+                    gate_details['G3_trend_confirm']['value'] = f"{tm_signal} ({tm_score}) | EMA: {ema_signal} ⚡ T&M Override"
+                else:
+                    # Weak T&M + EMA contradiction = risky counter-trend trade
+                    gate_details['G3_trend_confirm']['passed'] = False
+                    gate_details['G3_trend_confirm']['value'] = f"{tm_signal} ({tm_score}) | EMA: {ema_signal} ⚠️ Counter-trend"
+            elif ema_signal == 'NEUTRAL':
+                # No clear EMA direction - allow if T&M confirms
+                gate_details['G3_trend_confirm']['passed'] = tm_confirms
                 gate_details['G3_trend_confirm']['value'] = f"{tm_signal} ({tm_score}) | EMA: {ema_signal}"
+            else:  # EMA BEARISH - confirms SHORT
+                gate_details['G3_trend_confirm']['passed'] = True
+                gate_details['G3_trend_confirm']['value'] = f"{tm_signal} ({tm_score}) | EMA: {ema_signal} ✓ Aligned"
 
-        gate_details['G3_trend_confirm']['rule'] = 'EMA must not contradict direction (BEARISH blocks LONG, BULLISH blocks SHORT)'
+        gate_details['G3_trend_confirm']['rule'] = 'EMA contradiction blocked unless T&M strongly confirms (>=58 LONG, <=42 SHORT)'
 
         # Set G7 based on AI alignment - AI should not strongly contradict
         if composite_score >= 60:  # LONG direction
@@ -6469,7 +6488,7 @@ def run_system_audit():
     # ═══════════════════════════════════════════════════════════════════════════
     audit['scoring_methodology'] = {
         'version': '9.2.1 PRO',
-        'description': 'v9.2.1 — 7 merged factor groups, 8-gate quality filter (G3/G5/G8 mandatory), conviction metric, regime-dynamic weights',
+        'description': 'v9.2.2 — 7 merged factor groups, 8-gate quality filter (G3/G5/G8 mandatory), balanced G3 gate, conviction metric, regime-dynamic weights',
         'score_range': {
             'min': 5,
             'max': 95,
@@ -7167,8 +7186,8 @@ def run_system_audit():
 @app.route('/api-info')
 def api_info():
     return jsonify({
-        'name': 'MEGA FOREX v9.2.1 PRO - AI Enhanced',
-        'version': '9.2.1',
+        'name': 'MEGA FOREX v9.2.2 PRO - AI Enhanced',
+        'version': '9.2.2',
         'status': 'operational',
         'pairs': len(FOREX_PAIRS),
         'factor_groups': len(FACTOR_GROUP_WEIGHTS),
@@ -8164,11 +8183,11 @@ def is_port_available(port):
 # INITIALIZE DATABASE ON STARTUP (for Railway)
 # ═══════════════════════════════════════════════════════════════════════════════
 init_database()
-logger.info("🚀 MEGA FOREX v9.2.1 PRO - AI ENHANCED initialized")
+logger.info("🚀 MEGA FOREX v9.2.2 PRO - AI ENHANCED initialized")
 
 if __name__ == '__main__':
     print("=" * 70)
-    print("      MEGA FOREX v9.2.1 PRO - AI ENHANCED SYSTEM")
+    print("      MEGA FOREX v9.2.2 PRO - AI ENHANCED SYSTEM")
     print("=" * 70)
     print(f"  Pairs:           {len(FOREX_PAIRS)}")
     print(f"  Factor Groups:   7 (merged from 11 individual factors)")
