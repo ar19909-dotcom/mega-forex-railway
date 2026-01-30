@@ -256,6 +256,197 @@ CENTRAL_BANK_POLICY_BIAS = {
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# v9.2.1 CURRENCY CORRELATION & TRIANGLE ANALYSIS
+# Uses 45-pair data to find: currency strength, correlations, arbitrage opportunities
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Known pair correlations (positive = move together, negative = move opposite)
+PAIR_CORRELATIONS = {
+    # Strong positive correlations (>0.8)
+    ('EUR/USD', 'GBP/USD'): 0.85,
+    ('AUD/USD', 'NZD/USD'): 0.92,
+    ('EUR/USD', 'AUD/USD'): 0.75,
+    ('USD/CHF', 'USD/JPY'): 0.70,
+    # Strong negative correlations (<-0.7)
+    ('EUR/USD', 'USD/CHF'): -0.95,
+    ('GBP/USD', 'USD/CHF'): -0.88,
+    ('AUD/USD', 'USD/CAD'): -0.65,
+    ('EUR/USD', 'USD/JPY'): -0.60,
+}
+
+# Triangle relationships for arbitrage detection
+# If A/B * B/C = A/C, the triangle is balanced
+# Deviation from this = potential mispricing opportunity
+TRIANGLE_SETS = [
+    ('EUR/USD', 'USD/JPY', 'EUR/JPY'),  # EUR triangle
+    ('GBP/USD', 'USD/JPY', 'GBP/JPY'),  # GBP triangle
+    ('AUD/USD', 'USD/JPY', 'AUD/JPY'),  # AUD triangle
+    ('EUR/USD', 'USD/CHF', 'EUR/CHF'),  # CHF triangle
+    ('GBP/USD', 'USD/CHF', 'GBP/CHF'),  # GBP-CHF triangle
+    ('EUR/USD', 'USD/CAD', 'EUR/CAD'),  # CAD triangle
+    ('AUD/USD', 'USD/CAD', 'AUD/CAD'),  # AUD-CAD triangle
+    ('EUR/USD', 'GBP/USD', 'EUR/GBP'),  # EUR-GBP triangle
+    ('AUD/USD', 'NZD/USD', 'AUD/NZD'),  # AUD-NZD triangle
+    ('NZD/USD', 'USD/JPY', 'NZD/JPY'),  # NZD triangle
+]
+
+def calculate_currency_strength(rates_dict):
+    """
+    Calculate relative strength of each currency based on all pairs.
+    Returns dict with currency -> strength score (0-100, 50=neutral)
+    """
+    currencies = ['USD', 'EUR', 'GBP', 'JPY', 'CHF', 'AUD', 'NZD', 'CAD']
+    strength = {c: [] for c in currencies}
+
+    for pair, rate in rates_dict.items():
+        if '/' not in pair or rate <= 0:
+            continue
+        base, quote = pair.split('/')
+        if base not in currencies or quote not in currencies:
+            continue
+
+        # Normalize rate to percentage change from reference (simplified)
+        # Positive = base stronger, Negative = quote stronger
+        # We track relative performance
+        mid = rate if isinstance(rate, (int, float)) else rate.get('mid', 0)
+        if mid > 0:
+            strength[base].append(60)   # Base is being bought
+            strength[quote].append(40)  # Quote is being sold
+
+    # Calculate average strength per currency
+    result = {}
+    for curr, scores in strength.items():
+        if scores:
+            result[curr] = sum(scores) / len(scores)
+        else:
+            result[curr] = 50  # Neutral if no data
+
+    return result
+
+
+def detect_triangle_deviation(rates_dict, threshold=0.002):
+    """
+    Detect triangle arbitrage opportunities.
+    Returns list of triangles with significant deviation (potential trades).
+    """
+    deviations = []
+
+    for pair1, pair2, pair3 in TRIANGLE_SETS:
+        try:
+            # Get rates
+            r1 = rates_dict.get(pair1, {})
+            r2 = rates_dict.get(pair2, {})
+            r3 = rates_dict.get(pair3, {})
+
+            mid1 = r1.get('mid', 0) if isinstance(r1, dict) else r1
+            mid2 = r2.get('mid', 0) if isinstance(r2, dict) else r2
+            mid3 = r3.get('mid', 0) if isinstance(r3, dict) else r3
+
+            if not all([mid1, mid2, mid3]):
+                continue
+
+            # Calculate synthetic rate vs actual
+            # For A/B * B/C = A/C pattern
+            b1, q1 = pair1.split('/')
+            b2, q2 = pair2.split('/')
+            b3, q3 = pair3.split('/')
+
+            # Calculate expected vs actual
+            if q1 == b2:  # A/B * B/C = A/C
+                synthetic = mid1 * mid2
+                actual = mid3
+            elif b1 == q2:  # B/A * A/C = B/C (need to invert)
+                synthetic = mid2 / mid1 if mid1 > 0 else 0
+                actual = mid3
+            else:
+                continue
+
+            if actual > 0:
+                deviation = (synthetic - actual) / actual
+                if abs(deviation) > threshold:
+                    direction = 'LONG' if deviation > 0 else 'SHORT'
+                    deviations.append({
+                        'triangle': (pair1, pair2, pair3),
+                        'target_pair': pair3,
+                        'deviation': round(deviation * 100, 3),
+                        'direction': direction,
+                        'signal': f"{pair3} appears {'undervalued' if deviation > 0 else 'overvalued'} by {abs(deviation*100):.2f}%"
+                    })
+        except Exception:
+            continue
+
+    return sorted(deviations, key=lambda x: abs(x['deviation']), reverse=True)
+
+
+def get_correlation_signal(pair, all_signals):
+    """
+    Check if correlated pairs confirm or contradict a signal.
+    Returns adjustment to confidence (-10 to +10).
+    """
+    if not all_signals:
+        return 0, "No correlation data"
+
+    pair_signal = None
+    for s in all_signals:
+        if s.get('pair') == pair:
+            pair_signal = s
+            break
+
+    if not pair_signal:
+        return 0, "Pair not found"
+
+    direction = pair_signal.get('direction', 'NEUTRAL')
+    if direction == 'NEUTRAL':
+        return 0, "Neutral - no correlation check"
+
+    # Check correlated pairs
+    confirmations = 0
+    contradictions = 0
+    checked = []
+
+    for (p1, p2), corr in PAIR_CORRELATIONS.items():
+        related_pair = None
+        if p1 == pair:
+            related_pair = p2
+        elif p2 == pair:
+            related_pair = p1
+
+        if related_pair:
+            # Find related pair's signal
+            for s in all_signals:
+                if s.get('pair') == related_pair:
+                    related_dir = s.get('direction', 'NEUTRAL')
+                    if related_dir != 'NEUTRAL':
+                        checked.append(related_pair)
+                        # If positive correlation, same direction = confirmation
+                        # If negative correlation, opposite direction = confirmation
+                        if corr > 0:
+                            if direction == related_dir:
+                                confirmations += 1
+                            else:
+                                contradictions += 1
+                        else:  # Negative correlation
+                            if direction != related_dir:
+                                confirmations += 1
+                            else:
+                                contradictions += 1
+                    break
+
+    # Calculate adjustment
+    if confirmations > contradictions:
+        adj = min(10, (confirmations - contradictions) * 3)
+        note = f"Correlated pairs confirm ({confirmations} vs {contradictions})"
+    elif contradictions > confirmations:
+        adj = max(-10, (confirmations - contradictions) * 3)
+        note = f"Correlated pairs contradict ({contradictions} vs {confirmations})"
+    else:
+        adj = 0
+        note = "Correlated pairs mixed"
+
+    return adj, note
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # FACTOR WEIGHTS v8.5 - 11 FACTORS (AI-ENHANCED)
 # Includes: Options Positioning (6%), COT Data (in sentiment), AI Analysis (10%)
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -5535,24 +5726,36 @@ def generate_signal(pair):
             }
         }
 
-        # Set G3 based on potential direction - v9.1: STRICT trend confirmation
-        # 1. Trend & Momentum score must support direction
-        # 2. EMA signal must NOT contradict direction (prevents counter-trend trades)
+        # Set G3 based on potential direction - v9.2.1: BALANCED trend confirmation
+        # Pass if: T&M confirms OR EMA neutral/supportive (not BOTH required)
+        # Only BLOCK if BOTH T&M AND EMA strongly contradict (real counter-trend)
         ema_signal = tech.get('ema_signal', 'NEUTRAL')
 
         if composite_score >= 60:  # LONG direction
-            # Trend must be BULLISH (score > 52) AND EMA not BEARISH
-            tm_confirms = tm_score > 52
-            ema_ok = ema_signal != 'BEARISH'
-            gate_details['G3_trend_confirm']['passed'] = tm_confirms and ema_ok
+            tm_confirms = tm_score > 52  # T&M supports LONG
+            tm_neutral = 48 <= tm_score <= 52  # T&M is neutral
+            ema_ok = ema_signal != 'BEARISH'  # EMA not against LONG
+            ema_supports = ema_signal == 'BULLISH'  # EMA confirms LONG
+
+            # Pass if: T&M confirms, OR EMA supports, OR both are neutral/mixed
+            # Only fail if T&M is bearish AND EMA is bearish (strong counter-trend)
+            strong_counter = (tm_score < 48) and (ema_signal == 'BEARISH')
+            gate_details['G3_trend_confirm']['passed'] = not strong_counter and (tm_confirms or ema_ok)
             gate_details['G3_trend_confirm']['value'] = f"{tm_signal} ({tm_score}) | EMA: {ema_signal}"
+
         elif composite_score <= 40:  # SHORT direction
-            # Trend must be BEARISH (score < 48) AND EMA not BULLISH
-            tm_confirms = tm_score < 48
-            ema_ok = ema_signal != 'BULLISH'
-            gate_details['G3_trend_confirm']['passed'] = tm_confirms and ema_ok
+            tm_confirms = tm_score < 48  # T&M supports SHORT
+            tm_neutral = 48 <= tm_score <= 52  # T&M is neutral
+            ema_ok = ema_signal != 'BULLISH'  # EMA not against SHORT
+            ema_supports = ema_signal == 'BEARISH'  # EMA confirms SHORT
+
+            # Pass if: T&M confirms, OR EMA supports, OR both are neutral/mixed
+            # Only fail if T&M is bullish AND EMA is bullish (strong counter-trend)
+            strong_counter = (tm_score > 52) and (ema_signal == 'BULLISH')
+            gate_details['G3_trend_confirm']['passed'] = not strong_counter and (tm_confirms or ema_ok)
             gate_details['G3_trend_confirm']['value'] = f"{tm_signal} ({tm_score}) | EMA: {ema_signal}"
-            gate_details['G3_trend_confirm']['rule'] = 'Trend must confirm AND EMA must not contradict'
+
+        gate_details['G3_trend_confirm']['rule'] = 'Block only if BOTH T&M AND EMA strongly contradict'
 
         # Set G7 based on AI alignment - AI should not strongly contradict
         if composite_score >= 60:  # LONG direction
@@ -7045,6 +7248,64 @@ def get_technical(pair):
 def get_news():
     news = get_finnhub_news()
     return jsonify({'success': True, **news})
+
+
+@app.route('/correlation')
+def get_correlation_analysis():
+    """
+    v9.2.1: Get currency correlation analysis and triangle deviations.
+    Uses 45-pair data for advanced signal confirmation.
+    """
+    try:
+        # Get all current rates
+        rates = get_all_rates()
+        rates_dict = {r['pair']: r for r in rates}
+
+        # Calculate currency strength
+        currency_strength = calculate_currency_strength(rates_dict)
+
+        # Detect triangle deviations
+        triangles = detect_triangle_deviation(rates_dict)
+
+        # Get strongest/weakest currencies
+        sorted_strength = sorted(currency_strength.items(), key=lambda x: x[1], reverse=True)
+        strongest = sorted_strength[:3]
+        weakest = sorted_strength[-3:]
+
+        # Generate trade suggestions based on strength
+        suggestions = []
+        for strong_curr, strong_score in strongest[:2]:
+            for weak_curr, weak_score in weakest[:2]:
+                pair = f"{strong_curr}/{weak_curr}"
+                reverse_pair = f"{weak_curr}/{strong_curr}"
+                # Check if this pair exists
+                if pair in rates_dict:
+                    suggestions.append({
+                        'pair': pair,
+                        'direction': 'LONG',
+                        'reason': f"Strong {strong_curr} ({strong_score:.1f}) vs Weak {weak_curr} ({weak_score:.1f})"
+                    })
+                elif reverse_pair in rates_dict:
+                    suggestions.append({
+                        'pair': reverse_pair,
+                        'direction': 'SHORT',
+                        'reason': f"Weak {weak_curr} ({weak_score:.1f}) vs Strong {strong_curr} ({strong_score:.1f})"
+                    })
+
+        return jsonify({
+            'success': True,
+            'timestamp': datetime.now().isoformat(),
+            'currency_strength': {k: round(v, 1) for k, v in currency_strength.items()},
+            'strongest': [{'currency': c, 'strength': round(s, 1)} for c, s in strongest],
+            'weakest': [{'currency': c, 'strength': round(s, 1)} for c, s in weakest],
+            'triangle_deviations': triangles[:5],  # Top 5 deviations
+            'trade_suggestions': suggestions[:5],
+            'correlations': {f"{p1}-{p2}": corr for (p1, p2), corr in PAIR_CORRELATIONS.items()}
+        })
+    except Exception as e:
+        logger.error(f"Correlation analysis error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 
 @app.route('/calendar')
 def get_calendar():

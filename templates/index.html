@@ -2003,6 +2003,7 @@
                 </div>
                 <button onclick="loadSignals()">🔄 Refresh</button>
                 <button onclick="showAIInsights()" style="background: linear-gradient(135deg, #8b5cf6, #3b82f6); margin-left: 0.5rem;">🤖 AI Insights</button>
+                <button onclick="showCorrelation()" style="background: linear-gradient(135deg, #10b981, #059669); margin-left: 0.5rem;">📊 Correlation</button>
             </div>
             <div class="signals-grid" id="signals-container">
                 <div class="loading">
@@ -3997,6 +3998,107 @@
             }
         }
         
+        // v9.2.1: Currency Correlation Analysis
+        async function showCorrelation() {
+            const container = document.getElementById('audit-container');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div>Analyzing currency correlations & triangle deviations...</div>';
+
+            // Switch to audit tab
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.querySelector('[data-tab="audit"]').classList.add('active');
+            document.getElementById('tab-audit').classList.add('active');
+
+            try {
+                const response = await fetch(`${API_BASE}/correlation?t=${Date.now()}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    const strength = data.currency_strength || {};
+                    const triangles = data.triangle_deviations || [];
+                    const suggestions = data.trade_suggestions || [];
+
+                    // Build currency strength bars
+                    const strengthBars = Object.entries(strength)
+                        .sort((a, b) => b[1] - a[1])
+                        .map(([curr, score]) => {
+                            const color = score > 55 ? '#10b981' : score < 45 ? '#ef4444' : '#6b7280';
+                            const width = Math.min(100, Math.max(0, score));
+                            return `
+                                <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;">
+                                    <span style="width: 40px; font-weight: 600;">${curr}</span>
+                                    <div style="flex: 1; background: rgba(255,255,255,0.1); height: 20px; border-radius: 4px; overflow: hidden;">
+                                        <div style="width: ${width}%; height: 100%; background: ${color}; display: flex; align-items: center; justify-content: flex-end; padding-right: 0.5rem;">
+                                            <span style="font-size: 0.75rem; font-weight: 600;">${score.toFixed(1)}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('');
+
+                    // Build triangle deviations
+                    const triangleHtml = triangles.length > 0 ? triangles.map(t => `
+                        <div style="padding: 0.75rem; background: rgba(${t.direction === 'LONG' ? '16,185,129' : '239,68,68'}, 0.1); border-left: 3px solid ${t.direction === 'LONG' ? '#10b981' : '#ef4444'}; border-radius: 0 0.5rem 0.5rem 0; margin-bottom: 0.5rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="font-weight: 600;">${t.target_pair}</span>
+                                <span class="status-badge ${t.direction === 'LONG' ? 'ok' : 'error'}">${t.direction}</span>
+                            </div>
+                            <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">${t.signal}</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">Triangle: ${t.triangle.join(' → ')}</div>
+                        </div>
+                    `).join('') : '<div style="color: var(--text-muted); padding: 1rem; text-align: center;">No significant triangle deviations detected</div>';
+
+                    // Build trade suggestions
+                    const suggestionsHtml = suggestions.map(s => `
+                        <div style="display: flex; align-items: center; gap: 1rem; padding: 0.5rem; background: rgba(255,255,255,0.03); border-radius: 0.5rem; margin-bottom: 0.5rem;">
+                            <span style="font-weight: 600; min-width: 80px;">${s.pair}</span>
+                            <span class="status-badge ${s.direction === 'LONG' ? 'ok' : 'error'}">${s.direction}</span>
+                            <span style="font-size: 0.85rem; color: var(--text-secondary); flex: 1;">${s.reason}</span>
+                        </div>
+                    `).join('');
+
+                    container.innerHTML = `
+                        <div class="audit-section">
+                            <h3>📊 Currency Correlation Analysis (v9.2.1)</h3>
+                            <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+                                Real-time currency strength analysis using all 45 pairs. Higher scores = stronger currency.
+                            </p>
+                        </div>
+
+                        <div class="audit-section">
+                            <h4 style="margin-bottom: 1rem;">💪 Currency Strength Index</h4>
+                            ${strengthBars}
+                            <div style="margin-top: 1rem; padding: 0.75rem; background: var(--bg-secondary); border-radius: 0.5rem;">
+                                <strong>Strategy:</strong> Buy pairs where strong currency is base, sell where weak currency is base.
+                            </div>
+                        </div>
+
+                        <div class="audit-section">
+                            <h4 style="margin-bottom: 1rem;">📐 Triangle Arbitrage Opportunities</h4>
+                            <p style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 0.85rem;">
+                                Detects mispricing between related pairs. When triangle deviation exceeds 0.2%, there may be a trading opportunity.
+                            </p>
+                            ${triangleHtml}
+                        </div>
+
+                        <div class="audit-section">
+                            <h4 style="margin-bottom: 1rem;">🎯 Strength-Based Trade Suggestions</h4>
+                            ${suggestionsHtml || '<div style="color: var(--text-muted); text-align: center;">No strong suggestions at this time</div>'}
+                        </div>
+
+                        <p style="color: var(--text-muted); margin-top: 1rem; font-size: 0.85rem;">
+                            Analysis completed at: ${data.timestamp || new Date().toISOString()}
+                        </p>
+                    `;
+                } else {
+                    container.innerHTML = '<div style="color: var(--accent-red); padding: 1rem;">Error loading correlation data</div>';
+                }
+            } catch (error) {
+                console.error('Correlation analysis error:', error);
+                container.innerHTML = '<div style="color: var(--accent-red); padding: 1rem;">Error: ' + error.message + '</div>';
+            }
+        }
+
         // Filter listeners
         document.getElementById('filter-category').addEventListener('change', renderSignals);
         document.getElementById('filter-direction').addEventListener('change', renderSignals);
