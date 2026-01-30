@@ -7938,27 +7938,28 @@ def get_positioning():
 
     # Try to get REAL data from IG API
     ig_configured = all([IG_API_KEY, IG_USERNAME, IG_PASSWORD])
-    ig_rate_limited = ig_session.get('rate_limited', False)
 
-    if ig_configured and not ig_rate_limited:
-        ig_data = get_all_ig_sentiment()
+    if ig_configured:
+        # Check if rate limited BEFORE trying
+        if not ig_session.get('rate_limited', False):
+            ig_data = get_all_ig_sentiment()
 
-        if ig_data and len(ig_data) > 0:
-            logger.info(f"✅ Positioning: Using REAL IG data ({len(ig_data)} pairs)")
-            result = {
-                'success': True,
-                'count': len(ig_data),
-                'source': 'IG_MARKETS_REAL',
-                'data': ig_data
-            }
-            # Cache the successful result (thread-safe)
-            with cache_lock:
-                cache['positioning']['data'] = result
-                cache['positioning']['timestamp'] = datetime.now()
-            return jsonify(result)
+            if ig_data and len(ig_data) > 0:
+                logger.info(f"✅ Positioning: Using REAL IG data ({len(ig_data)} pairs)")
+                result = {
+                    'success': True,
+                    'count': len(ig_data),
+                    'source': 'IG_MARKETS_REAL',
+                    'data': ig_data
+                }
+                # Cache the successful result (thread-safe)
+                with cache_lock:
+                    cache['positioning']['data'] = result
+                    cache['positioning']['timestamp'] = datetime.now()
+                return jsonify(result)
 
-    # v9.2.2: Handle rate limit - show estimated data instead of "NOT_CONFIGURED"
-    if ig_rate_limited:
+        # Re-check rate_limited flag AFTER API call (might have just been set)
+        if ig_session.get('rate_limited', False):
         cooldown_remaining = 0
         if ig_session.get('rate_limit_until'):
             cooldown_remaining = max(0, (ig_session['rate_limit_until'] - datetime.now()).total_seconds() / 60)
