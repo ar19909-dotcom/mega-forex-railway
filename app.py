@@ -6794,12 +6794,12 @@ def run_system_audit():
     }
     
     # ═══════════════════════════════════════════════════════════════════════════
-    # 10 FACTOR DETAILS — individual factors (grouped into 7 in v9.0, confluence removed)
+    # 11 FACTOR DETAILS — individual factors (grouped into 8 in v9.2, Currency Strength added)
     # ═══════════════════════════════════════════════════════════════════════════
     audit['factor_details'] = {
         'technical': {
-            'weight': 15,
-            'weight_percent': '60% of Trend & Momentum (23%)',
+            'weight': 13,
+            'weight_percent': '60% of Trend & Momentum (21%)',
             'description': 'RSI, MACD, ADX trend analysis',
             'data_sources': ['Polygon.io candles', 'Calculated indicators'],
             'score_range': '10-90',
@@ -6840,8 +6840,8 @@ def run_system_audit():
             'signal_thresholds': {'bullish': '>= 58', 'bearish': '<= 42', 'neutral': '43-57'}
         },
         'fundamental': {
-            'weight': 18,
-            'weight_percent': '100% of Fundamental (17%)',
+            'weight': 15,
+            'weight_percent': '100% of Fundamental (15%)',
             'description': 'Interest rate differentials and carry trade analysis',
             'data_sources': ['Central bank rates database', 'FRED API'],
             'score_range': '15-85',
@@ -6863,8 +6863,8 @@ def run_system_audit():
             'signal_thresholds': {'bullish': '>= 58', 'bearish': '<= 42', 'neutral': '43-57'}
         },
         'sentiment': {
-            'weight': 10,
-            'weight_percent': '65% of Sentiment (14%)',
+            'weight': 8,
+            'weight_percent': '65% of Sentiment (13%)',
             'description': 'IG Client Positioning + News sentiment analysis',
             'data_sources': ['IG Markets API (client positioning)', 'Finnhub API (news)', 'RSS feeds (ForexLive, FXStreet, Investing.com)'],
             'score_range': '15-85',
@@ -6883,8 +6883,8 @@ def run_system_audit():
             'signal_thresholds': {'bullish': '>= 58', 'bearish': '<= 42', 'neutral': '43-57'}
         },
         'ai': {
-            'weight': 12,
-            'weight_percent': '100% of AI Synthesis (12%)',
+            'weight': 10,
+            'weight_percent': '100% of AI Synthesis (10%)',
             'description': 'GPT-4o-mini AI-powered market analysis (v9.0)',
             'data_sources': ['OpenAI API (GPT-4o-mini model)'],
             'score_range': '15-85',
@@ -6906,8 +6906,8 @@ def run_system_audit():
             'signal_thresholds': {'bullish': '>= 58', 'bearish': '<= 42', 'neutral': '43-57'}
         },
         'intermarket': {
-            'weight': 14,
-            'weight_percent': '100% of Intermarket (14%)',
+            'weight': 12,
+            'weight_percent': '100% of Intermarket (12%)',
             'description': 'Correlation analysis with DXY, Gold, Yields, Oil',
             'data_sources': ['Polygon.io', 'Alpha Vantage'],
             'score_range': '15-85',
@@ -6921,8 +6921,8 @@ def run_system_audit():
             'signal_thresholds': {'bullish': '>= 58', 'bearish': '<= 42', 'neutral': '43-57'}
         },
         'quantitative': {
-            'weight': 7,
-            'weight_percent': '55% of Mean Reversion (12%)',
+            'weight': 6,
+            'weight_percent': '55% of Mean Reversion (11%)',
             'description': 'Z-Score and Bollinger Band mean reversion analysis',
             'data_sources': ['Calculated from price data'],
             'score_range': '10-90',
@@ -6956,8 +6956,8 @@ def run_system_audit():
             'signal_thresholds': {'bullish': '>= 58', 'bearish': '<= 42', 'neutral': '43-57'}
         },
         'mtf': {
-            'weight': 10,
-            'weight_percent': '40% of Trend & Momentum (23%)',
+            'weight': 8,
+            'weight_percent': '40% of Trend & Momentum (21%)',
             'description': 'Multi-Timeframe trend alignment (H1, H4, D1)',
             'data_sources': ['Polygon.io candles (hourly, daily)'],
             'score_range': '12-88',
@@ -6978,7 +6978,7 @@ def run_system_audit():
         },
         'structure': {
             'weight': 5,
-            'weight_percent': '45% of Mean Reversion (12%)',
+            'weight_percent': '45% of Mean Reversion (11%)',
             'description': 'Support/Resistance levels and Pivot Points',
             'data_sources': ['Calculated from swing highs/lows'],
             'score_range': '15-85',
@@ -7031,7 +7031,7 @@ def run_system_audit():
         },
         'options': {
             'weight': 5,
-            'weight_percent': '35% of Sentiment (14%)',
+            'weight_percent': '35% of Sentiment (13%)',
             'description': '25-Delta Risk Reversals & Put/Call Ratio analysis',
             'data_sources': ['CME FX Options (when available)', 'Price volatility structure proxy'],
             'score_range': '15-85 (REAL), 40-60 (PROXY)',
@@ -7057,6 +7057,37 @@ def run_system_audit():
             ],
             'signal_thresholds': {'bullish': '>= 58', 'bearish': '<= 42', 'neutral': '43-57'},
             'note': 'Uses price volatility proxy when CME data unavailable'
+        },
+        'currency_strength': {
+            'weight': 10,
+            'weight_percent': '100% of Currency Strength (10%)',
+            'description': '45-pair analysis — base vs quote currency relative strength',
+            'data_sources': ['Polygon.io (all 45 forex pairs)', 'Real-time cross-currency analysis'],
+            'score_range': '15-85',
+            'components': {
+                'Base_Currency_Strength': {
+                    'description': 'Average performance of base currency across all pairs',
+                    'calculation': 'Sum of XXX/YYY changes where XXX is base currency'
+                },
+                'Quote_Currency_Strength': {
+                    'description': 'Average performance of quote currency across all pairs',
+                    'calculation': 'Sum of XXX/YYY changes where XXX is quote currency'
+                },
+                'Relative_Strength': {
+                    'description': 'Base strength minus Quote strength',
+                    'scoring': [
+                        {'condition': 'Base >> Quote (diff > 1.5%)', 'points': '+35', 'meaning': 'Strong bullish'},
+                        {'condition': 'Base > Quote (diff 0.8-1.5%)', 'points': '+20', 'meaning': 'Bullish'},
+                        {'condition': 'Base > Quote (diff 0.3-0.8%)', 'points': '+10', 'meaning': 'Slight bullish'},
+                        {'condition': 'Balanced (diff < 0.3%)', 'points': '0', 'meaning': 'Neutral'},
+                        {'condition': 'Quote > Base (diff 0.3-0.8%)', 'points': '-10', 'meaning': 'Slight bearish'},
+                        {'condition': 'Quote > Base (diff 0.8-1.5%)', 'points': '-20', 'meaning': 'Bearish'},
+                        {'condition': 'Quote >> Base (diff > 1.5%)', 'points': '-35', 'meaning': 'Strong bearish'}
+                    ]
+                }
+            },
+            'signal_thresholds': {'bullish': '>= 58', 'bearish': '<= 42', 'neutral': '43-57'},
+            'note': 'Uses all 45 monitored pairs for comprehensive strength analysis'
         }
     }
 
