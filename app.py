@@ -626,7 +626,7 @@ CACHE_TTL = {
     'fundamental': 3600,
     'intermarket_data': 300,  # 5 minutes
     'positioning': 120,  # 2 minutes - IG sentiment doesn't change rapidly
-    'signals': 60,    # 1 minute - reduced for fresher card data (v9.2.1)
+    'signals': 120,   # 2 minutes - balanced refresh rate
     'audit': 300      # 5 minutes - audit data doesn't change rapidly
 }
 

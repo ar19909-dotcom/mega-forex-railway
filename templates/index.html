@@ -1950,7 +1950,7 @@
         </div>
         <div class="refresh-timer">
             <span>Refresh in:</span>
-            <span id="refresh-countdown">60s</span>
+            <span id="refresh-countdown">120s</span>
         </div>
     </header>
     
@@ -2186,7 +2186,7 @@
             : window.location.origin;
         let signalsData = [];
         let refreshInterval;
-        let countdown = 60;  // Reduced from 120s for fresher data (v9.2.1)
+        let countdown = 120;  // 2 minutes auto-refresh
         
         // All 45 Forex Pairs for Pair Analyzer
         const ALL_PAIRS = [
@@ -4105,11 +4105,11 @@
         document.getElementById('filter-grade').addEventListener('change', renderSignals);
         document.getElementById('rates-category').addEventListener('change', loadRates);
         
-        // Countdown timer - reduced to 60s for fresher data (v9.2.1)
+        // Countdown timer - 120s auto-refresh
         function updateCountdown() {
             countdown--;
             if (countdown <= 0) {
-                countdown = 60;
+                countdown = 120;
                 loadSignals();
             }
             document.getElementById('refresh-countdown').textContent = `${countdown}s`;
