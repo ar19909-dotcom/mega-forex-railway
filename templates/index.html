@@ -4046,7 +4046,7 @@
                             ${Object.entries(data).filter(([k]) => k !== 'success').map(([name, info]) => `
                                 <div class="result-card">
                                     <div class="value">
-                                        <span class="status-badge ${info.status === 'OK' ? 'ok' : ['NOT_CONFIGURED', 'RATE_LIMITED', 'SCHEDULED'].includes(info.status) ? 'limited' : 'error'}">
+                                        <span class="status-badge ${info.status === 'OK' ? 'ok' : ['NOT_CONFIGURED', 'RATE_LIMITED', 'SCHEDULED', 'PENDING'].includes(info.status) ? 'limited' : 'error'}">
                                             ${info.status}
                                         </span>
                                     </div>

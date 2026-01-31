@@ -8287,8 +8287,15 @@ def api_status():
         },
         'ig_markets': {
             'configured': bool(IG_API_KEY and IG_USERNAME and IG_PASSWORD),
-            'status': 'RATE_LIMITED' if ig_session.get('rate_limited') else ('OK' if all([IG_API_KEY, IG_USERNAME, IG_PASSWORD]) else 'NOT_CONFIGURED'),
+            'status': (
+                'RATE_LIMITED' if ig_session.get('rate_limited') else
+                'OK' if ig_session.get('logged_in') else
+                'ERROR' if ig_session.get('last_error') else
+                'PENDING' if all([IG_API_KEY, IG_USERNAME, IG_PASSWORD]) else
+                'NOT_CONFIGURED'
+            ),
             'account_type': IG_ACC_TYPE,
+            'error': ig_session.get('last_error') if ig_session.get('last_error') else None,
             'cooldown_min': max(0, round((ig_session.get('rate_limit_until', datetime.now()) - datetime.now()).total_seconds() / 60)) if ig_session.get('rate_limited') and ig_session.get('rate_limit_until') else 0
         },
         'openai': {
