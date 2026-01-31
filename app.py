@@ -7855,7 +7855,7 @@ def run_system_audit():
         'ai': {
             'weight': 10,
             'weight_percent': '100% of AI Synthesis (10%)',
-            'description': 'GPT-4o-mini AI-powered market analysis (v9.0)',
+            'description': 'GPT-4o-mini AI-powered market analysis (v9.2.3)',
             'data_sources': ['OpenAI API (GPT-4o-mini model)'],
             'score_range': '15-85',
             'components': {
@@ -8425,7 +8425,7 @@ def run_system_audit():
             'structure': 'Swing high/low detection + pivot calculations',
             'calendar': 'Multi-tier economic calendar + Seasonality patterns (month/quarter-end flows)',
             'options': '25-delta risk reversals + Put/Call ratios (price volatility proxy)',
-            'confluence': 'Factor agreement analysis (feeds into 7-group scoring v9.0)'
+            'confluence': 'Factor agreement analysis (feeds into 8-group scoring v9.2.3)'
         },
         'calibration_notes': {
             'score_range': '5-95 (proper differentiation)',
