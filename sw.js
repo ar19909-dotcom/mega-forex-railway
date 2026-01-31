@@ -1,5 +1,5 @@
-// MEGA FOREX v8.2 PRO - Service Worker
-const CACHE_NAME = 'mega-forex-v8.2';
+// MEGA FOREX v9.2.3 PRO - Service Worker
+const CACHE_NAME = 'mega-forex-v9.2.3';
 const OFFLINE_URL = '/offline.html';
 
 // Assets to cache for offline use
