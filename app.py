@@ -886,6 +886,26 @@ def init_database():
         )
     ''')
 
+    # ─────────────────────────────────────────────────────────────────────────
+    # TABLE 8: PAIR STATS - Per-pair performance statistics (v9.2.3)
+    # ─────────────────────────────────────────────────────────────────────────
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS pair_stats (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            pair TEXT UNIQUE NOT NULL,
+            total_signals INTEGER DEFAULT 0,
+            correct_signals INTEGER DEFAULT 0,
+            incorrect_signals INTEGER DEFAULT 0,
+            win_rate REAL DEFAULT 0,
+            avg_score_correct REAL DEFAULT 0,
+            avg_score_incorrect REAL DEFAULT 0,
+            best_direction TEXT,
+            avg_pips_won REAL DEFAULT 0,
+            avg_pips_lost REAL DEFAULT 0,
+            last_updated TEXT
+        )
+    ''')
+
     # Create indexes for faster queries
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_signal_pair ON signal_history(pair)')
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_signal_timestamp ON signal_history(timestamp)')
@@ -896,6 +916,7 @@ def init_database():
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_eval_timestamp ON signal_evaluation(entry_timestamp)')
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_factor_perf_group ON factor_performance(factor_group)')
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_ai_insights_timestamp ON ai_insights_log(timestamp)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_pair_stats ON pair_stats(pair)')
 
     conn.commit()
     conn.close()
@@ -8697,7 +8718,7 @@ def run_ai_system_health_check(use_ai=True):
         tables = [row[0] for row in cursor.fetchall()]
         db_check['details']['tables'] = tables
 
-        required_tables = ['signals_history', 'trade_journal', 'pair_stats']
+        required_tables = ['signal_history', 'trade_journal', 'pair_stats']
         missing_tables = [t for t in required_tables if t not in tables]
 
         if missing_tables:
@@ -8749,10 +8770,10 @@ def run_ai_system_health_check(use_ai=True):
     rates_check['details']['currencies_configured'] = len(CENTRAL_BANK_RATES)
     rates_check['details']['rates'] = dict(CENTRAL_BANK_RATES)
 
-    # Check rates are realistic (0-20%)
+    # Check rates are realistic (0-50% - allows for high inflation economies like Turkey at 45%)
     unrealistic_rates = []
     for curr, rate in CENTRAL_BANK_RATES.items():
-        if rate < 0 or rate > 20:
+        if rate < 0 or rate > 50:
             unrealistic_rates.append(f'{curr}: {rate}%')
 
     if unrealistic_rates:
