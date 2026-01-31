@@ -1,10 +1,10 @@
 """
 ╔══════════════════════════════════════════════════════════════════════════════╗
-║                    MEGA FOREX v9.0 PRO - AI-ENHANCED SYSTEM                  ║
-║                    Build: January 26, 2026 - Production Ready                ║
+║                   MEGA FOREX v9.2.2 PRO - AI-ENHANCED SYSTEM                 ║
+║                    Build: January 31, 2026 - Production Ready                ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
 ║  ✓ 45 Forex Pairs with guaranteed data coverage                              ║
-║  ✓ 7-Group Gated Scoring + 6-Gate Quality Filter (v9.0)                      ║
+║  ✓ 8-Group Gated Scoring + 8-Gate Quality Filter (v9.2.2)                    ║
 ║  ✓ Percentage Scoring: 0-100% for LONG and SHORT independently               ║
 ║  ✓ Entry Window: 0-8 hours based on signal strength                          ║
 ║  ✓ 16 Candlestick Pattern Recognition                                        ║
@@ -12,20 +12,18 @@
 ║  ✓ Smart Dynamic SL/TP (Variable ATR)                                        ║
 ║  ✓ REAL IG Client Sentiment + Institutional COT Data                         ║
 ║  ✓ Complete Backtesting Module                                               ║
-║  ✓ DATA QUALITY INDICATORS (v9.0 - AI + REAL DATA)                           ║
+║  ✓ DATA QUALITY INDICATORS (v9.2.2 - AI + REAL DATA)                         ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
-║  SCORING METHODOLOGY: 7-Group Gated AI-Enhanced (v9.0)                       ║
-║  - Technical (20%): RSI, MACD, ADX from real candle data                     ║
-║  - Fundamental (14%): Interest rate differentials                            ║
-║  - Sentiment (11%): IG positioning + news + COT data                         ║
-║  - AI Analysis (10%): GPT-4o-mini market analysis (NEW!)                      ║
-║  - Intermarket (9%): DXY, Gold, Yields correlations                          ║
-║  - MTF (9%): Multi-timeframe EMA alignment                                   ║
-║  - Quantitative (7%): Z-Score, Bollinger %B                                  ║
-║  - Structure (6%): Support/Resistance, pivots                                ║
-║  - Calendar (5%): Economic event risk + seasonality                          ║
-║  - Options (6%): 25-delta risk reversals, P/C ratios                         ║
-║  - Confluence (3%): Factor agreement bonus                                   ║
+║  SCORING METHODOLOGY: 8-Group Gated AI-Enhanced (v9.2.2)                     ║
+║  - Trend & Momentum (21%): RSI, MACD, ADX + MTF alignment                    ║
+║  - Fundamental (15%): Interest rate differentials + FRED macro               ║
+║  - Sentiment (13%): IG positioning + enhanced news analysis                  ║
+║  - Intermarket (12%): DXY, Gold, Yields, Oil correlations                    ║
+║  - Mean Reversion (11%): Z-Score, Bollinger %B + S/R structure               ║
+║  - AI Synthesis (10%): GPT-4o-mini market analysis                           ║
+║  - Currency Strength (10%): 45-pair cross-currency analysis (NEW!)           ║
+║  - Calendar Risk (8%): Economic event risk + seasonality                     ║
+║  8-Gate Filter: G3 Trend, G5 Calendar, G8 Data are MANDATORY                 ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 """
 
