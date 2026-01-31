@@ -8671,52 +8671,29 @@ def get_positioning():
     # Sort by number of sources (most data first), then by pair name
     positioning.sort(key=lambda x: (-x['source_count'], x['pair']))
 
-    # Determine overall data quality
+    # Determine overall data quality - REAL DATA ONLY (no fake/estimated)
     if len(active_sources) >= 2:
         overall_quality = 'HIGH'
-        source_msg = f"Blended from {', '.join(active_sources)}"
+        source_msg = f"Real data from {', '.join(active_sources)}"
     elif len(active_sources) == 1:
         overall_quality = 'MEDIUM'
-        source_msg = f"Using {active_sources[0]} only"
+        source_msg = f"Real data from {active_sources[0]}"
     else:
-        overall_quality = 'ESTIMATED'
-        source_msg = "Using estimated positioning (sentiment APIs unavailable)"
-
-        # Generate estimated positioning based on typical retail behavior
-        # Retail traders tend to be ~55-60% long on average
-        for pair in FOREX_PAIRS[:20]:
-            # Slight variation based on pair characteristics
-            base_long = 55  # Retail tends to be slightly long-biased
-
-            # JPY pairs: retail often long (carry trade mentality)
-            if 'JPY' in pair and pair.index('JPY') > 3:
-                base_long = 62
-            # USD pairs where USD is quote: retail often long
-            elif pair.endswith('USD'):
-                base_long = 58
-
-            positioning.append({
-                'pair': pair,
-                'long_percentage': base_long,
-                'short_percentage': 100 - base_long,
-                'contrarian_signal': 'NEUTRAL',
-                'sources': ['estimated'],
-                'source_count': 0,
-                'data_quality': 'ESTIMATED'
-            })
+        overall_quality = 'UNAVAILABLE'
+        source_msg = "Waiting for real sentiment data"
 
     # Check if IG is rate limited
     ig_rate_limited = ig_session.get('rate_limited', False)
     cooldown_msg = ""
     if ig_rate_limited and ig_session.get('rate_limit_until'):
         cooldown = max(0, (ig_session['rate_limit_until'] - datetime.now()).total_seconds() / 60)
-        cooldown_msg = f" (IG cooldown: {cooldown:.0f}m)"
+        cooldown_msg = f" (IG available in {cooldown:.0f}m)"
 
     result = {
         'success': True,
         'count': len(positioning),
-        'source': 'MULTI_SOURCE_BLENDED' if active_sources else 'ESTIMATED',
-        'active_sources': active_sources if active_sources else ['estimated'],
+        'source': 'REAL_DATA' if active_sources else 'UNAVAILABLE',
+        'active_sources': active_sources,
         'source_status': source_status,
         'data_quality': overall_quality,
         'message': f'{source_msg}{cooldown_msg}',
@@ -8782,15 +8759,15 @@ def api_status():
         },
         'dukascopy': {
             'configured': True,  # No API key needed
-            'status': 'OK' if dukascopy_cache.get('data') else 'UNAVAILABLE',
-            'purpose': 'SWFX retail sentiment (free)',
+            'status': 'OK' if dukascopy_cache.get('data') else 'BLOCKED',
+            'purpose': 'SWFX sentiment (blocked from servers)',
             'pairs': len(dukascopy_cache.get('data', [])) if dukascopy_cache.get('data') else 0
         },
         'myfxbook': {
             'configured': True,  # No API key needed
-            'status': 'OK' if myfxbook_cache.get('data') else 'UNAVAILABLE',
-            'purpose': 'Community sentiment outlook (free)',
-            'pairs': len(myfxbook_cache.get('data', [])) if myfxbook_cache.get('data') else 'Ready'
+            'status': 'OK' if myfxbook_cache.get('data') else 'BLOCKED',
+            'purpose': 'Community sentiment (blocked from servers)',
+            'pairs': len(myfxbook_cache.get('data', [])) if myfxbook_cache.get('data') else 0
         }
     }
 
