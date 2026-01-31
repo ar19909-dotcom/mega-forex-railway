@@ -81,6 +81,11 @@ def simple_test():
     """Simple test page with button to fetch calendar"""
     return render_template('simple_test.html')
 
+@app.route('/pricing')
+def pricing_page():
+    """Pricing and features page for marketing"""
+    return render_template('pricing.html')
+
 @app.route('/health')
 def health_check():
     """Health check endpoint"""
