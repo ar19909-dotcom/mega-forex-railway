@@ -9700,25 +9700,8 @@ def api_status():
             'status': 'OK' if OPENAI_API_KEY else 'NOT_CONFIGURED',
             'model': AI_FACTOR_CONFIG.get('model', 'gpt-4o-mini'),
             'purpose': 'AI Factor Analysis (v8.5)'
-        },
-        'dailyfx': {
-            'configured': True,  # No API key needed
-            'status': 'OK' if dailyfx_cache.get('data') else 'BLOCKED',
-            'purpose': 'IG sentiment via DailyFX (free)',
-            'pairs': len(dailyfx_cache.get('data', [])) if dailyfx_cache.get('data') else 0
-        },
-        'dukascopy': {
-            'configured': True,  # No API key needed
-            'status': 'OK' if dukascopy_cache.get('data') else 'BLOCKED',
-            'purpose': 'SWFX sentiment (blocked from servers)',
-            'pairs': len(dukascopy_cache.get('data', [])) if dukascopy_cache.get('data') else 0
-        },
-        'myfxbook': {
-            'configured': True,  # No API key needed
-            'status': 'OK' if myfxbook_cache.get('data') else 'BLOCKED',
-            'purpose': 'Community sentiment (blocked from servers)',
-            'pairs': len(myfxbook_cache.get('data', [])) if myfxbook_cache.get('data') else 0
         }
+        # Note: DailyFX, Dukascopy, Myfxbook removed - blocked from server-side requests
     }
 
     return jsonify({'success': True, **status})
