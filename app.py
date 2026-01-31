@@ -8246,6 +8246,25 @@ def run_system_audit():
     except Exception as e:
         audit['api_status']['openai'] = {'status': 'ERROR', 'error': str(e)}
 
+    # Test Saxo Bank (v9.2.3)
+    try:
+        saxo_data = get_saxo_sentiment()
+        if saxo_data and len(saxo_data) > 0:
+            audit['api_status']['saxo_bank'] = {
+                'status': 'OK',
+                'pairs': len(saxo_data),
+                'purpose': 'Options-based retail sentiment (v9.2.3)',
+                'source': 'fxowebtools.saxobank.com'
+            }
+        else:
+            audit['api_status']['saxo_bank'] = {
+                'status': 'LIMITED',
+                'pairs': 0,
+                'purpose': 'Options-based retail sentiment (v9.2.3)'
+            }
+    except Exception as e:
+        audit['api_status']['saxo_bank'] = {'status': 'ERROR', 'error': str(e)[:50]}
+
     # ═══════════════════════════════════════════════════════════════════════════
     # DATA QUALITY CHECK
     # ═══════════════════════════════════════════════════════════════════════════
