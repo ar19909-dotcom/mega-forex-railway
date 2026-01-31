@@ -3038,8 +3038,8 @@ def get_finnhub_news():
 
 def analyze_sentiment(pair):
     """
-    ENHANCED Sentiment Analysis combining:
-    1. IG Client Positioning (REAL retail sentiment) - 50% weight
+    ENHANCED Sentiment Analysis combining (v9.2.2):
+    1. Retail Positioning (IG + Myfxbook + Dukascopy blended) - 50% weight
     2. Finnhub News Sentiment - 30% weight
     3. COT Institutional Positioning (CFTC data) - 20% weight
     """
@@ -3047,37 +3047,59 @@ def analyze_sentiment(pair):
     sentiment_sources = {}
 
     base, quote = pair.split('/')
-    
+
     # ═══════════════════════════════════════════════════════════════════════════
-    # SOURCE 1: IG Client Positioning (REAL DATA - 60% weight)
+    # SOURCE 1: Combined Retail Positioning (IG + Myfxbook + Dukascopy) - 50% weight
     # ═══════════════════════════════════════════════════════════════════════════
-    ig_sentiment = None
-    if all([IG_API_KEY, IG_USERNAME, IG_PASSWORD]):
-        ig_market_ids = {
-            'EUR/USD': 'EURUSD', 'GBP/USD': 'GBPUSD', 'USD/JPY': 'USDJPY',
-            'USD/CHF': 'USDCHF', 'AUD/USD': 'AUDUSD', 'USD/CAD': 'USDCAD',
-            'NZD/USD': 'NZDUSD', 'EUR/GBP': 'EURGBP', 'EUR/JPY': 'EURJPY',
-            'GBP/JPY': 'GBPJPY', 'AUD/JPY': 'AUDJPY', 'EUR/AUD': 'EURAUD',
-            'EUR/CHF': 'EURCHF', 'GBP/CHF': 'GBPCHF', 'EUR/CAD': 'EURCAD'
+    retail_sentiment = None
+    combined_data = get_combined_retail_sentiment(pair)
+
+    if combined_data:
+        long_pct = combined_data['long_percentage']
+        short_pct = combined_data['short_percentage']
+
+        # Contrarian logic: If retail is heavily long, be bearish (and vice versa)
+        # 50% long = neutral (50), 70% long = bearish (30), 30% long = bullish (70)
+        retail_sentiment = 100 - long_pct  # Contrarian score
+
+        sentiment_sources['retail_positioning'] = {
+            'long_pct': long_pct,
+            'short_pct': short_pct,
+            'score': retail_sentiment,
+            'sources': combined_data.get('sources', []),
+            'source_count': combined_data.get('source_count', 0),
+            'data_quality': combined_data.get('data_quality', 'UNKNOWN')
         }
-        
-        market_id = ig_market_ids.get(pair)
-        if market_id:
-            ig_data = get_ig_client_sentiment(market_id)
-            if ig_data:
-                long_pct = ig_data['long_percentage']
-                short_pct = ig_data['short_percentage']
-                
-                # Contrarian logic: If retail is heavily long, be bearish (and vice versa)
-                # 50% long = neutral (50), 70% long = bearish (30), 30% long = bullish (70)
-                ig_sentiment = 100 - long_pct  # Contrarian score
-                
-                sentiment_sources['ig_positioning'] = {
-                    'long_pct': long_pct,
-                    'short_pct': short_pct,
-                    'score': ig_sentiment,
-                    'source': 'IG_REAL'
-                }
+    else:
+        # Fallback: Try IG directly
+        if all([IG_API_KEY, IG_USERNAME, IG_PASSWORD]) and not ig_session.get('rate_limited', False):
+            ig_market_ids = {
+                'EUR/USD': 'EURUSD', 'GBP/USD': 'GBPUSD', 'USD/JPY': 'USDJPY',
+                'USD/CHF': 'USDCHF', 'AUD/USD': 'AUDUSD', 'USD/CAD': 'USDCAD',
+                'NZD/USD': 'NZDUSD', 'EUR/GBP': 'EURGBP', 'EUR/JPY': 'EURJPY',
+                'GBP/JPY': 'GBPJPY', 'AUD/JPY': 'AUDJPY', 'EUR/AUD': 'EURAUD',
+                'EUR/CHF': 'EURCHF', 'GBP/CHF': 'GBPCHF', 'EUR/CAD': 'EURCAD'
+            }
+
+            market_id = ig_market_ids.get(pair)
+            if market_id:
+                ig_data = get_ig_client_sentiment(market_id)
+                if ig_data:
+                    long_pct = ig_data['long_percentage']
+                    short_pct = ig_data['short_percentage']
+                    retail_sentiment = 100 - long_pct
+
+                    sentiment_sources['retail_positioning'] = {
+                        'long_pct': long_pct,
+                        'short_pct': short_pct,
+                        'score': retail_sentiment,
+                        'sources': ['ig'],
+                        'source_count': 1,
+                        'data_quality': 'MEDIUM'
+                    }
+
+    # For backwards compatibility, also set ig_sentiment
+    ig_sentiment = retail_sentiment
     
     # ═══════════════════════════════════════════════════════════════════════════
     # SOURCE 2: Finnhub News Sentiment (40% weight) - ENHANCED QUALITY ANALYSIS
@@ -8134,12 +8156,275 @@ def get_all_ig_sentiment():
                 'contrarian_signal': 'SHORT' if long_pct > 60 else 'LONG' if long_pct < 40 else 'NEUTRAL',
                 'source': 'IG_REAL'
             })
-    
+
     return results
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# DUKASCOPY SWFX SENTIMENT (Free, no API key required)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Cache for Dukascopy data
+dukascopy_cache = {
+    'data': None,
+    'timestamp': None,
+    'ttl': 300  # 5 minutes cache
+}
+
+def get_dukascopy_sentiment(pair):
+    """Get retail sentiment from Dukascopy SWFX (free, no API key)"""
+    global dukascopy_cache
+
+    # Dukascopy pair format
+    duka_pairs = {
+        'EUR/USD': 'EUR/USD', 'GBP/USD': 'GBP/USD', 'USD/JPY': 'USD/JPY',
+        'USD/CHF': 'USD/CHF', 'AUD/USD': 'AUD/USD', 'USD/CAD': 'USD/CAD',
+        'NZD/USD': 'NZD/USD', 'EUR/GBP': 'EUR/GBP', 'EUR/JPY': 'EUR/JPY',
+        'GBP/JPY': 'GBP/JPY', 'AUD/JPY': 'AUD/JPY', 'EUR/AUD': 'EUR/AUD',
+        'EUR/CHF': 'EUR/CHF', 'GBP/CHF': 'GBP/CHF', 'EUR/CAD': 'EUR/CAD',
+        'GBP/AUD': 'GBP/AUD', 'GBP/CAD': 'GBP/CAD', 'AUD/CAD': 'AUD/CAD',
+        'NZD/JPY': 'NZD/JPY', 'CHF/JPY': 'CHF/JPY', 'CAD/JPY': 'CAD/JPY',
+        'AUD/NZD': 'AUD/NZD', 'EUR/NZD': 'EUR/NZD', 'GBP/NZD': 'GBP/NZD'
+    }
+
+    if pair not in duka_pairs:
+        return None
+
+    try:
+        # Dukascopy SWFX Sentiment API (public, no key needed)
+        url = "https://freeserv.dukascopy.com/2.0/"
+        params = {
+            'path': 'bookmap/sentiment',
+            'instrument': pair.replace('/', ''),
+            'jsonp': 'false'
+        }
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Accept': 'application/json'
+        }
+
+        resp = req_lib.get(url, params=params, headers=headers, timeout=10)
+
+        if resp.status_code == 200:
+            data = resp.json()
+
+            # Dukascopy returns sentiment as percentage
+            long_pct = data.get('longPercentage', data.get('long', 50))
+            short_pct = data.get('shortPercentage', data.get('short', 50))
+
+            # Ensure we have valid percentages
+            if long_pct is None or short_pct is None:
+                return None
+
+            return {
+                'long_percentage': float(long_pct),
+                'short_percentage': float(short_pct),
+                'source': 'DUKASCOPY_SWFX'
+            }
+    except Exception as e:
+        logger.debug(f"Dukascopy sentiment failed for {pair}: {e}")
+
+    return None
+
+def get_all_dukascopy_sentiment():
+    """Get sentiment for all pairs from Dukascopy SWFX"""
+    global dukascopy_cache
+
+    # Check cache
+    if dukascopy_cache['timestamp']:
+        elapsed = (datetime.now() - dukascopy_cache['timestamp']).total_seconds()
+        if elapsed < dukascopy_cache['ttl'] and dukascopy_cache['data']:
+            return dukascopy_cache['data']
+
+    results = []
+    pairs = ['EUR/USD', 'GBP/USD', 'USD/JPY', 'USD/CHF', 'AUD/USD', 'USD/CAD',
+             'NZD/USD', 'EUR/GBP', 'EUR/JPY', 'GBP/JPY', 'AUD/JPY', 'EUR/AUD',
+             'EUR/CHF', 'GBP/CHF', 'EUR/CAD', 'GBP/AUD', 'GBP/CAD', 'AUD/CAD']
+
+    for pair in pairs:
+        sentiment = get_dukascopy_sentiment(pair)
+        if sentiment:
+            long_pct = sentiment['long_percentage']
+            results.append({
+                'pair': pair,
+                'long_percentage': long_pct,
+                'short_percentage': sentiment['short_percentage'],
+                'contrarian_signal': 'SHORT' if long_pct > 60 else 'LONG' if long_pct < 40 else 'NEUTRAL',
+                'source': 'DUKASCOPY_SWFX'
+            })
+
+    # Cache results
+    if results:
+        dukascopy_cache['data'] = results
+        dukascopy_cache['timestamp'] = datetime.now()
+
+    return results
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# MYFXBOOK OUTLOOK SENTIMENT (Free, no API key required)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Cache for Myfxbook data
+myfxbook_cache = {
+    'data': None,
+    'timestamp': None,
+    'ttl': 300  # 5 minutes cache
+}
+
+def get_myfxbook_sentiment():
+    """Get retail sentiment from Myfxbook Community Outlook (free, no API key)"""
+    global myfxbook_cache
+
+    # Check cache
+    if myfxbook_cache['timestamp']:
+        elapsed = (datetime.now() - myfxbook_cache['timestamp']).total_seconds()
+        if elapsed < myfxbook_cache['ttl'] and myfxbook_cache['data']:
+            return myfxbook_cache['data']
+
+    try:
+        # Myfxbook Outlook API (public)
+        url = "https://www.myfxbook.com/api/get-community-outlook.json"
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Accept': 'application/json'
+        }
+
+        resp = req_lib.get(url, headers=headers, timeout=15)
+
+        if resp.status_code == 200:
+            data = resp.json()
+
+            if data.get('error', False):
+                logger.warning(f"Myfxbook API error: {data.get('message', 'Unknown')}")
+                return None
+
+            results = []
+            symbols = data.get('symbols', [])
+
+            # Map Myfxbook symbols to our pair format
+            pair_map = {
+                'EURUSD': 'EUR/USD', 'GBPUSD': 'GBP/USD', 'USDJPY': 'USD/JPY',
+                'USDCHF': 'USD/CHF', 'AUDUSD': 'AUD/USD', 'USDCAD': 'USD/CAD',
+                'NZDUSD': 'NZD/USD', 'EURGBP': 'EUR/GBP', 'EURJPY': 'EUR/JPY',
+                'GBPJPY': 'GBP/JPY', 'AUDJPY': 'AUD/JPY', 'EURAUD': 'EUR/AUD',
+                'EURCHF': 'EUR/CHF', 'GBPCHF': 'GBP/CHF', 'EURCAD': 'EUR/CAD',
+                'GBPAUD': 'GBP/AUD', 'GBPCAD': 'GBP/CAD', 'AUDCAD': 'AUD/CAD',
+                'NZDJPY': 'NZD/JPY', 'CHFJPY': 'CHF/JPY', 'CADJPY': 'CAD/JPY',
+                'AUDNZD': 'AUD/NZD', 'EURNZD': 'EUR/NZD', 'GBPNZD': 'GBP/NZD'
+            }
+
+            for symbol in symbols:
+                symbol_name = symbol.get('name', '').upper()
+                pair = pair_map.get(symbol_name)
+
+                if pair:
+                    long_pct = float(symbol.get('longPercentage', 50))
+                    short_pct = float(symbol.get('shortPercentage', 50))
+
+                    results.append({
+                        'pair': pair,
+                        'long_percentage': long_pct,
+                        'short_percentage': short_pct,
+                        'long_volume': symbol.get('longVolume', 0),
+                        'short_volume': symbol.get('shortVolume', 0),
+                        'contrarian_signal': 'SHORT' if long_pct > 60 else 'LONG' if long_pct < 40 else 'NEUTRAL',
+                        'source': 'MYFXBOOK'
+                    })
+
+            # Cache results
+            if results:
+                myfxbook_cache['data'] = results
+                myfxbook_cache['timestamp'] = datetime.now()
+                logger.info(f"✅ Myfxbook: Got sentiment for {len(results)} pairs")
+
+            return results
+
+    except Exception as e:
+        logger.warning(f"Myfxbook sentiment failed: {e}")
+
+    return None
+
+def get_combined_retail_sentiment(pair):
+    """
+    Get combined retail sentiment from multiple sources (v9.2.2)
+    Priority: IG (if working) > Myfxbook > Dukascopy
+    When multiple sources available, blend them for stronger signal
+    """
+    sources = {}
+
+    # Source 1: IG Markets (primary - most accurate but rate limited)
+    ig_configured = all([IG_API_KEY, IG_USERNAME, IG_PASSWORD])
+    if ig_configured and not ig_session.get('rate_limited', False):
+        ig_market_ids = {
+            'EUR/USD': 'EURUSD', 'GBP/USD': 'GBPUSD', 'USD/JPY': 'USDJPY',
+            'USD/CHF': 'USDCHF', 'AUD/USD': 'AUDUSD', 'USD/CAD': 'USDCAD',
+            'NZD/USD': 'NZDUSD', 'EUR/GBP': 'EURGBP', 'EUR/JPY': 'EURJPY',
+            'GBP/JPY': 'GBPJPY', 'AUD/JPY': 'AUDJPY', 'EUR/AUD': 'EURAUD',
+            'EUR/CHF': 'EURCHF', 'GBP/CHF': 'GBPCHF', 'EUR/CAD': 'EURCAD'
+        }
+        if pair in ig_market_ids:
+            ig_data = get_ig_client_sentiment(ig_market_ids[pair])
+            if ig_data:
+                sources['ig'] = {
+                    'long_pct': ig_data['long_percentage'],
+                    'short_pct': ig_data['short_percentage'],
+                    'weight': 0.5  # 50% weight when available
+                }
+
+    # Source 2: Myfxbook (secondary - good coverage, multi-broker)
+    myfxbook_data = get_myfxbook_sentiment()
+    if myfxbook_data:
+        for item in myfxbook_data:
+            if item['pair'] == pair:
+                sources['myfxbook'] = {
+                    'long_pct': item['long_percentage'],
+                    'short_pct': item['short_percentage'],
+                    'weight': 0.3  # 30% weight
+                }
+                break
+
+    # Source 3: Dukascopy SWFX (tertiary - Swiss broker data)
+    duka_data = get_dukascopy_sentiment(pair)
+    if duka_data:
+        sources['dukascopy'] = {
+            'long_pct': duka_data['long_percentage'],
+            'short_pct': duka_data['short_percentage'],
+            'weight': 0.2  # 20% weight
+        }
+
+    if not sources:
+        return None
+
+    # Normalize weights based on available sources
+    total_weight = sum(s['weight'] for s in sources.values())
+
+    # Calculate weighted average
+    weighted_long = sum(s['long_pct'] * (s['weight'] / total_weight) for s in sources.values())
+    weighted_short = sum(s['short_pct'] * (s['weight'] / total_weight) for s in sources.values())
+
+    # Determine contrarian signal
+    if weighted_long > 60:
+        contrarian = 'SHORT'
+    elif weighted_long < 40:
+        contrarian = 'LONG'
+    else:
+        contrarian = 'NEUTRAL'
+
+    return {
+        'long_percentage': round(weighted_long, 1),
+        'short_percentage': round(weighted_short, 1),
+        'contrarian_signal': contrarian,
+        'sources': list(sources.keys()),
+        'source_count': len(sources),
+        'data_quality': 'HIGH' if len(sources) >= 2 else 'MEDIUM'
+    }
 
 @app.route('/positioning')
 def get_positioning():
-    """Get retail positioning data - REAL from IG when available (with caching)"""
+    """
+    Get retail positioning data from multiple sources (v9.2.2)
+    Combines: IG Markets (50%) + Myfxbook (30%) + Dukascopy (20%)
+    When sources unavailable, weights redistribute automatically
+    """
 
     # Check cache first (thread-safe)
     if is_cache_valid('positioning'):
@@ -8149,116 +8434,153 @@ def get_positioning():
                 logger.debug("📊 Positioning: Returning cached data")
                 return jsonify(cached_data)
 
-    # Try to get REAL data from IG API
-    ig_configured = all([IG_API_KEY, IG_USERNAME, IG_PASSWORD])
-
-    # v9.2.2: If rate limited, clear any old cached data to show rate limit message
-    if ig_session.get('rate_limited', False):
-        with cache_lock:
-            if cache['positioning'].get('data', {}).get('source') not in ['RATE_LIMITED', 'FALLBACK']:
-                cache['positioning']['data'] = None
-                cache['positioning']['timestamp'] = None
-                logger.info("Cleared old positioning cache due to rate limit")
-
-    if ig_configured:
-        # Check if rate limited BEFORE trying
-        if not ig_session.get('rate_limited', False):
-            ig_data = get_all_ig_sentiment()
-
-            if ig_data and len(ig_data) > 0:
-                logger.info(f"✅ Positioning: Using REAL IG data ({len(ig_data)} pairs)")
-                result = {
-                    'success': True,
-                    'count': len(ig_data),
-                    'source': 'IG_MARKETS_REAL',
-                    'data': ig_data
-                }
-                # Cache the successful result (thread-safe)
-                with cache_lock:
-                    cache['positioning']['data'] = result
-                    cache['positioning']['timestamp'] = datetime.now()
-                return jsonify(result)
-
-        # Re-check rate_limited flag AFTER API call (might have just been set)
-        if ig_session.get('rate_limited', False):
-            cooldown_remaining = 0
-            if ig_session.get('rate_limit_until'):
-                cooldown_remaining = max(0, (ig_session['rate_limit_until'] - datetime.now()).total_seconds() / 60)
-
-            logger.warning(f"⚠️ Positioning: IG API rate limited, using estimated data ({cooldown_remaining:.0f} min cooldown)")
-
-            # Generate estimated positioning based on price momentum
-            positioning = []
-            for pair in FOREX_PAIRS[:15]:
-                # Estimate: typically retail is ~60% long on falling pairs, ~40% long on rising
-                # We'll show neutral estimates since we can't know actual positioning
-                positioning.append({
-                    'pair': pair,
-                    'long_percentage': 50,
-                    'short_percentage': 50,
-                    'contrarian_signal': 'NEUTRAL',
-                    'source': 'ESTIMATED',
-                    'message': f'IG rate limited - cooldown {cooldown_remaining:.0f} min'
-                })
-
-            result = {
-                'success': True,
-                'count': len(positioning),
-                'source': 'RATE_LIMITED',
-                'message': f'IG API rate limited. Cooldown: {cooldown_remaining:.0f} minutes remaining. Using neutral estimates.',
-                'data': positioning
-            }
-            # Cache for shorter time when rate limited
-            with cache_lock:
-                cache['positioning']['data'] = result
-                cache['positioning']['timestamp'] = datetime.now()
-            return jsonify(result)
-
-    # Fallback: Return message that IG is not configured
-    if not ig_configured:
-        logger.warning("⚠️ Positioning: IG API not configured, returning placeholder")
-
-        positioning = []
-        for pair in FOREX_PAIRS[:15]:
-            positioning.append({
-                'pair': pair,
-                'long_percentage': 'N/A',
-                'short_percentage': 'N/A',
-                'contrarian_signal': 'N/A',
-                'source': 'NOT_CONFIGURED',
-                'message': 'Configure IG API for real data'
-            })
-
-        result = {
-            'success': True,
-            'count': len(positioning),
-            'source': 'NOT_CONFIGURED',
-            'message': 'Add IG_USERNAME and IG_PASSWORD to .env for real positioning data',
-            'data': positioning
-        }
-        # Don't cache NOT_CONFIGURED so it retries when credentials are added
-        return jsonify(result)
-
-    # IG configured but no data returned (temporary error)
-    logger.warning("⚠️ Positioning: IG API error, using neutral estimates")
     positioning = []
-    for pair in FOREX_PAIRS[:15]:
+    active_sources = []
+    source_status = {
+        'ig': {'available': False, 'pairs': 0},
+        'myfxbook': {'available': False, 'pairs': 0},
+        'dukascopy': {'available': False, 'pairs': 0}
+    }
+
+    # Fetch from all sources in parallel-ish manner
+    # Source 1: IG Markets
+    ig_configured = all([IG_API_KEY, IG_USERNAME, IG_PASSWORD])
+    ig_data_map = {}
+    if ig_configured and not ig_session.get('rate_limited', False):
+        ig_data = get_all_ig_sentiment()
+        if ig_data:
+            for item in ig_data:
+                ig_data_map[item['pair']] = item
+            source_status['ig']['available'] = True
+            source_status['ig']['pairs'] = len(ig_data)
+            active_sources.append('IG')
+            logger.info(f"✅ IG: {len(ig_data)} pairs")
+
+    # Source 2: Myfxbook
+    myfxbook_data = get_myfxbook_sentiment()
+    myfxbook_map = {}
+    if myfxbook_data:
+        for item in myfxbook_data:
+            myfxbook_map[item['pair']] = item
+        source_status['myfxbook']['available'] = True
+        source_status['myfxbook']['pairs'] = len(myfxbook_data)
+        active_sources.append('Myfxbook')
+        logger.info(f"✅ Myfxbook: {len(myfxbook_data)} pairs")
+
+    # Source 3: Dukascopy
+    dukascopy_data = get_all_dukascopy_sentiment()
+    dukascopy_map = {}
+    if dukascopy_data:
+        for item in dukascopy_data:
+            dukascopy_map[item['pair']] = item
+        source_status['dukascopy']['available'] = True
+        source_status['dukascopy']['pairs'] = len(dukascopy_data)
+        active_sources.append('Dukascopy')
+        logger.info(f"✅ Dukascopy: {len(dukascopy_data)} pairs")
+
+    # Define base weights
+    base_weights = {'ig': 0.5, 'myfxbook': 0.3, 'dukascopy': 0.2}
+
+    # Process each pair - combine data from available sources
+    pairs_to_process = list(set(
+        list(ig_data_map.keys()) +
+        list(myfxbook_map.keys()) +
+        list(dukascopy_map.keys()) +
+        FOREX_PAIRS[:20]  # Ensure we cover main pairs
+    ))
+
+    for pair in pairs_to_process:
+        sources_for_pair = {}
+
+        # Collect data from each source for this pair
+        if pair in ig_data_map:
+            sources_for_pair['ig'] = {
+                'long': ig_data_map[pair]['long_percentage'],
+                'short': ig_data_map[pair]['short_percentage'],
+                'weight': base_weights['ig']
+            }
+        if pair in myfxbook_map:
+            sources_for_pair['myfxbook'] = {
+                'long': myfxbook_map[pair]['long_percentage'],
+                'short': myfxbook_map[pair]['short_percentage'],
+                'weight': base_weights['myfxbook']
+            }
+        if pair in dukascopy_map:
+            sources_for_pair['dukascopy'] = {
+                'long': dukascopy_map[pair]['long_percentage'],
+                'short': dukascopy_map[pair]['short_percentage'],
+                'weight': base_weights['dukascopy']
+            }
+
+        if not sources_for_pair:
+            # No data for this pair from any source
+            continue
+
+        # Normalize weights and calculate blended sentiment
+        total_weight = sum(s['weight'] for s in sources_for_pair.values())
+        blended_long = sum(s['long'] * (s['weight'] / total_weight) for s in sources_for_pair.values())
+        blended_short = sum(s['short'] * (s['weight'] / total_weight) for s in sources_for_pair.values())
+
+        # Determine contrarian signal
+        if blended_long > 65:
+            contrarian = 'STRONG_SHORT'
+        elif blended_long > 55:
+            contrarian = 'SHORT'
+        elif blended_long < 35:
+            contrarian = 'STRONG_LONG'
+        elif blended_long < 45:
+            contrarian = 'LONG'
+        else:
+            contrarian = 'NEUTRAL'
+
         positioning.append({
             'pair': pair,
-            'long_percentage': 50,
-            'short_percentage': 50,
-            'contrarian_signal': 'NEUTRAL',
-            'source': 'FALLBACK',
-            'message': 'IG API temporarily unavailable'
+            'long_percentage': round(blended_long, 1),
+            'short_percentage': round(blended_short, 1),
+            'contrarian_signal': contrarian,
+            'sources': list(sources_for_pair.keys()),
+            'source_count': len(sources_for_pair),
+            'data_quality': 'HIGH' if len(sources_for_pair) >= 2 else 'MEDIUM' if len(sources_for_pair) == 1 else 'LOW'
         })
+
+    # Sort by number of sources (most data first), then by pair name
+    positioning.sort(key=lambda x: (-x['source_count'], x['pair']))
+
+    # Determine overall data quality
+    if len(active_sources) >= 2:
+        overall_quality = 'HIGH'
+        source_msg = f"Blended from {', '.join(active_sources)}"
+    elif len(active_sources) == 1:
+        overall_quality = 'MEDIUM'
+        source_msg = f"Using {active_sources[0]} only"
+    else:
+        overall_quality = 'LOW'
+        source_msg = "No sentiment sources available"
+
+    # Check if IG is rate limited
+    ig_rate_limited = ig_session.get('rate_limited', False)
+    cooldown_msg = ""
+    if ig_rate_limited and ig_session.get('rate_limit_until'):
+        cooldown = max(0, (ig_session['rate_limit_until'] - datetime.now()).total_seconds() / 60)
+        cooldown_msg = f" (IG cooldown: {cooldown:.0f}m)"
 
     result = {
         'success': True,
         'count': len(positioning),
-        'source': 'FALLBACK',
-        'message': 'IG API temporarily unavailable. Using neutral estimates.',
+        'source': 'MULTI_SOURCE_BLENDED',
+        'active_sources': active_sources,
+        'source_status': source_status,
+        'data_quality': overall_quality,
+        'message': f'{source_msg}{cooldown_msg}',
         'data': positioning
     }
+
+    # Cache the result (thread-safe)
+    with cache_lock:
+        cache['positioning']['data'] = result
+        cache['positioning']['timestamp'] = datetime.now()
+
+    logger.info(f"📊 Positioning: {len(positioning)} pairs from {len(active_sources)} sources ({overall_quality})")
     return jsonify(result)
 
 @app.route('/api-status')
@@ -8303,6 +8625,18 @@ def api_status():
             'status': 'OK' if OPENAI_API_KEY else 'NOT_CONFIGURED',
             'model': AI_FACTOR_CONFIG.get('model', 'gpt-4o-mini'),
             'purpose': 'AI Factor Analysis (v8.5)'
+        },
+        'dukascopy': {
+            'configured': True,  # No API key needed
+            'status': 'OK' if dukascopy_cache.get('data') else 'PENDING',
+            'purpose': 'SWFX retail sentiment (free)',
+            'pairs': len(dukascopy_cache.get('data', [])) if dukascopy_cache.get('data') else 0
+        },
+        'myfxbook': {
+            'configured': True,  # No API key needed
+            'status': 'OK' if myfxbook_cache.get('data') else 'PENDING',
+            'purpose': 'Community sentiment outlook (free)',
+            'pairs': len(myfxbook_cache.get('data', [])) if myfxbook_cache.get('data') else 0
         }
     }
 
