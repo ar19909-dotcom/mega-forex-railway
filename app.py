@@ -8612,6 +8612,27 @@ def is_port_available(port):
 # INITIALIZE DATABASE ON STARTUP (for Railway)
 # ═══════════════════════════════════════════════════════════════════════════════
 init_database()
+
+# Pre-load calendar data for stability (runs async in background)
+def preload_calendar():
+    """Pre-load calendar data on startup for faster initial page load"""
+    import threading
+    def load():
+        try:
+            logger.info("📅 Pre-loading economic calendar...")
+            calendar_data = get_economic_calendar()
+            if calendar_data:
+                quality = calendar_data.get('data_quality', 'UNKNOWN')
+                events = len(calendar_data.get('events', []))
+                logger.info(f"📅 Calendar pre-loaded: {events} events ({quality})")
+        except Exception as e:
+            logger.warning(f"📅 Calendar pre-load failed: {e}")
+
+    # Run in background thread to not block startup
+    thread = threading.Thread(target=load, daemon=True)
+    thread.start()
+
+preload_calendar()
 logger.info("🚀 MEGA FOREX v9.2.2 PRO - AI ENHANCED initialized")
 
 if __name__ == '__main__':
@@ -8619,7 +8640,7 @@ if __name__ == '__main__':
     print("      MEGA FOREX v9.2.2 PRO - AI ENHANCED SYSTEM")
     print("=" * 70)
     print(f"  Pairs:           {len(FOREX_PAIRS)}")
-    print(f"  Factor Groups:   7 (merged from 11 individual factors)")
+    print(f"  Factor Groups:   8 (merged from 12 individual factors)")
     print(f"  Quality Gates:   8 (G3/G5/G8 mandatory)")
     print(f"  Database:        {DATABASE_PATH}")
     print(f"  Polygon API:     {'✓' if POLYGON_API_KEY else '✗'}")
@@ -8630,8 +8651,8 @@ if __name__ == '__main__':
     print(f"  OpenAI API:      {'✓ (gpt-4o-mini)' if OPENAI_API_KEY else '✗'}")
     print(f"  ExchangeRate:    ✓ (Free, no key needed)")
     print("=" * 70)
-    print("  v9.2.1 PRO FEATURES:")
-    print("    ✨ 7-Group Scoring (11 factors merged into independent groups)")
+    print("  v9.2.2 PRO FEATURES:")
+    print("    ✨ 8-Group Scoring (12 factors incl. Currency Strength)")
     print("    ✨ 8-Gate Quality Filter (G3 Trend, G5 Calendar, G8 Data = MANDATORY)")
     print("    ✨ Conviction Metric (breadth x strength, separate from score)")
     print("    ✨ Dynamic Regime Weights (trending/ranging/volatile/quiet)")
