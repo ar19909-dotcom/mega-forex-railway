@@ -9391,11 +9391,104 @@ def get_dailyfx_sentiment():
 
     return None
 
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# SAXO BANK RETAIL SENTIMENT (Options-based, FREE, works server-side!)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+saxo_cache = {
+    'data': None,
+    'timestamp': None,
+    'ttl': 600  # 10 minute cache
+}
+
+def get_saxo_sentiment():
+    """
+    Fetch retail sentiment from Saxo Bank FX Options tool
+    Returns options-based long/short percentages for major pairs
+
+    Source: https://fxowebtools.saxobank.com/retail.html
+    Data: Retail trader options positioning (calls = long, puts = short)
+    """
+    global saxo_cache
+
+    # Check cache
+    if saxo_cache.get('timestamp'):
+        elapsed = (datetime.now() - saxo_cache['timestamp']).total_seconds()
+        if elapsed < saxo_cache.get('ttl', 600) and saxo_cache.get('data'):
+            return saxo_cache['data']
+
+    try:
+        response = req_lib.get(
+            'https://fxowebtools.saxobank.com/retail.html',
+            timeout=10,
+            headers={
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            }
+        )
+
+        if response.status_code == 200:
+            html = response.text
+
+            # Parse the HTML to extract sentiment data
+            # Format: PAIR followed by percentages (long%, long%, change%, short%, short%, change%)
+            import re
+
+            # Find all pairs and their percentages
+            results = []
+
+            # Mapping Saxo pair format to our format
+            pair_map = {
+                'EURUSD': 'EUR/USD',
+                'USDJPY': 'USD/JPY',
+                'GBPUSD': 'GBP/USD',
+                'AUDUSD': 'AUD/USD',
+                'USDCAD': 'USD/CAD',
+                'USDCHF': 'USD/CHF',
+                'EURJPY': 'EUR/JPY',
+                'EURGBP': 'EUR/GBP',
+                'EURCHF': 'EUR/CHF'
+            }
+
+            # Extract data using regex - look for pattern: leftPositionCells with width and percentage
+            # HTML format: <td class="leftPositionCells" style="...width: 27%"...>27%&nbsp;(0%)</td>
+            #              <td class="rightPositionCells" style="...width: 73%"...>73%&nbsp;(-0%)</td>
+
+            for saxo_pair, our_pair in pair_map.items():
+                # Find the pair's row and extract percentages
+                # Pattern: leftLabelCells>PAIR</td> ... width: XX% ... >XX%
+                pair_pattern = rf'leftLabelCells">{saxo_pair}</td>.*?width:\s*(\d+)%.*?>(\d+)%.*?width:\s*(\d+)%.*?>(\d+)%'
+                match = re.search(pair_pattern, html, re.DOTALL)
+
+                if match:
+                    long_pct = int(match.group(2))  # The displayed percentage
+                    short_pct = int(match.group(4))
+
+                    results.append({
+                        'pair': our_pair,
+                        'long_percentage': long_pct,
+                        'short_percentage': short_pct,
+                        'source': 'SAXO_BANK'
+                    })
+
+            if results:
+                saxo_cache['data'] = results
+                saxo_cache['timestamp'] = datetime.now()
+                logger.info(f"✅ Saxo Bank: Got sentiment for {len(results)} pairs")
+                return results
+
+    except Exception as e:
+        logger.debug(f"Saxo Bank sentiment error: {e}")
+
+    return None
+
+
 def get_combined_retail_sentiment(pair):
     """
-    Get combined retail sentiment from 4 sources (v9.2.2)
-    IG (40%) + DailyFX (25%) + Myfxbook (20%) + Dukascopy (15%)
+    Get combined retail sentiment from multiple sources (v9.2.3)
+    IG (35%) + Saxo Bank (30%) + DailyFX (20%) + Myfxbook (10%) + Dukascopy (5%)
     Weights auto-redistribute when sources unavailable
+    Saxo Bank = Options-based sentiment (reliable, works server-side)
     """
     sources = {}
 
@@ -9415,10 +9508,22 @@ def get_combined_retail_sentiment(pair):
                 sources['ig'] = {
                     'long_pct': ig_data['long_percentage'],
                     'short_pct': ig_data['short_percentage'],
-                    'weight': 0.40  # 40% weight when available
+                    'weight': 0.35  # 35% weight when available
                 }
 
-    # Source 2: DailyFX (IG data published free - works when IG API limited!)
+    # Source 2: Saxo Bank (Options-based sentiment - RELIABLE, works server-side!)
+    saxo_data = get_saxo_sentiment()
+    if saxo_data:
+        for item in saxo_data:
+            if item['pair'] == pair:
+                sources['saxo'] = {
+                    'long_pct': item['long_percentage'],
+                    'short_pct': item['short_percentage'],
+                    'weight': 0.30  # 30% weight - high because reliable
+                }
+                break
+
+    # Source 3: DailyFX (IG data published free - works when IG API limited!)
     dailyfx_data = get_dailyfx_sentiment()
     if dailyfx_data:
         for item in dailyfx_data:
@@ -9426,11 +9531,11 @@ def get_combined_retail_sentiment(pair):
                 sources['dailyfx'] = {
                     'long_pct': item['long_percentage'],
                     'short_pct': item['short_percentage'],
-                    'weight': 0.25  # 25% weight
+                    'weight': 0.20  # 20% weight
                 }
                 break
 
-    # Source 3: Myfxbook (multi-broker community sentiment)
+    # Source 4: Myfxbook (multi-broker community sentiment) - often blocked
     myfxbook_data = get_myfxbook_sentiment()
     if myfxbook_data:
         for item in myfxbook_data:
@@ -9438,17 +9543,17 @@ def get_combined_retail_sentiment(pair):
                 sources['myfxbook'] = {
                     'long_pct': item['long_percentage'],
                     'short_pct': item['short_percentage'],
-                    'weight': 0.20  # 20% weight
+                    'weight': 0.10  # 10% weight
                 }
                 break
 
-    # Source 4: Dukascopy SWFX (Swiss broker data)
+    # Source 5: Dukascopy SWFX (Swiss broker data) - often blocked
     duka_data = get_dukascopy_sentiment(pair)
     if duka_data:
         sources['dukascopy'] = {
             'long_pct': duka_data['long_percentage'],
             'short_pct': duka_data['short_percentage'],
-            'weight': 0.15  # 15% weight
+            'weight': 0.05  # 5% weight
         }
 
     if not sources:
@@ -9704,8 +9809,13 @@ def api_status():
             'status': 'OK' if OPENAI_API_KEY else 'NOT_CONFIGURED',
             'model': AI_FACTOR_CONFIG.get('model', 'gpt-4o-mini'),
             'purpose': 'AI Factor Analysis (v8.5)'
+        },
+        'saxo_bank': {
+            'configured': True,  # No API key needed - free public data
+            'status': 'OK' if saxo_cache.get('data') else 'PENDING',
+            'purpose': 'Options-based retail sentiment (v9.2.3)',
+            'pairs': len(saxo_cache.get('data', [])) if saxo_cache.get('data') else 0
         }
-        # Note: DailyFX, Dukascopy, Myfxbook removed - blocked from server-side requests
     }
 
     return jsonify({'success': True, **status})
