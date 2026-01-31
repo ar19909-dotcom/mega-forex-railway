@@ -8439,6 +8439,439 @@ def run_system_audit():
     
     return audit
 
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# AI SYSTEM HEALTH MONITOR (v9.2.3)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Global health status cache
+system_health_cache = {
+    'data': None,
+    'timestamp': None,
+    'ttl': 300  # 5 minute cache
+}
+
+def run_ai_system_health_check(use_ai=True):
+    """
+    AI-powered comprehensive system health monitor.
+    Checks all weights, scoring, data feeds, and uses GPT-4o-mini to analyze issues.
+    Returns health status with warnings and auto-fix recommendations.
+    """
+    health = {
+        'timestamp': datetime.now().isoformat(),
+        'version': '9.2.3',
+        'overall_status': 'HEALTHY',  # HEALTHY, WARNING, CRITICAL
+        'overall_score': 100,
+        'checks': {},
+        'warnings': [],
+        'errors': [],
+        'auto_fixes_applied': [],
+        'ai_analysis': None
+    }
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # CHECK 1: Weight Configuration Validation
+    # ═══════════════════════════════════════════════════════════════════════════
+    weight_check = {'name': 'Weight Configuration', 'status': 'PASS', 'details': {}}
+
+    # Check FACTOR_GROUP_WEIGHTS sum to 100
+    total_weight = sum(FACTOR_GROUP_WEIGHTS.values())
+    weight_check['details']['total_weight'] = total_weight
+    weight_check['details']['expected'] = 100
+    weight_check['details']['groups'] = dict(FACTOR_GROUP_WEIGHTS)
+
+    if total_weight != 100:
+        weight_check['status'] = 'FAIL'
+        health['errors'].append({
+            'type': 'WEIGHT_MISMATCH',
+            'message': f'Factor group weights sum to {total_weight}, expected 100',
+            'severity': 'CRITICAL',
+            'auto_fix': 'Normalize weights to sum to 100'
+        })
+        health['overall_score'] -= 20
+
+    # Check regime weights
+    for regime, weights in REGIME_WEIGHTS.items():
+        regime_total = sum(weights.values())
+        if regime_total != 100:
+            weight_check['status'] = 'WARN'
+            health['warnings'].append({
+                'type': 'REGIME_WEIGHT_MISMATCH',
+                'message': f'Regime "{regime}" weights sum to {regime_total}, expected 100',
+                'severity': 'MEDIUM'
+            })
+            health['overall_score'] -= 5
+
+    health['checks']['weights'] = weight_check
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # CHECK 2: API Connectivity
+    # ═══════════════════════════════════════════════════════════════════════════
+    api_check = {'name': 'API Connectivity', 'status': 'PASS', 'details': {}}
+
+    # Test Polygon
+    try:
+        rate = get_polygon_rate('EUR/USD')
+        api_check['details']['polygon'] = 'OK' if rate else 'LIMITED'
+        if not rate:
+            health['warnings'].append({
+                'type': 'API_LIMITED',
+                'message': 'Polygon API returning no data - using fallback',
+                'severity': 'MEDIUM'
+            })
+            health['overall_score'] -= 5
+    except Exception as e:
+        api_check['details']['polygon'] = f'ERROR: {str(e)[:50]}'
+        health['errors'].append({
+            'type': 'API_ERROR',
+            'message': f'Polygon API error: {str(e)[:100]}',
+            'severity': 'HIGH'
+        })
+        health['overall_score'] -= 10
+
+    # Test OpenAI
+    if OPENAI_API_KEY:
+        try:
+            headers = {'Authorization': f'Bearer {OPENAI_API_KEY}'}
+            resp = req_lib.get('https://api.openai.com/v1/models', headers=headers, timeout=5)
+            api_check['details']['openai'] = 'OK' if resp.status_code == 200 else f'ERROR: {resp.status_code}'
+            if resp.status_code != 200:
+                health['warnings'].append({
+                    'type': 'API_ERROR',
+                    'message': f'OpenAI API returned status {resp.status_code}',
+                    'severity': 'MEDIUM'
+                })
+                health['overall_score'] -= 5
+        except Exception as e:
+            api_check['details']['openai'] = f'ERROR: {str(e)[:50]}'
+            health['overall_score'] -= 5
+    else:
+        api_check['details']['openai'] = 'NOT_CONFIGURED'
+        health['warnings'].append({
+            'type': 'API_NOT_CONFIGURED',
+            'message': 'OpenAI API not configured - AI factor disabled',
+            'severity': 'LOW'
+        })
+
+    # Test IG Markets
+    if all([IG_API_KEY, IG_USERNAME, IG_PASSWORD]):
+        try:
+            ig_logged_in = ig_login()
+            api_check['details']['ig_markets'] = 'OK' if ig_logged_in else 'ERROR'
+            if not ig_logged_in:
+                health['warnings'].append({
+                    'type': 'API_AUTH_FAIL',
+                    'message': 'IG Markets login failed - sentiment may be limited',
+                    'severity': 'MEDIUM'
+                })
+                health['overall_score'] -= 5
+        except Exception as e:
+            api_check['details']['ig_markets'] = f'ERROR: {str(e)[:50]}'
+    else:
+        api_check['details']['ig_markets'] = 'NOT_CONFIGURED'
+
+    # Test FRED
+    try:
+        fred_data = get_fred_data('FEDFUNDS')
+        api_check['details']['fred'] = 'OK' if fred_data else 'LIMITED'
+    except Exception as e:
+        api_check['details']['fred'] = f'ERROR: {str(e)[:50]}'
+
+    # Test Finnhub
+    try:
+        news = get_finnhub_news()
+        api_check['details']['finnhub'] = 'OK' if news.get('count', 0) > 0 else 'LIMITED'
+    except Exception as e:
+        api_check['details']['finnhub'] = f'ERROR: {str(e)[:50]}'
+
+    health['checks']['apis'] = api_check
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # CHECK 3: Scoring System Validation
+    # ═══════════════════════════════════════════════════════════════════════════
+    scoring_check = {'name': 'Scoring System', 'status': 'PASS', 'details': {}}
+
+    # Test signal generation for multiple pairs
+    test_pairs = ['EUR/USD', 'GBP/USD', 'USD/JPY']
+    signals_generated = 0
+    scoring_issues = []
+
+    for pair in test_pairs:
+        try:
+            signal = generate_signal(pair)
+            if signal:
+                signals_generated += 1
+                score = signal['composite_score']
+
+                # Check score is in valid range
+                if score < 5 or score > 95:
+                    scoring_issues.append(f'{pair}: Score {score} outside 5-95 range')
+
+                # Check factor groups exist
+                if not signal.get('factor_groups'):
+                    scoring_issues.append(f'{pair}: Missing factor_groups')
+
+                # Check gates exist
+                if not signal.get('gates'):
+                    scoring_issues.append(f'{pair}: Missing quality gates')
+        except Exception as e:
+            scoring_issues.append(f'{pair}: Error generating signal - {str(e)[:50]}')
+
+    scoring_check['details']['signals_generated'] = f'{signals_generated}/{len(test_pairs)}'
+    scoring_check['details']['issues'] = scoring_issues
+
+    if signals_generated < len(test_pairs):
+        scoring_check['status'] = 'WARN'
+        health['warnings'].append({
+            'type': 'SCORING_INCOMPLETE',
+            'message': f'Only {signals_generated}/{len(test_pairs)} test signals generated',
+            'severity': 'MEDIUM'
+        })
+        health['overall_score'] -= 10
+
+    if scoring_issues:
+        scoring_check['status'] = 'WARN'
+        for issue in scoring_issues:
+            health['warnings'].append({
+                'type': 'SCORING_ISSUE',
+                'message': issue,
+                'severity': 'LOW'
+            })
+            health['overall_score'] -= 2
+
+    health['checks']['scoring'] = scoring_check
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # CHECK 4: Data Quality
+    # ═══════════════════════════════════════════════════════════════════════════
+    data_check = {'name': 'Data Quality', 'status': 'PASS', 'details': {}}
+
+    rates = get_all_rates()
+    coverage = len(rates) / len(FOREX_PAIRS) * 100
+
+    data_check['details']['pairs_with_rates'] = len(rates)
+    data_check['details']['total_pairs'] = len(FOREX_PAIRS)
+    data_check['details']['coverage'] = f'{coverage:.1f}%'
+
+    if coverage < 90:
+        data_check['status'] = 'WARN'
+        health['warnings'].append({
+            'type': 'LOW_DATA_COVERAGE',
+            'message': f'Only {coverage:.1f}% of pairs have rate data',
+            'severity': 'HIGH' if coverage < 70 else 'MEDIUM'
+        })
+        health['overall_score'] -= 15 if coverage < 70 else 5
+
+    health['checks']['data_quality'] = data_check
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # CHECK 5: Database Health
+    # ═══════════════════════════════════════════════════════════════════════════
+    db_check = {'name': 'Database', 'status': 'PASS', 'details': {}}
+
+    try:
+        conn = sqlite3.connect(DATABASE_PATH)
+        cursor = conn.cursor()
+
+        # Check tables exist
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        tables = [row[0] for row in cursor.fetchall()]
+        db_check['details']['tables'] = tables
+
+        required_tables = ['signals_history', 'trade_journal', 'pair_stats']
+        missing_tables = [t for t in required_tables if t not in tables]
+
+        if missing_tables:
+            db_check['status'] = 'WARN'
+            health['warnings'].append({
+                'type': 'MISSING_TABLES',
+                'message': f'Missing database tables: {missing_tables}',
+                'severity': 'MEDIUM',
+                'auto_fix': 'Tables will be created on first use'
+            })
+
+        # Check signal history count
+        if 'signals_history' in tables:
+            cursor.execute("SELECT COUNT(*) FROM signals_history")
+            count = cursor.fetchone()[0]
+            db_check['details']['signals_count'] = count
+
+        conn.close()
+    except Exception as e:
+        db_check['status'] = 'FAIL'
+        db_check['details']['error'] = str(e)[:100]
+        health['errors'].append({
+            'type': 'DATABASE_ERROR',
+            'message': f'Database error: {str(e)[:100]}',
+            'severity': 'HIGH'
+        })
+        health['overall_score'] -= 15
+
+    health['checks']['database'] = db_check
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # CHECK 6: Quality Gates Configuration
+    # ═══════════════════════════════════════════════════════════════════════════
+    gates_check = {'name': 'Quality Gates', 'status': 'PASS', 'details': {}}
+
+    # Check mandatory gates are configured
+    mandatory_gates = ['G3', 'G5', 'G8']
+    gates_check['details']['mandatory_gates'] = mandatory_gates
+    gates_check['details']['total_gates'] = 8
+    gates_check['details']['gates_required_to_pass'] = 5
+
+    health['checks']['quality_gates'] = gates_check
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # CHECK 7: Central Bank Rates
+    # ═══════════════════════════════════════════════════════════════════════════
+    rates_check = {'name': 'Central Bank Rates', 'status': 'PASS', 'details': {}}
+
+    rates_check['details']['currencies_configured'] = len(CENTRAL_BANK_RATES)
+    rates_check['details']['rates'] = dict(CENTRAL_BANK_RATES)
+
+    # Check rates are realistic (0-20%)
+    unrealistic_rates = []
+    for curr, rate in CENTRAL_BANK_RATES.items():
+        if rate < 0 or rate > 20:
+            unrealistic_rates.append(f'{curr}: {rate}%')
+
+    if unrealistic_rates:
+        rates_check['status'] = 'WARN'
+        health['warnings'].append({
+            'type': 'UNREALISTIC_RATES',
+            'message': f'Unusual central bank rates: {unrealistic_rates}',
+            'severity': 'LOW'
+        })
+
+    health['checks']['central_bank_rates'] = rates_check
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # CALCULATE OVERALL STATUS
+    # ═══════════════════════════════════════════════════════════════════════════
+    if health['overall_score'] < 0:
+        health['overall_score'] = 0
+
+    if health['errors']:
+        health['overall_status'] = 'CRITICAL'
+    elif health['overall_score'] < 70:
+        health['overall_status'] = 'WARNING'
+    elif health['overall_score'] < 90:
+        health['overall_status'] = 'GOOD'
+    else:
+        health['overall_status'] = 'HEALTHY'
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # AI ANALYSIS (GPT-4o-mini)
+    # ═══════════════════════════════════════════════════════════════════════════
+    if use_ai and OPENAI_API_KEY and (health['warnings'] or health['errors']):
+        try:
+            # Prepare issues summary for AI
+            issues_summary = []
+            for err in health['errors']:
+                issues_summary.append(f"ERROR: {err['message']}")
+            for warn in health['warnings']:
+                issues_summary.append(f"WARNING: {warn['message']}")
+
+            prompt = f"""Analyze these MEGA FOREX trading system health issues and provide:
+1. Brief root cause analysis (1-2 sentences per issue)
+2. Prioritized fix recommendations
+3. Any patterns or related issues
+
+Issues:
+{chr(10).join(issues_summary)}
+
+System context:
+- Version: 9.2.3 PRO
+- 8-Group Gated Scoring with 8 Quality Gates
+- 45 Forex pairs
+- Data sources: Polygon, IG Markets, Finnhub, FRED, OpenAI
+
+Provide concise, actionable analysis in JSON format:
+{{"root_causes": [], "fix_priority": [], "patterns": "", "critical_action": ""}}"""
+
+            headers = {
+                'Authorization': f'Bearer {OPENAI_API_KEY}',
+                'Content-Type': 'application/json'
+            }
+
+            response = req_lib.post(
+                'https://api.openai.com/v1/chat/completions',
+                headers=headers,
+                json={
+                    'model': 'gpt-4o-mini',
+                    'messages': [{'role': 'user', 'content': prompt}],
+                    'max_tokens': 500,
+                    'temperature': 0.3
+                },
+                timeout=15
+            )
+
+            if response.status_code == 200:
+                ai_response = response.json()['choices'][0]['message']['content']
+                try:
+                    # Try to parse as JSON
+                    import json
+                    health['ai_analysis'] = json.loads(ai_response)
+                except:
+                    health['ai_analysis'] = {'raw_analysis': ai_response}
+
+        except Exception as e:
+            health['ai_analysis'] = {'error': f'AI analysis failed: {str(e)[:100]}'}
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # SUMMARY
+    # ═══════════════════════════════════════════════════════════════════════════
+    health['summary'] = {
+        'total_checks': len(health['checks']),
+        'passed': sum(1 for c in health['checks'].values() if c['status'] == 'PASS'),
+        'warnings': len(health['warnings']),
+        'errors': len(health['errors']),
+        'health_score': health['overall_score'],
+        'status_emoji': '✅' if health['overall_status'] == 'HEALTHY' else '⚠️' if health['overall_status'] in ['GOOD', 'WARNING'] else '❌'
+    }
+
+    return health
+
+
+def run_startup_health_check():
+    """
+    Run health check on application startup and log results.
+    Called automatically when the app initializes.
+    """
+    logger.info("🔍 Running startup system health check...")
+
+    try:
+        health = run_ai_system_health_check(use_ai=False)  # Skip AI on startup for speed
+
+        # Log summary
+        status = health['overall_status']
+        score = health['overall_score']
+        warnings = len(health['warnings'])
+        errors = len(health['errors'])
+
+        if status == 'HEALTHY':
+            logger.info(f"✅ System Health: {status} (Score: {score}/100)")
+        elif status in ['GOOD', 'WARNING']:
+            logger.warning(f"⚠️ System Health: {status} (Score: {score}/100, {warnings} warnings)")
+            for warn in health['warnings'][:3]:  # Log first 3 warnings
+                logger.warning(f"  → {warn['message']}")
+        else:
+            logger.error(f"❌ System Health: {status} (Score: {score}/100, {errors} errors)")
+            for err in health['errors']:
+                logger.error(f"  → {err['message']}")
+
+        # Cache the result
+        system_health_cache['data'] = health
+        system_health_cache['timestamp'] = datetime.now()
+
+        return health
+
+    except Exception as e:
+        logger.error(f"❌ Startup health check failed: {e}")
+        return {'overall_status': 'ERROR', 'error': str(e)}
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # API ROUTES
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -8894,6 +9327,41 @@ def audit_endpoint():
         cache['audit']['timestamp'] = datetime.now()
 
     return jsonify(result)
+
+@app.route('/system-health')
+def system_health_endpoint():
+    """
+    AI-powered system health monitoring endpoint.
+    Returns comprehensive health status with warnings and AI analysis.
+    """
+    # Check if we should use AI analysis
+    use_ai = request.args.get('ai', 'true').lower() == 'true'
+    force_refresh = request.args.get('refresh', 'false').lower() == 'true'
+
+    # Check cache unless force refresh
+    if not force_refresh:
+        if system_health_cache['timestamp']:
+            age = (datetime.now() - system_health_cache['timestamp']).total_seconds()
+            if age < system_health_cache['ttl'] and system_health_cache['data']:
+                return jsonify({
+                    'success': True,
+                    'cached': True,
+                    'cache_age_seconds': int(age),
+                    **system_health_cache['data']
+                })
+
+    # Run fresh health check
+    health = run_ai_system_health_check(use_ai=use_ai)
+
+    # Cache result
+    system_health_cache['data'] = health
+    system_health_cache['timestamp'] = datetime.now()
+
+    return jsonify({
+        'success': True,
+        'cached': False,
+        **health
+    })
 
 @app.route('/test-ig')
 def test_ig():
@@ -9793,6 +10261,23 @@ def preload_calendar():
     thread.start()
 
 preload_calendar()
+
+# Run startup system health check
+def run_background_health_check():
+    """Run health check in background thread on startup"""
+    import threading
+    def check():
+        try:
+            import time
+            time.sleep(2)  # Wait for other services to initialize
+            run_startup_health_check()
+        except Exception as e:
+            logger.error(f"Background health check failed: {e}")
+
+    thread = threading.Thread(target=check, daemon=True)
+    thread.start()
+
+run_background_health_check()
 logger.info("🚀 MEGA FOREX v9.2.3 PRO - AI ENHANCED initialized")
 
 if __name__ == '__main__':

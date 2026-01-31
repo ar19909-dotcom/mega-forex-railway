@@ -1151,7 +1151,8 @@
             #tab-calendar,
             #tab-weights,
             #tab-audit,
-            #tab-api-status {
+            #tab-api-status,
+            #tab-system-health {
                 padding-bottom: 120px !important;
             }
 
@@ -1967,6 +1968,7 @@
             <button class="nav-tab" data-tab="weights">⚖️ Weights</button>
             <button class="nav-tab" data-tab="audit">🔍 Audit</button>
             <button class="nav-tab" data-tab="api-status">⚙️ API Status</button>
+            <button class="nav-tab" data-tab="system-health">🩺 Health</button>
         </div>
     </nav>
     
@@ -2176,6 +2178,22 @@
                 <div class="loading"><div class="spinner"></div>Loading...</div>
             </div>
         </div>
+
+        <!-- System Health Tab -->
+        <div class="tab-content" id="tab-system-health">
+            <h2 style="margin-bottom: 1rem;">🩺 AI System Health Monitor</h2>
+            <div style="display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap;">
+                <button onclick="loadSystemHealth(true)" class="action-btn" style="background: linear-gradient(135deg, #10b981, #059669);">
+                    🔄 Refresh Health Check
+                </button>
+                <button onclick="loadSystemHealth(true, true)" class="action-btn" style="background: linear-gradient(135deg, #8b5cf6, #6366f1);">
+                    🤖 Run AI Analysis
+                </button>
+            </div>
+            <div id="system-health-container">
+                <div class="loading"><div class="spinner"></div>Loading system health...</div>
+            </div>
+        </div>
     </main>
 
     <script>
@@ -2224,6 +2242,7 @@
                 else if (tabName === 'calendar') loadCalendar(true); // Force refresh to clear old cache
                 else if (tabName === 'weights') loadWeights();
                 else if (tabName === 'api-status') loadApiStatus();
+                else if (tabName === 'system-health') loadSystemHealth();
             });
         });
         
@@ -4064,7 +4083,163 @@
                 console.error('Error loading API status:', error);
             }
         }
-        
+
+        // v9.2.3: AI System Health Monitor
+        async function loadSystemHealth(refresh = false, useAI = false) {
+            const container = document.getElementById('system-health-container');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div>Running system health check...</div>';
+
+            try {
+                const url = `${API_BASE}/system-health?refresh=${refresh}&ai=${useAI}&t=${Date.now()}`;
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (data.success) {
+                    const statusColors = {
+                        'HEALTHY': '#10b981',
+                        'GOOD': '#84cc16',
+                        'WARNING': '#f59e0b',
+                        'CRITICAL': '#ef4444',
+                        'ERROR': '#ef4444'
+                    };
+                    const statusEmoji = data.summary?.status_emoji || (data.overall_status === 'HEALTHY' ? '✅' : data.overall_status === 'WARNING' ? '⚠️' : '❌');
+                    const statusColor = statusColors[data.overall_status] || '#6b7280';
+
+                    // Build checks summary
+                    const checksHtml = Object.entries(data.checks || {}).map(([name, check]) => {
+                        const checkColor = check.status === 'PASS' ? '#10b981' : check.status === 'WARN' ? '#f59e0b' : '#ef4444';
+                        const checkEmoji = check.status === 'PASS' ? '✓' : check.status === 'WARN' ? '⚠' : '✗';
+                        return `
+                            <div style="padding: 0.75rem; background: rgba(255,255,255,0.02); border-radius: 0.5rem; border-left: 3px solid ${checkColor};">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span style="font-weight: 600;">${check.name || name}</span>
+                                    <span style="color: ${checkColor}; font-weight: 600;">${checkEmoji} ${check.status}</span>
+                                </div>
+                                ${check.details ? `
+                                    <div style="margin-top: 0.5rem; font-size: 0.8rem; color: var(--text-muted);">
+                                        ${Object.entries(check.details).slice(0, 4).map(([k, v]) =>
+                                            `<div>${k}: ${typeof v === 'object' ? JSON.stringify(v).slice(0, 50) : v}</div>`
+                                        ).join('')}
+                                    </div>
+                                ` : ''}
+                            </div>
+                        `;
+                    }).join('');
+
+                    // Build warnings list
+                    const warningsHtml = (data.warnings || []).length > 0 ? `
+                        <div class="audit-section" style="margin-top: 1rem;">
+                            <h3 style="color: #f59e0b;">⚠️ Warnings (${data.warnings.length})</h3>
+                            ${data.warnings.map(w => `
+                                <div style="padding: 0.5rem; background: rgba(245,158,11,0.1); border-radius: 0.25rem; margin-bottom: 0.5rem; font-size: 0.85rem;">
+                                    <strong>[${w.severity || 'MEDIUM'}]</strong> ${w.message}
+                                    ${w.auto_fix ? `<br><span style="color: #10b981; font-size: 0.75rem;">Auto-fix: ${w.auto_fix}</span>` : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : '';
+
+                    // Build errors list
+                    const errorsHtml = (data.errors || []).length > 0 ? `
+                        <div class="audit-section" style="margin-top: 1rem;">
+                            <h3 style="color: #ef4444;">❌ Errors (${data.errors.length})</h3>
+                            ${data.errors.map(e => `
+                                <div style="padding: 0.5rem; background: rgba(239,68,68,0.1); border-radius: 0.25rem; margin-bottom: 0.5rem; font-size: 0.85rem;">
+                                    <strong>[${e.type}]</strong> ${e.message}
+                                    ${e.auto_fix ? `<br><span style="color: #10b981; font-size: 0.75rem;">Auto-fix: ${e.auto_fix}</span>` : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : '';
+
+                    // Build AI analysis
+                    const aiHtml = data.ai_analysis ? `
+                        <div class="audit-section" style="margin-top: 1rem; background: linear-gradient(135deg, rgba(139,92,246,0.1), rgba(59,130,246,0.1)); padding: 1rem; border-radius: 0.5rem;">
+                            <h3 style="color: #8b5cf6;">🤖 AI Analysis (GPT-4o-mini)</h3>
+                            ${data.ai_analysis.error ? `<p style="color: #ef4444;">${data.ai_analysis.error}</p>` : ''}
+                            ${data.ai_analysis.root_causes ? `
+                                <div style="margin-top: 0.5rem;">
+                                    <strong>Root Causes:</strong>
+                                    <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+                                        ${data.ai_analysis.root_causes.map(c => `<li>${c}</li>`).join('')}
+                                    </ul>
+                                </div>
+                            ` : ''}
+                            ${data.ai_analysis.fix_priority ? `
+                                <div style="margin-top: 0.5rem;">
+                                    <strong>Fix Priority:</strong>
+                                    <ol style="margin: 0.5rem 0; padding-left: 1.5rem;">
+                                        ${data.ai_analysis.fix_priority.map(f => `<li>${f}</li>`).join('')}
+                                    </ol>
+                                </div>
+                            ` : ''}
+                            ${data.ai_analysis.critical_action ? `
+                                <div style="margin-top: 0.5rem; padding: 0.5rem; background: rgba(239,68,68,0.2); border-radius: 0.25rem;">
+                                    <strong>Critical Action:</strong> ${data.ai_analysis.critical_action}
+                                </div>
+                            ` : ''}
+                            ${data.ai_analysis.raw_analysis ? `
+                                <pre style="margin-top: 0.5rem; font-size: 0.8rem; white-space: pre-wrap;">${data.ai_analysis.raw_analysis}</pre>
+                            ` : ''}
+                        </div>
+                    ` : '';
+
+                    container.innerHTML = `
+                        <!-- Health Score Header -->
+                        <div style="display: flex; gap: 2rem; flex-wrap: wrap; margin-bottom: 1.5rem;">
+                            <div class="result-card" style="flex: 1; min-width: 200px; text-align: center; background: linear-gradient(135deg, ${statusColor}22, ${statusColor}11);">
+                                <div style="font-size: 3rem; margin-bottom: 0.5rem;">${statusEmoji}</div>
+                                <div style="font-size: 2rem; font-weight: 700; color: ${statusColor};">${data.overall_status}</div>
+                                <div style="font-size: 0.9rem; color: var(--text-muted);">System Health Status</div>
+                            </div>
+                            <div class="result-card" style="flex: 1; min-width: 200px; text-align: center;">
+                                <div style="font-size: 3rem; font-weight: 700; color: ${statusColor};">${data.overall_score}</div>
+                                <div style="font-size: 0.9rem; color: var(--text-muted);">Health Score (0-100)</div>
+                                <div style="margin-top: 0.5rem; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden;">
+                                    <div style="width: ${data.overall_score}%; height: 100%; background: ${statusColor};"></div>
+                                </div>
+                            </div>
+                            <div class="result-card" style="flex: 1; min-width: 200px; text-align: center;">
+                                <div style="font-size: 1.5rem;">
+                                    <span style="color: #10b981;">${data.summary?.passed || 0}</span> /
+                                    <span style="color: var(--text-muted);">${data.summary?.total_checks || 0}</span>
+                                </div>
+                                <div style="font-size: 0.9rem; color: var(--text-muted);">Checks Passed</div>
+                                <div style="margin-top: 0.5rem; font-size: 0.8rem;">
+                                    <span style="color: #f59e0b;">${data.summary?.warnings || 0} warnings</span> •
+                                    <span style="color: #ef4444;">${data.summary?.errors || 0} errors</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- System Checks -->
+                        <div class="audit-section">
+                            <h3>🔍 System Checks</h3>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 0.75rem;">
+                                ${checksHtml}
+                            </div>
+                        </div>
+
+                        ${errorsHtml}
+                        ${warningsHtml}
+                        ${aiHtml}
+
+                        <!-- Metadata -->
+                        <div style="margin-top: 1rem; font-size: 0.75rem; color: var(--text-muted); text-align: right;">
+                            Version: ${data.version || '9.2.3'} |
+                            Last Check: ${new Date(data.timestamp).toLocaleString()} |
+                            ${data.cached ? `Cached (${data.cache_age_seconds}s ago)` : 'Fresh data'}
+                        </div>
+                    `;
+                } else {
+                    container.innerHTML = `<div class="error">Failed to load system health: ${data.error || 'Unknown error'}</div>`;
+                }
+            } catch (error) {
+                console.error('Error loading system health:', error);
+                container.innerHTML = `<div class="error">Error loading system health: ${error.message}</div>`;
+            }
+        }
+
         // v9.2.3: Currency Correlation Analysis
         async function showCorrelation() {
             const container = document.getElementById('audit-container');
@@ -4237,6 +4412,7 @@
                     else if (tabName === 'calendar') loadCalendar(true);
                     else if (tabName === 'weights') loadWeights();
                     else if (tabName === 'api-status') loadApiStatus();
+                    else if (tabName === 'system-health') loadSystemHealth();
                     else if (tabName === 'audit') loadApiStatus(); // Audit uses same data
 
                     // Scroll to top smoothly
