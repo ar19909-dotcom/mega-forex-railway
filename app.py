@@ -1,6 +1,6 @@
 """
 ╔══════════════════════════════════════════════════════════════════════════════╗
-║                   MEGA FOREX v9.2.2 PRO - AI-ENHANCED SYSTEM                 ║
+║                   MEGA FOREX v9.2.3 PRO - AI-ENHANCED SYSTEM                 ║
 ║                    Build: January 31, 2026 - Production Ready                ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
 ║  ✓ 45 Forex Pairs with guaranteed data coverage                              ║
@@ -9,10 +9,11 @@
 ║  ✓ Entry Window: 0-8 hours based on signal strength                          ║
 ║  ✓ 16 Candlestick Pattern Recognition                                        ║
 ║  ✓ SQLite Trade Journal & Signal History                                     ║
-║  ✓ Smart Dynamic SL/TP (Variable ATR)                                        ║
+║  ✓ Smart Dynamic SL/TP (Variable ATR + Liquidity Zones)                      ║
 ║  ✓ REAL IG Client Sentiment + Institutional COT Data                         ║
 ║  ✓ Complete Backtesting Module                                               ║
 ║  ✓ DATA QUALITY INDICATORS (v9.2.2 - AI + REAL DATA)                         ║
+║  ✓ Smart Money Concepts: Order Blocks, Liquidity Zones, Session Timing (NEW) ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
 ║  SCORING METHODOLOGY: 8-Group Gated AI-Enhanced (v9.2.2)                     ║
 ║  - Trend & Momentum (21%): RSI, MACD, ADX + MTF alignment                    ║
@@ -2409,6 +2410,838 @@ def calculate_pivot_points(high, low, close):
         'bias': bias
     }
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# SMART MONEY CONCEPTS (SMC) - ICT-STYLE INSTITUTIONAL ANALYSIS
+# v9.2.3 Professional Implementation
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def calculate_atr_from_ohlc(highs, lows, closes, period=14):
+    """Calculate ATR from OHLC data"""
+    if len(closes) < period + 1:
+        return 0.001
+
+    tr_values = []
+    for i in range(1, min(period + 1, len(closes))):
+        high_low = highs[-i] - lows[-i]
+        high_close = abs(highs[-i] - closes[-i-1]) if i < len(closes) else high_low
+        low_close = abs(lows[-i] - closes[-i-1]) if i < len(closes) else high_low
+        tr_values.append(max(high_low, high_close, low_close))
+
+    return sum(tr_values) / len(tr_values) if tr_values else 0.001
+
+
+def detect_market_structure_smc(highs, lows, closes, lookback=30):
+    """
+    ICT Market Structure Analysis
+
+    Detects:
+    - Break of Structure (BOS) - Continuation pattern
+    - Change of Character (CHoCH) - Reversal pattern
+    - Swing Highs/Lows for structure
+    - Current bias (Bullish/Bearish)
+    """
+    if len(closes) < lookback:
+        return {
+            'bias': 'NEUTRAL',
+            'structure': 'RANGING',
+            'last_bos': None,
+            'last_choch': None,
+            'swing_highs': [],
+            'swing_lows': [],
+            'hh_count': 0,
+            'll_count': 0,
+            'structure_score': 50
+        }
+
+    recent_highs = highs[-lookback:]
+    recent_lows = lows[-lookback:]
+    recent_closes = closes[-lookback:]
+    current_price = recent_closes[-1]
+
+    # Find swing points (using 3-bar confirmation)
+    swing_highs = []
+    swing_lows = []
+
+    for i in range(2, len(recent_highs) - 2):
+        # Swing High: Higher than 2 bars before and after
+        if (recent_highs[i] > recent_highs[i-1] and recent_highs[i] > recent_highs[i-2] and
+            recent_highs[i] > recent_highs[i+1] and recent_highs[i] > recent_highs[i+2]):
+            swing_highs.append({'price': recent_highs[i], 'index': i})
+
+        # Swing Low: Lower than 2 bars before and after
+        if (recent_lows[i] < recent_lows[i-1] and recent_lows[i] < recent_lows[i-2] and
+            recent_lows[i] < recent_lows[i+1] and recent_lows[i] < recent_lows[i+2]):
+            swing_lows.append({'price': recent_lows[i], 'index': i})
+
+    # Count Higher Highs (HH), Lower Lows (LL), Higher Lows (HL), Lower Highs (LH)
+    hh_count = 0
+    ll_count = 0
+    hl_count = 0
+    lh_count = 0
+
+    for i in range(1, len(swing_highs)):
+        if swing_highs[i]['price'] > swing_highs[i-1]['price']:
+            hh_count += 1
+        else:
+            lh_count += 1
+
+    for i in range(1, len(swing_lows)):
+        if swing_lows[i]['price'] < swing_lows[i-1]['price']:
+            ll_count += 1
+        else:
+            hl_count += 1
+
+    # Detect BOS and CHoCH
+    last_bos = None
+    last_choch = None
+
+    if len(swing_highs) >= 2 and len(swing_lows) >= 2:
+        last_sh = swing_highs[-1]['price']
+        prev_sh = swing_highs[-2]['price']
+        last_sl = swing_lows[-1]['price']
+        prev_sl = swing_lows[-2]['price']
+
+        # BOS Bullish: Price breaks above previous swing high in uptrend
+        if current_price > prev_sh and hh_count > ll_count:
+            last_bos = {'type': 'BULLISH', 'level': prev_sh, 'broken': True}
+
+        # BOS Bearish: Price breaks below previous swing low in downtrend
+        elif current_price < prev_sl and ll_count > hh_count:
+            last_bos = {'type': 'BEARISH', 'level': prev_sl, 'broken': True}
+
+        # CHoCH Bullish: In downtrend, price breaks above last swing high (reversal)
+        if ll_count > hh_count and current_price > last_sh:
+            last_choch = {'type': 'BULLISH', 'level': last_sh, 'reversal': True}
+
+        # CHoCH Bearish: In uptrend, price breaks below last swing low (reversal)
+        elif hh_count > ll_count and current_price < last_sl:
+            last_choch = {'type': 'BEARISH', 'level': last_sl, 'reversal': True}
+
+    # Determine bias and structure
+    if hh_count >= 2 and hl_count >= 1:
+        bias = 'BULLISH'
+        structure = 'UPTREND'
+        structure_score = min(80, 50 + (hh_count * 10))
+    elif ll_count >= 2 and lh_count >= 1:
+        bias = 'BEARISH'
+        structure = 'DOWNTREND'
+        structure_score = max(20, 50 - (ll_count * 10))
+    else:
+        bias = 'NEUTRAL'
+        structure = 'RANGING'
+        structure_score = 50
+
+    # CHoCH overrides - it signals reversal
+    if last_choch:
+        if last_choch['type'] == 'BULLISH':
+            bias = 'BULLISH'
+            structure = 'REVERSAL_UP'
+            structure_score = 70
+        else:
+            bias = 'BEARISH'
+            structure = 'REVERSAL_DOWN'
+            structure_score = 30
+
+    return {
+        'bias': bias,
+        'structure': structure,
+        'last_bos': last_bos,
+        'last_choch': last_choch,
+        'swing_highs': [sh['price'] for sh in swing_highs[-5:]],
+        'swing_lows': [sl['price'] for sl in swing_lows[-5:]],
+        'hh_count': hh_count,
+        'll_count': ll_count,
+        'hl_count': hl_count,
+        'lh_count': lh_count,
+        'structure_score': structure_score
+    }
+
+
+def detect_order_blocks(opens, highs, lows, closes, lookback=50):
+    """
+    ICT Order Block Detection
+
+    Bullish OB (Demand): Last DOWN candle before impulsive UP move that breaks structure
+    Bearish OB (Supply): Last UP candle before impulsive DOWN move that breaks structure
+
+    Features:
+    - Validates OB with displacement (strong move away)
+    - Tracks if OB has been mitigated (tested)
+    - Identifies premium/discount zones
+    - Calculates OB strength based on move magnitude
+    """
+    if len(closes) < lookback + 5:
+        return {
+            'bullish_ob': [],
+            'bearish_ob': [],
+            'nearest_bullish_ob': None,
+            'nearest_bearish_ob': None,
+            'ob_signal': 'NEUTRAL',
+            'ob_strength': 0,
+            'in_discount': False,
+            'in_premium': False
+        }
+
+    atr = calculate_atr_from_ohlc(highs, lows, closes)
+
+    recent_opens = opens[-lookback:]
+    recent_highs = highs[-lookback:]
+    recent_lows = lows[-lookback:]
+    recent_closes = closes[-lookback:]
+    current_price = recent_closes[-1]
+
+    bullish_ob = []
+    bearish_ob = []
+
+    for i in range(3, len(recent_closes) - 3):
+        candle_body = recent_closes[i] - recent_opens[i]
+        candle_range = recent_highs[i] - recent_lows[i]
+
+        # ═══════════════════════════════════════════════════════════════════
+        # BULLISH ORDER BLOCK (Demand Zone)
+        # Last bearish candle before strong bullish displacement
+        # ═══════════════════════════════════════════════════════════════════
+        is_bearish = candle_body < 0
+
+        if is_bearish:
+            # Check for displacement (strong move) in next 1-3 candles
+            displacement = 0
+            for j in range(1, min(4, len(recent_closes) - i)):
+                displacement = max(displacement, recent_closes[i + j] - recent_closes[i])
+
+            # Valid OB requires displacement > 2x ATR
+            if displacement > atr * 2.0:
+                # Check if OB has been mitigated (price returned to zone)
+                mitigated = False
+                for k in range(i + 4, len(recent_lows)):
+                    if recent_lows[k] <= recent_highs[i]:
+                        mitigated = True
+                        break
+
+                # Calculate strength (0-100)
+                strength = min(100, int((displacement / atr) * 25))
+
+                # Only add unmitigated OBs or recently mitigated ones
+                if not mitigated or (mitigated and i > len(recent_closes) - 10):
+                    bullish_ob.append({
+                        'high': recent_highs[i],
+                        'low': recent_lows[i],
+                        'open': recent_opens[i],
+                        'close': recent_closes[i],
+                        'mid': (recent_highs[i] + recent_lows[i]) / 2,
+                        'strength': strength,
+                        'displacement': round(displacement / atr, 2),
+                        'mitigated': mitigated,
+                        'index': i
+                    })
+
+        # ═══════════════════════════════════════════════════════════════════
+        # BEARISH ORDER BLOCK (Supply Zone)
+        # Last bullish candle before strong bearish displacement
+        # ═══════════════════════════════════════════════════════════════════
+        is_bullish = candle_body > 0
+
+        if is_bullish:
+            displacement = 0
+            for j in range(1, min(4, len(recent_closes) - i)):
+                displacement = max(displacement, recent_closes[i] - recent_closes[i + j])
+
+            if displacement > atr * 2.0:
+                mitigated = False
+                for k in range(i + 4, len(recent_highs)):
+                    if recent_highs[k] >= recent_lows[i]:
+                        mitigated = True
+                        break
+
+                strength = min(100, int((displacement / atr) * 25))
+
+                if not mitigated or (mitigated and i > len(recent_closes) - 10):
+                    bearish_ob.append({
+                        'high': recent_highs[i],
+                        'low': recent_lows[i],
+                        'open': recent_opens[i],
+                        'close': recent_closes[i],
+                        'mid': (recent_highs[i] + recent_lows[i]) / 2,
+                        'strength': strength,
+                        'displacement': round(displacement / atr, 2),
+                        'mitigated': mitigated,
+                        'index': i
+                    })
+
+    # Find nearest unmitigated OBs
+    unmitigated_bullish = [ob for ob in bullish_ob if not ob['mitigated'] and ob['high'] < current_price]
+    unmitigated_bearish = [ob for ob in bearish_ob if not ob['mitigated'] and ob['low'] > current_price]
+
+    nearest_bullish = max(unmitigated_bullish, key=lambda x: x['high']) if unmitigated_bullish else None
+    nearest_bearish = min(unmitigated_bearish, key=lambda x: x['low']) if unmitigated_bearish else None
+
+    # Premium/Discount calculation
+    if nearest_bullish and nearest_bearish:
+        range_high = nearest_bearish['low']
+        range_low = nearest_bullish['high']
+        range_mid = (range_high + range_low) / 2
+        in_discount = current_price < range_mid
+        in_premium = current_price > range_mid
+    else:
+        recent_high = max(recent_highs[-20:])
+        recent_low = min(recent_lows[-20:])
+        range_mid = (recent_high + recent_low) / 2
+        in_discount = current_price < range_mid
+        in_premium = current_price > range_mid
+
+    # Generate signal
+    ob_signal = 'NEUTRAL'
+    ob_strength = 0
+
+    if nearest_bullish:
+        dist_pct = (current_price - nearest_bullish['high']) / current_price * 100
+        if dist_pct < 0.5:  # Within 0.5% of demand zone
+            ob_signal = 'BULLISH'
+            ob_strength = nearest_bullish['strength']
+
+    if nearest_bearish:
+        dist_pct = (nearest_bearish['low'] - current_price) / current_price * 100
+        if dist_pct < 0.5:  # Within 0.5% of supply zone
+            if ob_signal == 'BULLISH':
+                ob_signal = 'NEUTRAL'  # Conflicting signals
+            else:
+                ob_signal = 'BEARISH'
+                ob_strength = nearest_bearish['strength']
+
+    return {
+        'bullish_ob': [ob for ob in bullish_ob if not ob['mitigated']][-5:],
+        'bearish_ob': [ob for ob in bearish_ob if not ob['mitigated']][-5:],
+        'nearest_bullish_ob': nearest_bullish,
+        'nearest_bearish_ob': nearest_bearish,
+        'ob_signal': ob_signal,
+        'ob_strength': ob_strength,
+        'in_discount': in_discount,
+        'in_premium': in_premium,
+        'total_bullish': len(bullish_ob),
+        'total_bearish': len(bearish_ob)
+    }
+
+
+def detect_fair_value_gaps(opens, highs, lows, closes, lookback=30):
+    """
+    ICT Fair Value Gap (FVG) Detection
+
+    FVG = Price imbalance where candle 1 and candle 3 don't overlap
+
+    Bullish FVG: Gap between candle 1 high and candle 3 low (price likely to fill up)
+    Bearish FVG: Gap between candle 1 low and candle 3 high (price likely to fill down)
+
+    FVGs act as magnets - price tends to return to fill them
+    """
+    if len(closes) < lookback:
+        return {
+            'bullish_fvg': [],
+            'bearish_fvg': [],
+            'nearest_bullish_fvg': None,
+            'nearest_bearish_fvg': None,
+            'fvg_signal': 'NEUTRAL',
+            'unfilled_count': 0
+        }
+
+    recent_highs = highs[-lookback:]
+    recent_lows = lows[-lookback:]
+    recent_closes = closes[-lookback:]
+    current_price = recent_closes[-1]
+    atr = calculate_atr_from_ohlc(highs, lows, closes)
+
+    bullish_fvg = []
+    bearish_fvg = []
+
+    for i in range(2, len(recent_closes)):
+        # Bullish FVG: Candle 1 high < Candle 3 low (gap up)
+        # Forms during strong bullish move
+        candle1_high = recent_highs[i - 2]
+        candle3_low = recent_lows[i]
+
+        if candle3_low > candle1_high:
+            gap_size = candle3_low - candle1_high
+            if gap_size > atr * 0.3:  # Minimum gap size
+                # Check if filled
+                filled = False
+                for k in range(i + 1, len(recent_lows)):
+                    if recent_lows[k] <= candle1_high:
+                        filled = True
+                        break
+
+                if not filled:
+                    bullish_fvg.append({
+                        'high': candle3_low,  # Top of gap
+                        'low': candle1_high,  # Bottom of gap
+                        'mid': (candle3_low + candle1_high) / 2,
+                        'size': round(gap_size / atr, 2),
+                        'filled': False,
+                        'index': i
+                    })
+
+        # Bearish FVG: Candle 1 low > Candle 3 high (gap down)
+        candle1_low = recent_lows[i - 2]
+        candle3_high = recent_highs[i]
+
+        if candle1_low > candle3_high:
+            gap_size = candle1_low - candle3_high
+            if gap_size > atr * 0.3:
+                filled = False
+                for k in range(i + 1, len(recent_highs)):
+                    if recent_highs[k] >= candle1_low:
+                        filled = True
+                        break
+
+                if not filled:
+                    bearish_fvg.append({
+                        'high': candle1_low,  # Top of gap
+                        'low': candle3_high,  # Bottom of gap
+                        'mid': (candle1_low + candle3_high) / 2,
+                        'size': round(gap_size / atr, 2),
+                        'filled': False,
+                        'index': i
+                    })
+
+    # Find nearest unfilled FVGs
+    unfilled_bullish = [fvg for fvg in bullish_fvg if fvg['high'] < current_price]
+    unfilled_bearish = [fvg for fvg in bearish_fvg if fvg['low'] > current_price]
+
+    nearest_bullish = max(unfilled_bullish, key=lambda x: x['high']) if unfilled_bullish else None
+    nearest_bearish = min(unfilled_bearish, key=lambda x: x['low']) if unfilled_bearish else None
+
+    # Signal based on proximity to FVG
+    fvg_signal = 'NEUTRAL'
+
+    if nearest_bullish:
+        dist_pct = (current_price - nearest_bullish['high']) / current_price * 100
+        if dist_pct < 0.3:
+            fvg_signal = 'BULLISH'  # Price near bullish FVG - expect bounce
+
+    if nearest_bearish:
+        dist_pct = (nearest_bearish['low'] - current_price) / current_price * 100
+        if dist_pct < 0.3:
+            if fvg_signal == 'BULLISH':
+                fvg_signal = 'NEUTRAL'
+            else:
+                fvg_signal = 'BEARISH'  # Price near bearish FVG - expect drop
+
+    return {
+        'bullish_fvg': bullish_fvg[-5:],
+        'bearish_fvg': bearish_fvg[-5:],
+        'nearest_bullish_fvg': nearest_bullish,
+        'nearest_bearish_fvg': nearest_bearish,
+        'fvg_signal': fvg_signal,
+        'unfilled_count': len(bullish_fvg) + len(bearish_fvg)
+    }
+
+
+def detect_liquidity_zones(highs, lows, closes, lookback=50):
+    """
+    ICT Liquidity Zone Detection
+
+    Identifies where stop losses are pooled:
+    - Equal Highs (EQH) / Equal Lows (EQL) - Strong liquidity
+    - Previous Day High/Low (PDH/PDL)
+    - Swing Highs/Lows
+    - Round numbers (psychological levels)
+
+    Smart money sweeps these zones before reversing
+    """
+    if len(closes) < lookback:
+        return {
+            'buy_side_liquidity': [],
+            'sell_side_liquidity': [],
+            'nearest_buy_liquidity': None,
+            'nearest_sell_liquidity': None,
+            'liquidity_signal': 'NEUTRAL',
+            'pdh': None,
+            'pdl': None,
+            'liquidity_swept': False
+        }
+
+    recent_highs = highs[-lookback:]
+    recent_lows = lows[-lookback:]
+    recent_closes = closes[-lookback:]
+    current_price = recent_closes[-1]
+
+    # Tolerance for equal highs/lows (0.08% of price)
+    tolerance = current_price * 0.0008
+
+    buy_side = []   # Above price - short stops
+    sell_side = []  # Below price - long stops
+
+    # Previous Day High/Low (assume last 1-2 candles = current day for daily TF)
+    pdh = max(recent_highs[-5:-1]) if len(recent_highs) > 5 else max(recent_highs)
+    pdl = min(recent_lows[-5:-1]) if len(recent_lows) > 5 else min(recent_lows)
+
+    if pdh > current_price:
+        buy_side.append({'level': pdh, 'type': 'PDH', 'strength': 85})
+    if pdl < current_price:
+        sell_side.append({'level': pdl, 'type': 'PDL', 'strength': 85})
+
+    # Detect swing points and equal highs/lows
+    swing_highs = []
+    swing_lows = []
+
+    for i in range(2, len(recent_highs) - 2):
+        # Swing High
+        if (recent_highs[i] >= recent_highs[i-1] and recent_highs[i] >= recent_highs[i-2] and
+            recent_highs[i] >= recent_highs[i+1] and recent_highs[i] >= recent_highs[i+2]):
+            swing_highs.append({'price': recent_highs[i], 'index': i})
+
+        # Swing Low
+        if (recent_lows[i] <= recent_lows[i-1] and recent_lows[i] <= recent_lows[i-2] and
+            recent_lows[i] <= recent_lows[i+1] and recent_lows[i] <= recent_lows[i+2]):
+            swing_lows.append({'price': recent_lows[i], 'index': i})
+
+    # Equal Highs (EQH)
+    for i, sh in enumerate(swing_highs):
+        for j in range(i + 1, len(swing_highs)):
+            if abs(swing_highs[j]['price'] - sh['price']) < tolerance:
+                level = max(sh['price'], swing_highs[j]['price'])
+                if level > current_price and not any(l['level'] == level for l in buy_side):
+                    buy_side.append({'level': level, 'type': 'EQH', 'strength': 90})
+                break
+        else:
+            # Single swing high
+            if sh['price'] > current_price and not any(l['level'] == sh['price'] for l in buy_side):
+                buy_side.append({'level': sh['price'], 'type': 'SWING_HIGH', 'strength': 60})
+
+    # Equal Lows (EQL)
+    for i, sl in enumerate(swing_lows):
+        for j in range(i + 1, len(swing_lows)):
+            if abs(swing_lows[j]['price'] - sl['price']) < tolerance:
+                level = min(sl['price'], swing_lows[j]['price'])
+                if level < current_price and not any(l['level'] == level for l in sell_side):
+                    sell_side.append({'level': level, 'type': 'EQL', 'strength': 90})
+                break
+        else:
+            if sl['price'] < current_price and not any(l['level'] == sl['price'] for l in sell_side):
+                sell_side.append({'level': sl['price'], 'type': 'SWING_LOW', 'strength': 60})
+
+    # Round number levels (psychological)
+    price_magnitude = 10 ** (len(str(int(current_price))) - 2)
+    round_above = ((current_price // price_magnitude) + 1) * price_magnitude
+    round_below = (current_price // price_magnitude) * price_magnitude
+
+    if round_above > current_price:
+        buy_side.append({'level': round_above, 'type': 'ROUND_NUMBER', 'strength': 50})
+    if round_below < current_price:
+        sell_side.append({'level': round_below, 'type': 'ROUND_NUMBER', 'strength': 50})
+
+    # Sort by strength then proximity
+    buy_side.sort(key=lambda x: (-x['strength'], x['level']))
+    sell_side.sort(key=lambda x: (-x['strength'], -x['level']))
+
+    nearest_buy = min(buy_side, key=lambda x: x['level']) if buy_side else None
+    nearest_sell = max(sell_side, key=lambda x: x['level']) if sell_side else None
+
+    # Check if liquidity was recently swept (wick above/below then close back)
+    liquidity_swept = False
+    if len(recent_highs) >= 3 and len(recent_closes) >= 3:
+        last_high = recent_highs[-1]
+        last_close = recent_closes[-1]
+        prev_high = max(recent_highs[-10:-1])
+
+        # Bullish sweep: Wicked above liquidity but closed below
+        if last_high > prev_high and last_close < prev_high:
+            liquidity_swept = True
+
+        last_low = recent_lows[-1]
+        prev_low = min(recent_lows[-10:-1])
+
+        # Bearish sweep: Wicked below liquidity but closed above
+        if last_low < prev_low and last_close > prev_low:
+            liquidity_swept = True
+
+    # Signal
+    liquidity_signal = 'NEUTRAL'
+    if nearest_buy and nearest_sell:
+        dist_buy = (nearest_buy['level'] - current_price) / current_price * 100
+        dist_sell = (current_price - nearest_sell['level']) / current_price * 100
+
+        if dist_buy < 0.2:
+            liquidity_signal = 'SWEEP_UP_EXPECTED'
+        elif dist_sell < 0.2:
+            liquidity_signal = 'SWEEP_DOWN_EXPECTED'
+
+    return {
+        'buy_side_liquidity': buy_side[:5],
+        'sell_side_liquidity': sell_side[:5],
+        'nearest_buy_liquidity': nearest_buy,
+        'nearest_sell_liquidity': nearest_sell,
+        'liquidity_signal': liquidity_signal,
+        'pdh': pdh,
+        'pdl': pdl,
+        'liquidity_swept': liquidity_swept
+    }
+
+
+def get_ict_killzones(pair=None):
+    """
+    ICT Killzone Detection
+
+    High-probability trading windows based on institutional activity:
+
+    - Asian Range: 20:00-00:00 UTC (defines range for London breakout)
+    - London Killzone: 07:00-10:00 UTC (best for GBP/EUR pairs)
+    - NY AM Killzone: 12:00-15:00 UTC (best for USD pairs, highest volume)
+    - NY PM Killzone: 18:00-20:00 UTC (closing moves, reversals)
+    - London Close: 15:00-17:00 UTC (profit taking, reversals)
+
+    Returns current killzone status and trading recommendation
+    """
+    from datetime import datetime
+    import pytz
+
+    try:
+        utc_now = datetime.now(pytz.UTC)
+        hour = utc_now.hour
+        minute = utc_now.minute
+    except:
+        return {
+            'killzone': 'UNKNOWN',
+            'is_killzone': False,
+            'quality': 0,
+            'recommendation': 'WAIT',
+            'active_sessions': [],
+            'hour_utc': 0
+        }
+
+    active_sessions = []
+    killzone = 'OFF_HOURS'
+    is_killzone = False
+    quality = 0
+    recommendation = 'WAIT'
+
+    # Session detection
+    if hour >= 20 or hour < 6:
+        active_sessions.append('ASIAN')
+    if 7 <= hour < 16:
+        active_sessions.append('LONDON')
+    if 12 <= hour < 21:
+        active_sessions.append('NEW_YORK')
+
+    # Killzone detection with quality scores
+    if 20 <= hour < 24 or 0 <= hour < 1:
+        killzone = 'ASIAN_RANGE'
+        is_killzone = False  # Not a trading KZ, just range formation
+        quality = 20
+        recommendation = 'MARK_RANGE'
+
+    elif 7 <= hour < 10:
+        killzone = 'LONDON_KILLZONE'
+        is_killzone = True
+        quality = 85
+        recommendation = 'TRADE'
+
+    elif 10 <= hour < 12:
+        killzone = 'LONDON_CONTINUATION'
+        is_killzone = True
+        quality = 65
+        recommendation = 'TRADE_CAUTIOUS'
+
+    elif 12 <= hour < 15:
+        killzone = 'NY_AM_KILLZONE'
+        is_killzone = True
+        quality = 95  # Best killzone
+        recommendation = 'TRADE_AGGRESSIVE'
+
+    elif 15 <= hour < 17:
+        killzone = 'LONDON_CLOSE'
+        is_killzone = True
+        quality = 60
+        recommendation = 'REVERSAL_WATCH'
+
+    elif 17 <= hour < 18:
+        killzone = 'DEAD_ZONE'
+        is_killzone = False
+        quality = 15
+        recommendation = 'AVOID'
+
+    elif 18 <= hour < 20:
+        killzone = 'NY_PM_KILLZONE'
+        is_killzone = True
+        quality = 55
+        recommendation = 'TRADE_CAUTIOUS'
+
+    else:
+        killzone = 'OFF_HOURS'
+        is_killzone = False
+        quality = 10
+        recommendation = 'WAIT'
+
+    # Pair-specific quality adjustments
+    if pair:
+        pair_upper = pair.upper().replace('/', '_').replace('-', '_')
+
+        # GBP/EUR best in London KZ
+        if ('GBP' in pair_upper or 'EUR' in pair_upper) and killzone == 'LONDON_KILLZONE':
+            quality = min(100, quality + 10)
+
+        # USD pairs best in NY KZ
+        if 'USD' in pair_upper and 'NY' in killzone:
+            quality = min(100, quality + 10)
+
+        # JPY pairs in Tokyo overlap
+        if 'JPY' in pair_upper and hour < 9:
+            quality = min(100, quality + 5)
+
+        # AUD/NZD in Asian/Sydney
+        if ('AUD' in pair_upper or 'NZD' in pair_upper) and 'ASIAN' in active_sessions:
+            quality = min(100, quality + 8)
+
+    return {
+        'killzone': killzone,
+        'is_killzone': is_killzone,
+        'quality': quality,
+        'recommendation': recommendation,
+        'active_sessions': active_sessions,
+        'hour_utc': hour,
+        'time_utc': f"{hour:02d}:{minute:02d}"
+    }
+
+
+def get_smc_analysis(pair, opens, highs, lows, closes):
+    """
+    Complete ICT Smart Money Concepts Analysis
+
+    Combines:
+    - Market Structure (BOS/CHoCH)
+    - Order Blocks (Supply/Demand)
+    - Fair Value Gaps (FVG)
+    - Liquidity Zones
+    - Killzones
+
+    Returns comprehensive SMC score and signal
+    """
+    if len(closes) < 20:
+        return {
+            'market_structure': {'bias': 'NEUTRAL', 'structure': 'INSUFFICIENT_DATA'},
+            'order_blocks': {'ob_signal': 'NEUTRAL'},
+            'fair_value_gaps': {'fvg_signal': 'NEUTRAL'},
+            'liquidity_zones': {'liquidity_signal': 'NEUTRAL'},
+            'killzones': {'killzone': 'UNKNOWN'},
+            'smc_score': 50,
+            'smc_signal': 'NEUTRAL',
+            'smc_confluence': 0,
+            'trade_setup': None
+        }
+
+    # Run all SMC analyses
+    market_structure = detect_market_structure_smc(highs, lows, closes)
+    order_blocks = detect_order_blocks(opens, highs, lows, closes)
+    fvg = detect_fair_value_gaps(opens, highs, lows, closes)
+    liquidity = detect_liquidity_zones(highs, lows, closes)
+    killzones = get_ict_killzones(pair)
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # CALCULATE SMC SCORE (0-100)
+    # ═══════════════════════════════════════════════════════════════════════════
+    smc_score = 50  # Neutral baseline
+    confluence_count = 0
+    bullish_factors = []
+    bearish_factors = []
+
+    # 1. Market Structure (25 points max)
+    if market_structure['bias'] == 'BULLISH':
+        structure_points = (market_structure['structure_score'] - 50) * 0.5
+        smc_score += structure_points
+        bullish_factors.append(f"Structure: {market_structure['structure']}")
+        confluence_count += 1
+    elif market_structure['bias'] == 'BEARISH':
+        structure_points = (50 - market_structure['structure_score']) * 0.5
+        smc_score -= structure_points
+        bearish_factors.append(f"Structure: {market_structure['structure']}")
+        confluence_count += 1
+
+    # 2. Order Blocks (20 points max)
+    if order_blocks['ob_signal'] == 'BULLISH':
+        ob_points = order_blocks['ob_strength'] * 0.2
+        smc_score += ob_points
+        bullish_factors.append('Near Demand OB')
+        confluence_count += 1
+        # Bonus for discount zone
+        if order_blocks['in_discount']:
+            smc_score += 5
+            bullish_factors.append('In Discount Zone')
+    elif order_blocks['ob_signal'] == 'BEARISH':
+        ob_points = order_blocks['ob_strength'] * 0.2
+        smc_score -= ob_points
+        bearish_factors.append('Near Supply OB')
+        confluence_count += 1
+        if order_blocks['in_premium']:
+            smc_score -= 5
+            bearish_factors.append('In Premium Zone')
+
+    # 3. Fair Value Gaps (10 points max)
+    if fvg['fvg_signal'] == 'BULLISH':
+        smc_score += 8
+        bullish_factors.append('Bullish FVG Support')
+        confluence_count += 1
+    elif fvg['fvg_signal'] == 'BEARISH':
+        smc_score -= 8
+        bearish_factors.append('Bearish FVG Resistance')
+        confluence_count += 1
+
+    # 4. Liquidity (10 points max)
+    if liquidity['liquidity_swept']:
+        # Liquidity sweep is bullish if swept sell-side, bearish if swept buy-side
+        if liquidity['liquidity_signal'] == 'SWEEP_DOWN_EXPECTED':
+            smc_score += 10
+            bullish_factors.append('Sell-side Swept')
+            confluence_count += 1
+        elif liquidity['liquidity_signal'] == 'SWEEP_UP_EXPECTED':
+            smc_score -= 10
+            bearish_factors.append('Buy-side Swept')
+            confluence_count += 1
+
+    # 5. Killzone Quality (10 points max)
+    if killzones['is_killzone']:
+        kz_bonus = killzones['quality'] * 0.1
+        if smc_score > 50:
+            smc_score += kz_bonus
+        elif smc_score < 50:
+            smc_score -= kz_bonus
+        confluence_count += 0.5  # Half point for timing
+
+    # Clamp score
+    smc_score = max(5, min(95, smc_score))
+
+    # Determine signal
+    if smc_score >= 65:
+        smc_signal = 'BULLISH'
+    elif smc_score <= 35:
+        smc_signal = 'BEARISH'
+    else:
+        smc_signal = 'NEUTRAL'
+
+    # Build trade setup if signal is strong
+    trade_setup = None
+    if confluence_count >= 2 and smc_signal != 'NEUTRAL':
+        trade_setup = {
+            'direction': 'LONG' if smc_signal == 'BULLISH' else 'SHORT',
+            'entry_zone': order_blocks['nearest_bullish_ob'] if smc_signal == 'BULLISH' else order_blocks['nearest_bearish_ob'],
+            'sl_zone': liquidity['nearest_sell_liquidity'] if smc_signal == 'BULLISH' else liquidity['nearest_buy_liquidity'],
+            'tp_zone': liquidity['nearest_buy_liquidity'] if smc_signal == 'BULLISH' else liquidity['nearest_sell_liquidity'],
+            'confluence': confluence_count,
+            'factors': bullish_factors if smc_signal == 'BULLISH' else bearish_factors
+        }
+
+    return {
+        'market_structure': market_structure,
+        'order_blocks': order_blocks,
+        'fair_value_gaps': fvg,
+        'liquidity_zones': liquidity,
+        'killzones': killzones,
+        'smc_score': round(smc_score, 1),
+        'smc_signal': smc_signal,
+        'smc_confluence': confluence_count,
+        'bullish_factors': bullish_factors,
+        'bearish_factors': bearish_factors,
+        'trade_setup': trade_setup
+    }
+
+
 def get_multi_timeframe_data(pair):
     """
     Get data for multiple timeframes: H1, H4, D1
@@ -2878,10 +3711,11 @@ def get_technical_indicators(pair):
             'data_source': 'FALLBACK'
         }
     
+    opens = [c['open'] for c in candles]
     closes = [c['close'] for c in candles]
     highs = [c['high'] for c in candles]
     lows = [c['low'] for c in candles]
-    
+
     rsi = calculate_rsi(closes)
     macd = calculate_macd(closes)
     adx = calculate_adx(highs, lows, closes)
@@ -2905,7 +3739,14 @@ def get_technical_indicators(pair):
         'ema_signal': 'BULLISH' if closes[-1] > ema20 > ema50 else 'BEARISH' if closes[-1] < ema20 < ema50 else 'NEUTRAL',
         'current_price': closes[-1],
         'data_quality': 'REAL',  # Real data from Polygon
-        'data_source': 'POLYGON'
+        'data_source': 'POLYGON',
+        # v9.2.3: OHLC data for SMC analysis
+        'ohlc_data': {
+            'opens': opens,
+            'highs': highs,
+            'lows': lows,
+            'closes': closes
+        }
     }
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -5863,6 +6704,26 @@ def generate_signal(pair):
             'quote_strength': currency_strength_data.get('quote_strength', 50)
         }
 
+        # ═══════════════════════════════════════════════════════════════════════════
+        # v9.2.3: SMART MONEY CONCEPTS (SMC) ANALYSIS
+        # Order Blocks, Liquidity Zones, Session Timing
+        # ═══════════════════════════════════════════════════════════════════════════
+        smc_analysis = None
+        try:
+            # Get OHLC data for SMC analysis
+            ohlc = tech.get('ohlc_data', {})
+            if ohlc and len(ohlc.get('closes', [])) >= 20:
+                smc_analysis = get_smc_analysis(
+                    pair,
+                    ohlc.get('opens', []),
+                    ohlc.get('highs', []),
+                    ohlc.get('lows', []),
+                    ohlc.get('closes', [])
+                )
+        except Exception as e:
+            logging.debug(f"SMC analysis failed for {pair}: {e}")
+            smc_analysis = None
+
         # Detect market regime for dynamic weight selection
         atr_raw = tech.get('atr') or DEFAULT_ATR.get(pair, 0.005)
         adx_raw = tech.get('adx', 20)
@@ -5937,6 +6798,38 @@ def generate_signal(pair):
                 composite_score += expansion_bonus
             else:
                 composite_score -= expansion_bonus
+
+        # ═══════════════════════════════════════════════════════════════════════════
+        # v9.2.3: ICT KILLZONE & SMC SCORE BOOST
+        # Apply SMC confluence bonus during optimal killzones
+        # ═══════════════════════════════════════════════════════════════════════════
+        smc_boost_applied = 0
+        killzone_boost_applied = 0
+
+        if smc_analysis:
+            # SMC Score contribution (max ±5 points based on SMC confluence)
+            smc_score = smc_analysis.get('smc_score', 50)
+            smc_confluence = smc_analysis.get('smc_confluence', 0)
+
+            if smc_confluence >= 2:  # Need at least 2 confluent factors
+                smc_deviation = smc_score - 50
+                smc_boost_applied = min(5.0, abs(smc_deviation) * 0.15)
+
+                if smc_score > 55 and composite_score > 50:
+                    composite_score += smc_boost_applied
+                elif smc_score < 45 and composite_score < 50:
+                    composite_score -= smc_boost_applied
+
+            # Killzone boost (max ±3 points during high-quality killzones)
+            killzones = smc_analysis.get('killzones', {})
+            if killzones.get('is_killzone', False):
+                kz_quality = killzones.get('quality', 0)
+                if kz_quality >= 70:  # High quality killzone
+                    killzone_boost_applied = min(3.0, abs(composite_score - 50) * (kz_quality / 1000))
+                    if composite_score > 50:
+                        composite_score += killzone_boost_applied
+                    elif composite_score < 50:
+                        composite_score -= killzone_boost_applied
 
         # ═══════════════════════════════════════════════════════════════════════════
         # v9.0: 6-GATE QUALITY FILTER
@@ -6379,6 +7272,47 @@ def generate_signal(pair):
             tp1 = entry + (tp1_pips * pip_size)
             tp2 = entry + (tp2_pips * pip_size)
 
+        # ─────────────────────────────────────────────────────────────────────────
+        # v9.2.3: LIQUIDITY ZONE REFINEMENT (SMC)
+        # Place SL beyond liquidity zones to avoid stop hunts
+        # ─────────────────────────────────────────────────────────────────────────
+        if smc_analysis and direction in ['LONG', 'SHORT']:
+            liquidity_zones = smc_analysis.get('liquidity_zones', {})
+
+            if direction == 'LONG':
+                # Check sell-side liquidity (below price) - where long stops are pooled
+                sell_liquidity = liquidity_zones.get('nearest_sell_liquidity')
+                if sell_liquidity:
+                    liquidity_level = sell_liquidity['level']
+                    liquidity_distance = (entry - liquidity_level) / pip_size
+
+                    # If liquidity zone is closer than our SL, place SL below it
+                    if liquidity_distance > 0 and liquidity_distance < sl_pips:
+                        # Add buffer beyond liquidity zone (5 pips or 0.3x ATR)
+                        liq_buffer = max(5, atr_pips * 0.3)
+                        new_sl_pips = liquidity_distance + liq_buffer
+
+                        # Only adjust if within acceptable limits
+                        if new_sl_pips <= limits['sl_abs_max']:
+                            sl_pips = new_sl_pips
+                            sl = liquidity_level - (liq_buffer * pip_size)
+
+            elif direction == 'SHORT':
+                # Check buy-side liquidity (above price) - where short stops are pooled
+                buy_liquidity = liquidity_zones.get('nearest_buy_liquidity')
+                if buy_liquidity:
+                    liquidity_level = buy_liquidity['level']
+                    liquidity_distance = (liquidity_level - entry) / pip_size
+
+                    # If liquidity zone is closer than our SL, place SL above it
+                    if liquidity_distance > 0 and liquidity_distance < sl_pips:
+                        liq_buffer = max(5, atr_pips * 0.3)
+                        new_sl_pips = liquidity_distance + liq_buffer
+
+                        if new_sl_pips <= limits['sl_abs_max']:
+                            sl_pips = new_sl_pips
+                            sl = liquidity_level + (liq_buffer * pip_size)
+
         # Final recalculation
         sl_pips = abs(entry - sl) / pip_size
         tp1_pips = abs(tp1 - entry) / pip_size
@@ -6500,6 +7434,22 @@ def generate_signal(pair):
             },
             # v9.0: Market regime
             'regime': regime,
+            # v9.2.3: ICT Smart Money Concepts (SMC) Analysis
+            'smc_analysis': {
+                'market_structure': smc_analysis.get('market_structure', {}),
+                'order_blocks': smc_analysis.get('order_blocks', {}),
+                'fair_value_gaps': smc_analysis.get('fair_value_gaps', {}),
+                'liquidity_zones': smc_analysis.get('liquidity_zones', {}),
+                'killzones': smc_analysis.get('killzones', {}),
+                'smc_score': smc_analysis.get('smc_score', 50),
+                'smc_signal': smc_analysis.get('smc_signal', 'NEUTRAL'),
+                'smc_confluence': smc_analysis.get('smc_confluence', 0),
+                'bullish_factors': smc_analysis.get('bullish_factors', []),
+                'bearish_factors': smc_analysis.get('bearish_factors', []),
+                'trade_setup': smc_analysis.get('trade_setup'),
+                'smc_boost_applied': smc_boost_applied,
+                'killzone_boost_applied': killzone_boost_applied
+            } if smc_analysis else None,
             # v9.0: 7 factor groups with scores
             'factor_groups': {name: {'score': g['score'], 'signal': g['signal'], 'weight': g['weight']}
                               for name, g in factor_groups.items()},
@@ -7492,7 +8442,7 @@ def run_system_audit():
 @app.route('/api-info')
 def api_info():
     return jsonify({
-        'name': 'MEGA FOREX v9.2.2 PRO - AI Enhanced',
+        'name': 'MEGA FOREX v9.2.3 PRO - AI Enhanced',
         'version': '9.2.2',
         'status': 'operational',
         'pairs': len(FOREX_PAIRS),
@@ -9098,11 +10048,11 @@ def preload_calendar():
     thread.start()
 
 preload_calendar()
-logger.info("🚀 MEGA FOREX v9.2.2 PRO - AI ENHANCED initialized")
+logger.info("🚀 MEGA FOREX v9.2.3 PRO - AI ENHANCED initialized")
 
 if __name__ == '__main__':
     print("=" * 70)
-    print("      MEGA FOREX v9.2.2 PRO - AI ENHANCED SYSTEM")
+    print("      MEGA FOREX v9.2.3 PRO - AI ENHANCED SYSTEM")
     print("=" * 70)
     print(f"  Pairs:           {len(FOREX_PAIRS)}")
     print(f"  Factor Groups:   8 (merged from 12 individual factors)")
