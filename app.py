@@ -9435,6 +9435,84 @@ def system_health_endpoint():
         **health
     })
 
+@app.route('/system-health/fix', methods=['POST'])
+def fix_system_issues():
+    """
+    Attempt to automatically fix common system issues.
+    Called by the Health Monitor "Fix Errors" button.
+    """
+    fixes_applied = []
+    fixes_failed = []
+
+    # Fix 1: Clear all caches (resolves stale data issues)
+    try:
+        with cache_lock:
+            for key in list(cache.keys()):
+                cache[key] = {'data': None, 'timestamp': None}
+        system_health_cache['data'] = None
+        system_health_cache['timestamp'] = None
+        fixes_applied.append('Cleared all caches')
+    except Exception as e:
+        fixes_failed.append(f'Cache clear failed: {str(e)[:50]}')
+
+    # Fix 2: Re-initialize database tables
+    try:
+        init_database()
+        fixes_applied.append('Re-initialized database tables')
+    except Exception as e:
+        fixes_failed.append(f'Database init failed: {str(e)[:50]}')
+
+    # Fix 3: Reset IG rate limit if applicable
+    try:
+        if ig_session.get('rate_limited'):
+            ig_session['rate_limited'] = False
+            ig_session['rate_limit_until'] = None
+            ig_session['last_error'] = None
+            fixes_applied.append('Reset IG rate limit status')
+    except Exception as e:
+        fixes_failed.append(f'IG reset failed: {str(e)[:50]}')
+
+    # Fix 4: Pre-load calendar data
+    try:
+        calendar = get_economic_calendar()
+        if calendar.get('events'):
+            fixes_applied.append(f'Pre-loaded calendar ({len(calendar["events"])} events)')
+    except Exception as e:
+        fixes_failed.append(f'Calendar preload failed: {str(e)[:50]}')
+
+    # Fix 5: Pre-fetch COT data
+    try:
+        cot = get_cot_institutional_data()
+        if cot:
+            fixes_applied.append(f'Pre-loaded COT data ({len(cot)} currencies)')
+    except Exception as e:
+        fixes_failed.append(f'COT preload failed: {str(e)[:50]}')
+
+    # Fix 6: Pre-fetch Saxo sentiment
+    try:
+        saxo = get_saxo_sentiment()
+        if saxo:
+            fixes_applied.append(f'Pre-loaded Saxo sentiment ({len(saxo)} pairs)')
+    except Exception as e:
+        fixes_failed.append(f'Saxo preload failed: {str(e)[:50]}')
+
+    # Run health check after fixes
+    health = run_ai_system_health_check(use_ai=False)
+
+    return jsonify({
+        'success': len(fixes_failed) == 0,
+        'fixes_applied': fixes_applied,
+        'fixes_failed': fixes_failed,
+        'total_fixes': len(fixes_applied),
+        'health_after': {
+            'status': health['overall_status'],
+            'score': health['overall_score'],
+            'warnings': len(health.get('warnings', [])),
+            'errors': len(health.get('errors', []))
+        },
+        'message': f'Applied {len(fixes_applied)} fixes' + (f', {len(fixes_failed)} failed' if fixes_failed else '')
+    })
+
 @app.route('/test-ig')
 def test_ig():
     """Test IG Markets API connection and show detailed errors"""

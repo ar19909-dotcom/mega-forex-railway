@@ -2189,6 +2189,9 @@
                 <button onclick="loadSystemHealth(true, true)" class="action-btn" style="background: linear-gradient(135deg, #8b5cf6, #6366f1);">
                     🤖 Run AI Analysis
                 </button>
+                <button onclick="fixSystemErrors()" class="action-btn" style="background: linear-gradient(135deg, #ef4444, #dc2626);">
+                    🔧 Fix Errors
+                </button>
             </div>
             <div id="system-health-container">
                 <div class="loading"><div class="spinner"></div>Loading system health...</div>
@@ -4252,6 +4255,52 @@
             } catch (error) {
                 console.error('Error loading system health:', error);
                 container.innerHTML = `<div class="error">Error loading system health: ${error.message}</div>`;
+            }
+        }
+
+        // v9.2.3: Fix System Errors
+        async function fixSystemErrors() {
+            const container = document.getElementById('system-health-container');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div>Attempting to fix system issues...</div>';
+
+            try {
+                const response = await fetch(`${API_BASE}/system-health/fix`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    // Show success message with fixes applied
+                    let fixesHtml = data.fixes_applied.map(f => `<li style="color: #10b981;">✓ ${f}</li>`).join('');
+                    if (data.fixes_failed.length > 0) {
+                        fixesHtml += data.fixes_failed.map(f => `<li style="color: #ef4444;">✗ ${f}</li>`).join('');
+                    }
+
+                    container.innerHTML = `
+                        <div class="audit-section" style="background: linear-gradient(135deg, rgba(16,185,129,0.1), rgba(5,150,105,0.1)); padding: 1.5rem; border-radius: 0.5rem;">
+                            <h3 style="color: #10b981; margin-bottom: 1rem;">🔧 System Fixes Applied</h3>
+                            <ul style="margin: 0; padding-left: 1.5rem;">
+                                ${fixesHtml}
+                            </ul>
+                            <div style="margin-top: 1rem; padding: 0.75rem; background: rgba(0,0,0,0.2); border-radius: 0.25rem;">
+                                <strong>Health After Fix:</strong>
+                                Status: <span style="color: ${data.health_after.status === 'HEALTHY' ? '#10b981' : '#f59e0b'};">${data.health_after.status}</span> |
+                                Score: ${data.health_after.score}/100 |
+                                Warnings: ${data.health_after.warnings} |
+                                Errors: ${data.health_after.errors}
+                            </div>
+                            <button onclick="loadSystemHealth(true)" class="action-btn" style="margin-top: 1rem; background: linear-gradient(135deg, #10b981, #059669);">
+                                🔄 Refresh Health Check
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    container.innerHTML = `<div class="error">Fix failed: ${data.message || 'Unknown error'}</div>`;
+                }
+            } catch (error) {
+                console.error('Error fixing system:', error);
+                container.innerHTML = `<div class="error">Error fixing system: ${error.message}</div>`;
             }
         }
 
