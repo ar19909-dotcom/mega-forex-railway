@@ -8288,7 +8288,7 @@ def run_system_audit():
 
     # Test CFTC COT (v9.2.3)
     try:
-        cot_data = get_cot_data()
+        cot_data = get_cot_institutional_data()
         if cot_data and len(cot_data) > 0:
             real_count = sum(1 for v in cot_data.values() if not v.get('estimated'))
             audit['api_status']['cftc_cot'] = {
@@ -8647,7 +8647,7 @@ def run_ai_system_health_check(use_ai=True):
 
     # Test COT (Institutional data)
     try:
-        cot = get_cot_data()
+        cot = get_cot_institutional_data()
         if cot:
             real_count = sum(1 for v in cot.values() if not v.get('estimated'))
             api_check['details']['cot'] = f'OK ({len(cot)} currencies, {real_count} real)'
@@ -9767,7 +9767,7 @@ COT_CURRENCY_CODES = {
     'MXN': {'code': '095741', 'name': 'MEXICAN PESO', 'pairs': ['USD/MXN']},
 }
 
-def get_cot_data():
+def get_cot_institutional_data():
     """
     Fetch CFTC Commitment of Traders data for currency futures.
     Returns institutional (non-commercial/speculator) positioning.
@@ -9899,7 +9899,7 @@ def get_cot_sentiment_for_pair(pair):
 
     Returns: {'long_pct': x, 'short_pct': y, 'bias': 'BULLISH/BEARISH/NEUTRAL', 'source': 'COT'}
     """
-    cot_data = get_cot_data()
+    cot_data = get_cot_institutional_data()
     if not cot_data:
         return None
 
@@ -10070,7 +10070,7 @@ def get_positioning():
         logger.info(f"✅ Saxo Bank: {len(saxo_data)} pairs")
 
     # Source 3: CFTC COT (Institutional positioning - NEW!)
-    cot_data = get_cot_data()
+    cot_data = get_cot_institutional_data()
     cot_pair_map = {}
     if cot_data:
         # Map COT data to pairs
