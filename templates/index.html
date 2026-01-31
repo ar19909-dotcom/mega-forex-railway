@@ -4105,20 +4105,35 @@
                     const statusEmoji = data.summary?.status_emoji || (data.overall_status === 'HEALTHY' ? '✅' : data.overall_status === 'WARNING' ? '⚠️' : '❌');
                     const statusColor = statusColors[data.overall_status] || '#6b7280';
 
-                    // Build checks summary
+                    // Build checks summary - format details nicely
+                    const formatDetail = (key, value) => {
+                        if (typeof value === 'object' && value !== null) {
+                            if (Array.isArray(value)) {
+                                return value.slice(0, 3).join(', ') + (value.length > 3 ? '...' : '');
+                            }
+                            // For objects, show key count or first few values
+                            const entries = Object.entries(value);
+                            if (entries.length <= 2) {
+                                return entries.map(([k,v]) => `${k}:${v}`).join(', ');
+                            }
+                            return `${entries.length} items`;
+                        }
+                        return String(value).slice(0, 40) + (String(value).length > 40 ? '...' : '');
+                    };
+
                     const checksHtml = Object.entries(data.checks || {}).map(([name, check]) => {
                         const checkColor = check.status === 'PASS' ? '#10b981' : check.status === 'WARN' ? '#f59e0b' : '#ef4444';
                         const checkEmoji = check.status === 'PASS' ? '✓' : check.status === 'WARN' ? '⚠' : '✗';
                         return `
-                            <div style="padding: 0.75rem; background: rgba(255,255,255,0.02); border-radius: 0.5rem; border-left: 3px solid ${checkColor};">
-                                <div style="display: flex; justify-content: space-between; align-items: center;">
-                                    <span style="font-weight: 600;">${check.name || name}</span>
-                                    <span style="color: ${checkColor}; font-weight: 600;">${checkEmoji} ${check.status}</span>
+                            <div style="padding: 0.75rem; background: rgba(255,255,255,0.02); border-radius: 0.5rem; border-left: 3px solid ${checkColor}; overflow: hidden;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;">
+                                    <span style="font-weight: 600; white-space: nowrap;">${check.name || name}</span>
+                                    <span style="color: ${checkColor}; font-weight: 600; white-space: nowrap;">${checkEmoji} ${check.status}</span>
                                 </div>
                                 ${check.details ? `
-                                    <div style="margin-top: 0.5rem; font-size: 0.8rem; color: var(--text-muted);">
-                                        ${Object.entries(check.details).slice(0, 4).map(([k, v]) =>
-                                            `<div>${k}: ${typeof v === 'object' ? JSON.stringify(v).slice(0, 50) : v}</div>`
+                                    <div style="margin-top: 0.5rem; font-size: 0.75rem; color: var(--text-muted); overflow: hidden;">
+                                        ${Object.entries(check.details).slice(0, 3).map(([k, v]) =>
+                                            `<div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${k}: ${formatDetail(k, v)}</div>`
                                         ).join('')}
                                     </div>
                                 ` : ''}
