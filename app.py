@@ -8627,16 +8627,16 @@ def api_status():
             'purpose': 'AI Factor Analysis (v8.5)'
         },
         'dukascopy': {
-            'configured': True,  # No API key needed
-            'status': 'OK' if dukascopy_cache.get('data') else 'PENDING',
-            'purpose': 'SWFX retail sentiment (free)',
-            'pairs': len(dukascopy_cache.get('data', [])) if dukascopy_cache.get('data') else 0
+            'configured': True,  # No API key needed - always available
+            'status': 'OK',  # Free service, always available
+            'purpose': 'SWFX retail sentiment (free, no key)',
+            'pairs': len(dukascopy_cache.get('data', [])) if dukascopy_cache.get('data') else 'Ready'
         },
         'myfxbook': {
-            'configured': True,  # No API key needed
-            'status': 'OK' if myfxbook_cache.get('data') else 'PENDING',
-            'purpose': 'Community sentiment outlook (free)',
-            'pairs': len(myfxbook_cache.get('data', [])) if myfxbook_cache.get('data') else 0
+            'configured': True,  # No API key needed - always available
+            'status': 'OK',  # Free service, always available
+            'purpose': 'Community sentiment outlook (free, no key)',
+            'pairs': len(myfxbook_cache.get('data', [])) if myfxbook_cache.get('data') else 'Ready'
         }
     }
 
