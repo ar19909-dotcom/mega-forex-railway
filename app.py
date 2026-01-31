@@ -8679,8 +8679,31 @@ def get_positioning():
         overall_quality = 'MEDIUM'
         source_msg = f"Using {active_sources[0]} only"
     else:
-        overall_quality = 'LOW'
-        source_msg = "No sentiment sources available"
+        overall_quality = 'ESTIMATED'
+        source_msg = "Using estimated positioning (sentiment APIs unavailable)"
+
+        # Generate estimated positioning based on typical retail behavior
+        # Retail traders tend to be ~55-60% long on average
+        for pair in FOREX_PAIRS[:20]:
+            # Slight variation based on pair characteristics
+            base_long = 55  # Retail tends to be slightly long-biased
+
+            # JPY pairs: retail often long (carry trade mentality)
+            if 'JPY' in pair and pair.index('JPY') > 3:
+                base_long = 62
+            # USD pairs where USD is quote: retail often long
+            elif pair.endswith('USD'):
+                base_long = 58
+
+            positioning.append({
+                'pair': pair,
+                'long_percentage': base_long,
+                'short_percentage': 100 - base_long,
+                'contrarian_signal': 'NEUTRAL',
+                'sources': ['estimated'],
+                'source_count': 0,
+                'data_quality': 'ESTIMATED'
+            })
 
     # Check if IG is rate limited
     ig_rate_limited = ig_session.get('rate_limited', False)
@@ -8692,8 +8715,8 @@ def get_positioning():
     result = {
         'success': True,
         'count': len(positioning),
-        'source': 'MULTI_SOURCE_BLENDED',
-        'active_sources': active_sources,
+        'source': 'MULTI_SOURCE_BLENDED' if active_sources else 'ESTIMATED',
+        'active_sources': active_sources if active_sources else ['estimated'],
         'source_status': source_status,
         'data_quality': overall_quality,
         'message': f'{source_msg}{cooldown_msg}',
@@ -8758,15 +8781,15 @@ def api_status():
             'pairs': len(dailyfx_cache.get('data', [])) if dailyfx_cache.get('data') else 0
         },
         'dukascopy': {
-            'configured': True,  # No API key needed - always available
-            'status': 'OK',  # Free service, always available
-            'purpose': 'SWFX retail sentiment (free, no key)',
-            'pairs': len(dukascopy_cache.get('data', [])) if dukascopy_cache.get('data') else 'Ready'
+            'configured': True,  # No API key needed
+            'status': 'OK' if dukascopy_cache.get('data') else 'UNAVAILABLE',
+            'purpose': 'SWFX retail sentiment (free)',
+            'pairs': len(dukascopy_cache.get('data', [])) if dukascopy_cache.get('data') else 0
         },
         'myfxbook': {
-            'configured': True,  # No API key needed - always available
-            'status': 'OK',  # Free service, always available
-            'purpose': 'Community sentiment outlook (free, no key)',
+            'configured': True,  # No API key needed
+            'status': 'OK' if myfxbook_cache.get('data') else 'UNAVAILABLE',
+            'purpose': 'Community sentiment outlook (free)',
             'pairs': len(myfxbook_cache.get('data', [])) if myfxbook_cache.get('data') else 'Ready'
         }
     }
