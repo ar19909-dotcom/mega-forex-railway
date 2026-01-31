@@ -2787,11 +2787,11 @@
             }
         }
         
-        // Load Technical
+        // Load Technical - Show all 45 pairs
         async function loadTechnical() {
             try {
                 const tbody = document.getElementById('technical-body');
-                tbody.innerHTML = signalsData.slice(0, 20).map(s => `
+                tbody.innerHTML = signalsData.map(s => `
                     <tr>
                         <td style="font-weight: 600;">${s.pair}</td>
                         <td style="color: ${s.technical?.rsi < 30 ? 'var(--accent-green)' : s.technical?.rsi > 70 ? 'var(--accent-red)' : 'inherit'}">${s.technical?.rsi?.toFixed(1) || 'N/A'}</td>
