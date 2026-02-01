@@ -3429,7 +3429,7 @@
                                             <td>${p.pair}</td>
                                             <td style="color: ${p.score >= 60 ? 'var(--accent-green)' : p.score <= 40 ? 'var(--accent-red)' : 'var(--text-primary)'}; font-weight: 600;">${p.score || p.error || 'N/A'}</td>
                                             <td><span class="status-badge ${p.direction === 'LONG' ? 'ok' : p.direction === 'SHORT' ? 'error' : 'limited'}">${p.direction || '-'}</span></td>
-                                            <td>${p.factors_count || 0}/7</td>
+                                            <td>${p.factors_count || 0}/8</td>
                                         </tr>
                                     `).join('')}
                                 </tbody>
