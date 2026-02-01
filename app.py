@@ -130,6 +130,10 @@ ALPHA_VANTAGE_KEY = os.getenv('ALPHA_VANTAGE_KEY', '')
 TWELVE_DATA_KEY = os.getenv('TWELVE_DATA_KEY', '')
 TWELVE_DATA_URL = "https://api.twelvedata.com"
 
+# TraderMade API (for forex prices - v9.2.4)
+TRADERMADE_KEY = os.getenv('TRADERMADE_KEY', '')
+TRADERMADE_URL = "https://marketdata.tradermade.com/api/v1"
+
 # IG Markets API (for REAL client sentiment)
 IG_API_KEY = os.getenv('IG_API_KEY', '')
 IG_USERNAME = os.getenv('IG_USERNAME', '')
@@ -2030,6 +2034,33 @@ def get_twelvedata_rate(pair):
         logger.debug(f"TwelveData fetch failed for {pair}: {e}")
     return None
 
+def get_tradermade_rate(pair):
+    """Fetch rate from TraderMade API (v9.2.4) - forex prices"""
+    if not TRADERMADE_KEY:
+        return None
+    try:
+        # Convert pair format: EUR/USD -> EURUSD (TraderMade uses no separator)
+        symbol = pair.replace('/', '')
+        url = f"{TRADERMADE_URL}/live"
+        params = {
+            'currency': symbol,
+            'api_key': TRADERMADE_KEY
+        }
+        resp = req_lib.get(url, params=params, timeout=5)
+        if resp.status_code == 200:
+            data = resp.json()
+            if 'quotes' in data and len(data['quotes']) > 0:
+                quote = data['quotes'][0]
+                return {
+                    'bid': quote.get('bid', quote['mid'] * 0.9999),
+                    'ask': quote.get('ask', quote['mid'] * 1.0001),
+                    'mid': quote.get('mid', (quote.get('bid', 0) + quote.get('ask', 0)) / 2),
+                    'source': 'tradermade'
+                }
+    except Exception as e:
+        logger.debug(f"TraderMade fetch failed for {pair}: {e}")
+    return None
+
 def get_exchangerate_rate(pair):
     """Fetch rate from ExchangeRate-API (free, no key needed)"""
     try:
@@ -2051,7 +2082,7 @@ def get_exchangerate_rate(pair):
     return None
 
 def get_rate(pair):
-    """Get rate with multi-tier fallback (v9.2.4: Added Twelve Data)"""
+    """Get rate with multi-tier fallback (v9.2.4: Added Twelve Data + TraderMade)"""
     # Tier 1: Polygon
     rate = get_polygon_rate(pair)
     if rate:
@@ -2062,12 +2093,17 @@ def get_rate(pair):
     if rate:
         return rate
 
-    # Tier 3: ExchangeRate-API
+    # Tier 3: TraderMade (v9.2.4 - forex prices)
+    rate = get_tradermade_rate(pair)
+    if rate:
+        return rate
+
+    # Tier 4: ExchangeRate-API
     rate = get_exchangerate_rate(pair)
     if rate:
         return rate
 
-    # Tier 4: Static fallback
+    # Tier 5: Static fallback
     if pair in STATIC_RATES:
         mid = STATIC_RATES[pair]
         return {
@@ -8636,6 +8672,16 @@ def run_ai_system_health_check(use_ai=True):
     else:
         api_check['details']['twelvedata'] = 'NOT_CONFIGURED'
 
+    # Test TraderMade (v9.2.4)
+    if TRADERMADE_KEY:
+        try:
+            rate = get_tradermade_rate('EUR/USD')
+            api_check['details']['tradermade'] = 'OK' if rate else 'LIMITED'
+        except Exception as e:
+            api_check['details']['tradermade'] = f'ERROR: {str(e)[:50]}'
+    else:
+        api_check['details']['tradermade'] = 'NOT_CONFIGURED'
+
     # Test OpenAI
     if OPENAI_API_KEY:
         try:
@@ -10741,6 +10787,7 @@ if __name__ == '__main__':
     print(f"  IG Markets API:  {'✓ (' + IG_ACC_TYPE + ')' if all([IG_API_KEY, IG_USERNAME, IG_PASSWORD]) else '✗'}")
     print(f"  OpenAI API:      {'✓ (gpt-4o-mini)' if OPENAI_API_KEY else '✗'}")
     print(f"  Twelve Data:     {'✓ (Real-time forex)' if TWELVE_DATA_KEY else '✗'}")
+    print(f"  TraderMade:      {'✓ (Forex prices)' if TRADERMADE_KEY else '✗'}")
     print(f"  ExchangeRate:    ✓ (Free, no key needed)")
     print("=" * 70)
     print("  v9.2.4 PRO FEATURES:")
