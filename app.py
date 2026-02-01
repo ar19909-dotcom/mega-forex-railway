@@ -10473,6 +10473,24 @@ def api_status():
             'purpose': 'Institutional positioning (weekly COT)',
             'currencies': len(cot_cache.get('data', {})) if cot_cache.get('data') else 0,
             'source': 'CFTC.gov'
+        },
+        'twelve_data': {
+            'configured': bool(TWELVE_DATA_KEY),
+            'status': 'OK' if TWELVE_DATA_KEY else 'NOT_CONFIGURED',
+            'purpose': 'Real-time forex prices (800/day)',
+            'tier': 2
+        },
+        'tradermade': {
+            'configured': bool(TRADERMADE_KEY),
+            'status': 'OK' if TRADERMADE_KEY else 'NOT_CONFIGURED',
+            'purpose': 'Forex prices (1000/month)',
+            'tier': 3
+        },
+        'currencylayer': {
+            'configured': bool(CURRENCYLAYER_KEY),
+            'status': 'OK' if CURRENCYLAYER_KEY else 'NOT_CONFIGURED',
+            'purpose': 'Exchange rates (100/month)',
+            'tier': 5
         }
     }
 
