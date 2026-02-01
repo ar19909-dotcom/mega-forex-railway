@@ -134,6 +134,10 @@ TWELVE_DATA_URL = "https://api.twelvedata.com"
 TRADERMADE_KEY = os.getenv('TRADERMADE_KEY', '')
 TRADERMADE_URL = "https://marketdata.tradermade.com/api/v1"
 
+# CurrencyLayer API (for exchange rates - v9.2.4, 100 calls/month free)
+CURRENCYLAYER_KEY = os.getenv('CURRENCYLAYER_KEY', '')
+CURRENCYLAYER_URL = "http://apilayer.net/api"
+
 # IG Markets API (for REAL client sentiment)
 IG_API_KEY = os.getenv('IG_API_KEY', '')
 IG_USERNAME = os.getenv('IG_USERNAME', '')
@@ -2061,6 +2065,41 @@ def get_tradermade_rate(pair):
         logger.debug(f"TraderMade fetch failed for {pair}: {e}")
     return None
 
+def get_currencylayer_rate(pair):
+    """Fetch rate from CurrencyLayer API (v9.2.4) - 100 calls/month free"""
+    if not CURRENCYLAYER_KEY:
+        return None
+    try:
+        # CurrencyLayer uses USD as base, format: USDEUR for USD/EUR rate
+        base, quote = pair.split('/')
+        # Need to get rate relative to USD then convert
+        url = f"{CURRENCYLAYER_URL}/live"
+        params = {
+            'access_key': CURRENCYLAYER_KEY,
+            'currencies': f'{base},{quote}',
+            'source': 'USD',
+            'format': 1
+        }
+        resp = req_lib.get(url, params=params, timeout=5)
+        if resp.status_code == 200:
+            data = resp.json()
+            if data.get('success') and 'quotes' in data:
+                quotes = data['quotes']
+                usd_base = quotes.get(f'USD{base}')
+                usd_quote = quotes.get(f'USD{quote}')
+                if usd_base and usd_quote:
+                    # Calculate cross rate: base/quote = (1/USD_base) * USD_quote
+                    rate = usd_quote / usd_base
+                    return {
+                        'bid': rate * 0.9999,
+                        'ask': rate * 1.0001,
+                        'mid': rate,
+                        'source': 'currencylayer'
+                    }
+    except Exception as e:
+        logger.debug(f"CurrencyLayer fetch failed for {pair}: {e}")
+    return None
+
 def get_exchangerate_rate(pair):
     """Fetch rate from ExchangeRate-API (free, no key needed)"""
     try:
@@ -2082,28 +2121,33 @@ def get_exchangerate_rate(pair):
     return None
 
 def get_rate(pair):
-    """Get rate with multi-tier fallback (v9.2.4: Added Twelve Data + TraderMade)"""
-    # Tier 1: Polygon
+    """Get rate with multi-tier fallback (v9.2.4: 6 data sources)"""
+    # Tier 1: Polygon (premium)
     rate = get_polygon_rate(pair)
     if rate:
         return rate
 
-    # Tier 2: Twelve Data (v9.2.4 - real-time forex)
+    # Tier 2: Twelve Data (800 calls/day free)
     rate = get_twelvedata_rate(pair)
     if rate:
         return rate
 
-    # Tier 3: TraderMade (v9.2.4 - forex prices)
+    # Tier 3: TraderMade (1000 calls/month free)
     rate = get_tradermade_rate(pair)
     if rate:
         return rate
 
-    # Tier 4: ExchangeRate-API
+    # Tier 4: ExchangeRate-API (unlimited free)
     rate = get_exchangerate_rate(pair)
     if rate:
         return rate
 
-    # Tier 5: Static fallback
+    # Tier 5: CurrencyLayer (100 calls/month free - low priority)
+    rate = get_currencylayer_rate(pair)
+    if rate:
+        return rate
+
+    # Tier 6: Static fallback
     if pair in STATIC_RATES:
         mid = STATIC_RATES[pair]
         return {
@@ -8682,6 +8726,12 @@ def run_ai_system_health_check(use_ai=True):
     else:
         api_check['details']['tradermade'] = 'NOT_CONFIGURED'
 
+    # Test CurrencyLayer (v9.2.4 - 100 calls/month)
+    if CURRENCYLAYER_KEY:
+        api_check['details']['currencylayer'] = 'CONFIGURED (100/month limit)'
+    else:
+        api_check['details']['currencylayer'] = 'NOT_CONFIGURED'
+
     # Test OpenAI
     if OPENAI_API_KEY:
         try:
@@ -10788,6 +10838,7 @@ if __name__ == '__main__':
     print(f"  OpenAI API:      {'✓ (gpt-4o-mini)' if OPENAI_API_KEY else '✗'}")
     print(f"  Twelve Data:     {'✓ (Real-time forex)' if TWELVE_DATA_KEY else '✗'}")
     print(f"  TraderMade:      {'✓ (Forex prices)' if TRADERMADE_KEY else '✗'}")
+    print(f"  CurrencyLayer:   {'✓ (100/month)' if CURRENCYLAYER_KEY else '✗'}")
     print(f"  ExchangeRate:    ✓ (Free, no key needed)")
     print("=" * 70)
     print("  v9.2.4 PRO FEATURES:")
