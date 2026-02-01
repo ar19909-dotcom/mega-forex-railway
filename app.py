@@ -7835,7 +7835,7 @@ def run_system_audit():
     """Run comprehensive system audit with complete scoring methodology"""
     audit = {
         'timestamp': datetime.now().isoformat(),
-        'version': '9.2.1 PRO',
+        'version': '9.2.4 PRO',
         'api_status': {},
         'data_quality': {},
         'score_validation': {},
@@ -7848,7 +7848,7 @@ def run_system_audit():
     # SCORING METHODOLOGY DOCUMENTATION
     # ═══════════════════════════════════════════════════════════════════════════
     audit['scoring_methodology'] = {
-        'version': '9.2.1 PRO',
+        'version': '9.2.4 PRO',
         'description': 'v9.2.2 — 7 merged factor groups, 8-gate quality filter (G3/G5/G8 mandatory), balanced G3 gate, conviction metric, regime-dynamic weights',
         'score_range': {
             'min': 5,
@@ -8319,6 +8319,30 @@ def run_system_audit():
             'purpose': 'Real client sentiment/positioning data'
         }
     
+    # Test Twelve Data (v9.2.4)
+    audit['api_status']['twelve_data'] = {
+        'status': 'OK' if TWELVE_DATA_KEY else 'NOT_CONFIGURED',
+        'configured': bool(TWELVE_DATA_KEY),
+        'purpose': 'Real-time forex prices (800/day)',
+        'tier': 2
+    }
+
+    # Test TraderMade (v9.2.4)
+    audit['api_status']['tradermade'] = {
+        'status': 'OK' if TRADERMADE_KEY else 'NOT_CONFIGURED',
+        'configured': bool(TRADERMADE_KEY),
+        'purpose': 'Forex prices (1000/month)',
+        'tier': 3
+    }
+
+    # Test CurrencyLayer (v9.2.4)
+    audit['api_status']['currencylayer'] = {
+        'status': 'OK' if CURRENCYLAYER_KEY else 'NOT_CONFIGURED',
+        'configured': bool(CURRENCYLAYER_KEY),
+        'purpose': 'Exchange rates (100/month)',
+        'tier': 5
+    }
+
     # RSS Feeds status
     audit['api_status']['rss_feeds'] = {
         'status': 'OK',
