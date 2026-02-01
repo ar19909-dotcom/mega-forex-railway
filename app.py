@@ -1,6 +1,6 @@
 """
 ╔══════════════════════════════════════════════════════════════════════════════╗
-║                   MEGA FOREX v9.2.3 PRO - AI-ENHANCED SYSTEM                 ║
+║                   MEGA FOREX v9.2.4 PRO - AI-ENHANCED SYSTEM                 ║
 ║                    Build: January 31, 2026 - Production Ready                ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
 ║  ✓ 45 Forex Pairs with guaranteed data coverage                              ║
@@ -899,7 +899,7 @@ def init_database():
     ''')
 
     # ─────────────────────────────────────────────────────────────────────────
-    # TABLE 8: PAIR STATS - Per-pair performance statistics (v9.2.3)
+    # TABLE 8: PAIR STATS - Per-pair performance statistics (v9.2.4)
     # ─────────────────────────────────────────────────────────────────────────
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS pair_stats (
@@ -2549,7 +2549,7 @@ def calculate_pivot_points(high, low, close):
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # SMART MONEY CONCEPTS (SMC) - ICT-STYLE INSTITUTIONAL ANALYSIS
-# v9.2.3 Professional Implementation
+# v9.2.4 Professional Implementation
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def calculate_atr_from_ohlc(highs, lows, closes, period=14):
@@ -3877,7 +3877,7 @@ def get_technical_indicators(pair):
         'current_price': closes[-1],
         'data_quality': 'REAL',  # Real data from Polygon
         'data_source': 'POLYGON',
-        # v9.2.3: OHLC data for SMC analysis
+        # v9.2.4: OHLC data for SMC analysis
         'ohlc_data': {
             'opens': opens,
             'highs': highs,
@@ -6842,7 +6842,7 @@ def generate_signal(pair):
         }
 
         # ═══════════════════════════════════════════════════════════════════════════
-        # v9.2.3: SMART MONEY CONCEPTS (SMC) ANALYSIS
+        # v9.2.4: SMART MONEY CONCEPTS (SMC) ANALYSIS
         # Order Blocks, Liquidity Zones, Session Timing
         # ═══════════════════════════════════════════════════════════════════════════
         smc_analysis = None
@@ -6937,7 +6937,7 @@ def generate_signal(pair):
                 composite_score -= expansion_bonus
 
         # ═══════════════════════════════════════════════════════════════════════════
-        # v9.2.3: ICT KILLZONE & SMC SCORE BOOST
+        # v9.2.4: ICT KILLZONE & SMC SCORE BOOST
         # Apply SMC confluence bonus during optimal killzones
         # ═══════════════════════════════════════════════════════════════════════════
         smc_boost_applied = 0
@@ -7410,7 +7410,7 @@ def generate_signal(pair):
             tp2 = entry + (tp2_pips * pip_size)
 
         # ─────────────────────────────────────────────────────────────────────────
-        # v9.2.3: LIQUIDITY ZONE REFINEMENT (SMC)
+        # v9.2.4: LIQUIDITY ZONE REFINEMENT (SMC)
         # Place SL beyond liquidity zones to avoid stop hunts
         # ─────────────────────────────────────────────────────────────────────────
         if smc_analysis and direction in ['LONG', 'SHORT']:
@@ -7571,7 +7571,7 @@ def generate_signal(pair):
             },
             # v9.0: Market regime
             'regime': regime,
-            # v9.2.3: ICT Smart Money Concepts (SMC) Analysis
+            # v9.2.4: ICT Smart Money Concepts (SMC) Analysis
             'smc_analysis': {
                 'market_structure': smc_analysis.get('market_structure', {}),
                 'order_blocks': smc_analysis.get('order_blocks', {}),
@@ -7992,7 +7992,7 @@ def run_system_audit():
         'ai': {
             'weight': 10,
             'weight_percent': '100% of AI Synthesis (10%)',
-            'description': 'GPT-4o-mini AI-powered market analysis (v9.2.3)',
+            'description': 'GPT-4o-mini AI-powered market analysis (v9.2.4)',
             'data_sources': ['OpenAI API (GPT-4o-mini model)'],
             'score_range': '15-85',
             'components': {
@@ -8383,26 +8383,26 @@ def run_system_audit():
     except Exception as e:
         audit['api_status']['openai'] = {'status': 'ERROR', 'error': str(e)}
 
-    # Test Saxo Bank (v9.2.3)
+    # Test Saxo Bank (v9.2.4)
     try:
         saxo_data = get_saxo_sentiment()
         if saxo_data and len(saxo_data) > 0:
             audit['api_status']['saxo_bank'] = {
                 'status': 'OK',
                 'pairs': len(saxo_data),
-                'purpose': 'Options-based retail sentiment (v9.2.3)',
+                'purpose': 'Options-based retail sentiment (v9.2.4)',
                 'source': 'fxowebtools.saxobank.com'
             }
         else:
             audit['api_status']['saxo_bank'] = {
                 'status': 'LIMITED',
                 'pairs': 0,
-                'purpose': 'Options-based retail sentiment (v9.2.3)'
+                'purpose': 'Options-based retail sentiment (v9.2.4)'
             }
     except Exception as e:
         audit['api_status']['saxo_bank'] = {'status': 'ERROR', 'error': str(e)[:50]}
 
-    # Test CFTC COT (v9.2.3)
+    # Test CFTC COT (v9.2.4)
     try:
         cot_data = get_cot_institutional_data()
         if cot_data and len(cot_data) > 0:
@@ -8487,7 +8487,7 @@ def run_system_audit():
         'factor_group_weights': FACTOR_GROUP_WEIGHTS,
         'features': [
             '45 Forex Pairs',
-            '8-Group Gated Scoring (v9.2.3)',
+            '8-Group Gated Scoring (v9.2.4)',
             '8-Gate Quality Filter (G3/G5/G8 Mandatory)',
             'ICT Smart Money Concepts (SMC)',
             'Market Structure (BOS/CHoCH)',
@@ -8602,7 +8602,7 @@ def run_system_audit():
             'structure': 'Swing high/low detection + pivot calculations',
             'calendar': 'Multi-tier economic calendar + Seasonality patterns (month/quarter-end flows)',
             'options': '25-delta risk reversals + Put/Call ratios (price volatility proxy)',
-            'confluence': 'Factor agreement analysis (feeds into 8-group scoring v9.2.3)'
+            'confluence': 'Factor agreement analysis (feeds into 8-group scoring v9.2.4)'
         },
         'calibration_notes': {
             'score_range': '5-95 (proper differentiation)',
@@ -8618,7 +8618,7 @@ def run_system_audit():
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# AI SYSTEM HEALTH MONITOR (v9.2.3)
+# AI SYSTEM HEALTH MONITOR (v9.2.4)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 # Global health status cache
@@ -9093,14 +9093,14 @@ def run_startup_health_check():
 @app.route('/api-info')
 def api_info():
     return jsonify({
-        'name': 'MEGA FOREX v9.2.3 PRO - AI Enhanced',
+        'name': 'MEGA FOREX v9.2.4 PRO - AI Enhanced',
         'version': '9.2.3',
         'status': 'operational',
         'pairs': len(FOREX_PAIRS),
         'factor_groups': len(FACTOR_GROUP_WEIGHTS),
         'features': [
             '45 Forex Pairs',
-            '8-Group Gated Scoring with 8-Gate Quality Filter (v9.2.3) + ICT SMC',
+            '8-Group Gated Scoring with 8-Gate Quality Filter (v9.2.4) + ICT SMC',
             'Conviction Metric + Dynamic Regime Weights',
             '90-Day Signal Evaluation & Historical Accuracy',
             'Multi-Source News (Finnhub + RSS)',
@@ -9965,7 +9965,7 @@ def get_saxo_sentiment():
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# CFTC COMMITMENT OF TRADERS (COT) - INSTITUTIONAL POSITIONING (v9.2.3)
+# CFTC COMMITMENT OF TRADERS (COT) - INSTITUTIONAL POSITIONING (v9.2.4)
 # Free, official government data - shows institutional/speculator positioning
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -10177,7 +10177,7 @@ def get_cot_sentiment_for_pair(pair):
 
 def get_combined_retail_sentiment(pair):
     """
-    Get combined retail sentiment from working sources (v9.2.3)
+    Get combined retail sentiment from working sources (v9.2.4)
     IG (55%) + Saxo Bank (45%)
     Weights auto-redistribute when sources unavailable
     """
@@ -10244,7 +10244,7 @@ def get_combined_retail_sentiment(pair):
 @app.route('/positioning')
 def get_positioning():
     """
-    Get positioning data from all working sources (v9.2.3)
+    Get positioning data from all working sources (v9.2.4)
     Combines: IG Markets (45%) + Saxo Bank (35%) + COT Institutional (20%)
     When sources unavailable, weights redistribute automatically
     """
@@ -10464,7 +10464,7 @@ def api_status():
         'saxo_bank': {
             'configured': True,  # No API key needed - free public data
             'status': 'OK' if saxo_cache.get('data') else 'PENDING',
-            'purpose': 'Options-based retail sentiment (v9.2.3)',
+            'purpose': 'Options-based retail sentiment (v9.2.4)',
             'pairs': len(saxo_cache.get('data', [])) if saxo_cache.get('data') else 0
         },
         'cftc_cot': {
@@ -10820,11 +10820,11 @@ def run_background_health_check():
     thread.start()
 
 run_background_health_check()
-logger.info("🚀 MEGA FOREX v9.2.3 PRO - AI ENHANCED initialized")
+logger.info("🚀 MEGA FOREX v9.2.4 PRO - AI ENHANCED initialized")
 
 if __name__ == '__main__':
     print("=" * 70)
-    print("      MEGA FOREX v9.2.3 PRO - AI ENHANCED SYSTEM")
+    print("      MEGA FOREX v9.2.4 PRO - AI ENHANCED SYSTEM")
     print("=" * 70)
     print(f"  Pairs:           {len(FOREX_PAIRS)}")
     print(f"  Factor Groups:   8 (merged from 12 individual factors)")
