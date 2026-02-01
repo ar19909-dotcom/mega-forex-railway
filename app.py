@@ -7908,7 +7908,7 @@ def run_system_audit():
             'weight': 13,
             'weight_percent': '60% of Trend & Momentum (21%)',
             'description': 'RSI, MACD, ADX trend analysis',
-            'data_sources': ['Polygon.io candles', 'Calculated indicators'],
+            'data_sources': ['Polygon.io (Tier 1)', 'Twelve Data (Tier 2)', 'TraderMade (Tier 3)', 'ExchangeRate (Tier 4)', 'CurrencyLayer (Tier 5)'],
             'score_range': '10-90',
             'components': {
                 'RSI': {
@@ -8616,7 +8616,8 @@ def run_system_audit():
         'quality_checks': quality_checks,
         'signal_status': signal_status,
         'data_verification': {
-            'technical': 'RSI, MACD, ADX calculated from Polygon.io candle data',
+            'rates': 'v9.2.4 6-Tier: Polygon → Twelve Data → TraderMade → ExchangeRate → CurrencyLayer → Static',
+            'technical': 'RSI, MACD, ADX calculated from real-time candle data',
             'fundamental': 'Interest rate differentials from central bank rates + FRED API',
             'sentiment': 'IG positioning + Finnhub news + RSS feeds + COT institutional data',
             'ai': 'GPT-4o-mini market analysis and pattern recognition',
