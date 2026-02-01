@@ -126,6 +126,10 @@ FINNHUB_API_KEY = os.getenv('FINNHUB_API_KEY', '')
 FRED_API_KEY = os.getenv('FRED_API_KEY', '')
 ALPHA_VANTAGE_KEY = os.getenv('ALPHA_VANTAGE_KEY', '')
 
+# Twelve Data API (for real-time forex prices - v9.2.4)
+TWELVE_DATA_KEY = os.getenv('TWELVE_DATA_KEY', '')
+TWELVE_DATA_URL = "https://api.twelvedata.com"
+
 # IG Markets API (for REAL client sentiment)
 IG_API_KEY = os.getenv('IG_API_KEY', '')
 IG_USERNAME = os.getenv('IG_USERNAME', '')
@@ -1999,6 +2003,33 @@ def get_polygon_rate(pair):
         logger.debug(f"Polygon rate fetch failed for {pair}: {e}")
     return None
 
+def get_twelvedata_rate(pair):
+    """Fetch rate from Twelve Data API (v9.2.4) - real-time forex prices"""
+    if not TWELVE_DATA_KEY:
+        return None
+    try:
+        # Convert pair format: EUR/USD -> EUR/USD (Twelve Data uses slash)
+        symbol = pair.replace('/', '/')
+        url = f"{TWELVE_DATA_URL}/price"
+        params = {
+            'symbol': symbol,
+            'apikey': TWELVE_DATA_KEY
+        }
+        resp = req_lib.get(url, params=params, timeout=5)
+        if resp.status_code == 200:
+            data = resp.json()
+            if 'price' in data:
+                price = float(data['price'])
+                return {
+                    'bid': price * 0.9999,
+                    'ask': price * 1.0001,
+                    'mid': price,
+                    'source': 'twelvedata'
+                }
+    except Exception as e:
+        logger.debug(f"TwelveData fetch failed for {pair}: {e}")
+    return None
+
 def get_exchangerate_rate(pair):
     """Fetch rate from ExchangeRate-API (free, no key needed)"""
     try:
@@ -2020,18 +2051,23 @@ def get_exchangerate_rate(pair):
     return None
 
 def get_rate(pair):
-    """Get rate with multi-tier fallback"""
+    """Get rate with multi-tier fallback (v9.2.4: Added Twelve Data)"""
     # Tier 1: Polygon
     rate = get_polygon_rate(pair)
     if rate:
         return rate
-    
-    # Tier 2: ExchangeRate-API
+
+    # Tier 2: Twelve Data (v9.2.4 - real-time forex)
+    rate = get_twelvedata_rate(pair)
+    if rate:
+        return rate
+
+    # Tier 3: ExchangeRate-API
     rate = get_exchangerate_rate(pair)
     if rate:
         return rate
-    
-    # Tier 3: Static fallback
+
+    # Tier 4: Static fallback
     if pair in STATIC_RATES:
         mid = STATIC_RATES[pair]
         return {
@@ -2040,7 +2076,7 @@ def get_rate(pair):
             'mid': mid,
             'source': 'static'
         }
-    
+
     return None
 
 def get_all_rates():
@@ -8590,6 +8626,16 @@ def run_ai_system_health_check(use_ai=True):
         })
         health['overall_score'] -= 10
 
+    # Test Twelve Data (v9.2.4)
+    if TWELVE_DATA_KEY:
+        try:
+            rate = get_twelvedata_rate('EUR/USD')
+            api_check['details']['twelvedata'] = 'OK' if rate else 'LIMITED'
+        except Exception as e:
+            api_check['details']['twelvedata'] = f'ERROR: {str(e)[:50]}'
+    else:
+        api_check['details']['twelvedata'] = 'NOT_CONFIGURED'
+
     # Test OpenAI
     if OPENAI_API_KEY:
         try:
@@ -10694,9 +10740,10 @@ if __name__ == '__main__':
     print(f"  Alpha Vantage:   {'✓' if ALPHA_VANTAGE_KEY else '✗'}")
     print(f"  IG Markets API:  {'✓ (' + IG_ACC_TYPE + ')' if all([IG_API_KEY, IG_USERNAME, IG_PASSWORD]) else '✗'}")
     print(f"  OpenAI API:      {'✓ (gpt-4o-mini)' if OPENAI_API_KEY else '✗'}")
+    print(f"  Twelve Data:     {'✓ (Real-time forex)' if TWELVE_DATA_KEY else '✗'}")
     print(f"  ExchangeRate:    ✓ (Free, no key needed)")
     print("=" * 70)
-    print("  v9.2.2 PRO FEATURES:")
+    print("  v9.2.4 PRO FEATURES:")
     print("    ✨ 8-Group Scoring (12 factors incl. Currency Strength)")
     print("    ✨ 8-Gate Quality Filter (G3 Trend, G5 Calendar, G8 Data = MANDATORY)")
     print("    ✨ Conviction Metric (breadth x strength, separate from score)")

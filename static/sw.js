@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mega-forex-v9.2.3';
+const CACHE_NAME = 'mega-forex-v9.2.4';
 
 const ASSETS_TO_CACHE = [
   '/',
