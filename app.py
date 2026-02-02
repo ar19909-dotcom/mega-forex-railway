@@ -7536,23 +7536,21 @@ def generate_signal(pair):
         entry = current_price
 
         # ─────────────────────────────────────────────────────────────────────────
-        # v9.2.4: ENTRY RANGE CALCULATION
-        # Define optimal entry zone based on S/R to avoid entering at poor levels
+        # v9.2.4: ENTRY RANGE CALCULATION (ATR-based for tight, practical ranges)
+        # Typically 30-50 pips range - not too wide, not too tight
         # ─────────────────────────────────────────────────────────────────────────
-        nearest_support = factors.get('structure', {}).get('details', {}).get('nearest_support', current_price * 0.995)
-        nearest_resistance = factors.get('structure', {}).get('details', {}).get('nearest_resistance', current_price * 1.005)
-
-        # Calculate reasonable entry range (max 0.5% from current price)
-        max_entry_distance = current_price * 0.005  # 0.5% max distance
+        # Use ATR for dynamic, volatility-adjusted entry range
+        # LONG: Wait for pullback (entry_min), don't chase too high (entry_max)
+        # SHORT: Don't chase too low (entry_min), wait for bounce (entry_max)
 
         if direction == 'LONG':
-            # For LONG: ideal entry is at support (pullback), max at current price + small buffer
-            entry_min = max(nearest_support, current_price - max_entry_distance)
-            entry_max = current_price + (atr * 0.3)  # Allow slight buffer above current
+            # For LONG: ideal = pullback 0.5x ATR below, max = 0.2x ATR above current
+            entry_min = current_price - (atr * 0.5)  # Wait for small pullback
+            entry_max = current_price + (atr * 0.2)  # Don't chase too high
         elif direction == 'SHORT':
-            # For SHORT: ideal entry is at resistance (pullback), min at current price - small buffer
-            entry_min = current_price - (atr * 0.3)  # Allow slight buffer below current
-            entry_max = min(nearest_resistance, current_price + max_entry_distance)
+            # For SHORT: min = 0.2x ATR below current, ideal = bounce 0.5x ATR above
+            entry_min = current_price - (atr * 0.2)  # Don't chase too low
+            entry_max = current_price + (atr * 0.5)  # Wait for small bounce
         else:
             # NEUTRAL - no entry range
             entry_min = current_price
