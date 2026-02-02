@@ -5160,10 +5160,180 @@ def get_economic_calendar():
         'source': 'NONE'
     }
 
+def analyze_news_risk_smart(event):
+    """
+    v9.2.4: Smart news risk analyzer - determines if event should block trading
+
+    Analyzes multiple factors:
+    1. Event type (some are inherently unpredictable)
+    2. Forecast vs Previous deviation
+    3. Surprise probability based on event type
+    4. Time until event
+
+    Returns: dict with should_block (bool), risk_score (0-100), reason (str)
+    """
+    event_name = event.get('event', '').lower()
+    forecast = event.get('estimate') or event.get('forecast')
+    previous = event.get('previous')
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # TIER 1: ALWAYS RISKY EVENTS (Block regardless of forecast)
+    # These events have historically caused large unpredictable moves
+    # ═══════════════════════════════════════════════════════════════════════════
+    always_risky_events = [
+        'interest rate decision', 'rate decision', 'monetary policy',
+        'fomc', 'ecb', 'boe', 'boj', 'rba', 'rbnz', 'snb', 'boc',
+        'non-farm payrolls', 'nonfarm payrolls', 'nfp',
+        'fomc minutes', 'meeting minutes',
+        'press conference', 'draghi', 'lagarde', 'powell', 'bailey'
+    ]
+
+    for risky in always_risky_events:
+        if risky in event_name:
+            return {
+                'should_block': True,
+                'risk_score': 95,
+                'reason': f'Central bank/NFP event - always unpredictable',
+                'category': 'ALWAYS_BLOCK'
+            }
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # TIER 2: HIGH VOLATILITY EVENTS (Block if unclear expectations)
+    # These cause big moves but can be predicted if forecast differs from previous
+    # ═══════════════════════════════════════════════════════════════════════════
+    high_volatility_events = [
+        'cpi', 'inflation', 'consumer price',
+        'gdp', 'gross domestic',
+        'employment change', 'unemployment rate', 'jobless claims',
+        'retail sales', 'trade balance',
+        'pmi', 'purchasing managers'
+    ]
+
+    is_high_volatility = any(hv in event_name for hv in high_volatility_events)
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # SMART FORECAST ANALYSIS
+    # ═══════════════════════════════════════════════════════════════════════════
+
+    # No forecast = high uncertainty
+    if not forecast:
+        if is_high_volatility:
+            return {
+                'should_block': True,
+                'risk_score': 85,
+                'reason': 'High volatility event with no forecast - unpredictable',
+                'category': 'NO_FORECAST'
+            }
+        else:
+            return {
+                'should_block': False,
+                'risk_score': 40,
+                'reason': 'No forecast but lower-tier event - proceed with caution',
+                'category': 'LOW_RISK_NO_FORECAST'
+            }
+
+    # Both forecast and previous available - calculate deviation
+    if forecast and previous:
+        try:
+            # Parse numeric values (handle percentages, K/M suffixes)
+            def parse_value(val):
+                if val is None:
+                    return None
+                val_str = str(val).strip().upper()
+                val_str = val_str.replace('%', '').replace(',', '')
+
+                multiplier = 1
+                if 'K' in val_str:
+                    multiplier = 1000
+                    val_str = val_str.replace('K', '')
+                elif 'M' in val_str:
+                    multiplier = 1000000
+                    val_str = val_str.replace('M', '')
+                elif 'B' in val_str:
+                    multiplier = 1000000000
+                    val_str = val_str.replace('B', '')
+
+                try:
+                    return float(val_str) * multiplier
+                except ValueError:
+                    return None
+
+            forecast_val = parse_value(forecast)
+            previous_val = parse_value(previous)
+
+            if forecast_val is not None and previous_val is not None and previous_val != 0:
+                # Calculate percentage deviation
+                deviation_pct = abs((forecast_val - previous_val) / previous_val) * 100
+
+                # Same or very close (< 2% deviation) = Market doesn't know which way it will go
+                if deviation_pct < 2:
+                    if is_high_volatility:
+                        return {
+                            'should_block': True,
+                            'risk_score': 80,
+                            'reason': f'Forecast ≈ Previous ({deviation_pct:.1f}% diff) - unpredictable reaction',
+                            'category': 'UNCLEAR_EXPECTATION'
+                        }
+                    else:
+                        return {
+                            'should_block': False,
+                            'risk_score': 50,
+                            'reason': f'Minor event with similar forecast/previous - low risk',
+                            'category': 'MINOR_UNCLEAR'
+                        }
+
+                # Small deviation (2-10%) = Some expectation but could go either way
+                elif deviation_pct < 10:
+                    if is_high_volatility:
+                        return {
+                            'should_block': False,
+                            'risk_score': 60,
+                            'reason': f'Moderate expectation shift ({deviation_pct:.1f}%) - market has direction',
+                            'category': 'MODERATE_EXPECTATION'
+                        }
+                    else:
+                        return {
+                            'should_block': False,
+                            'risk_score': 35,
+                            'reason': f'Clear expectation for minor event - safe to trade',
+                            'category': 'CLEAR_MINOR'
+                        }
+
+                # Large deviation (>10%) = Market has priced in a move, reaction is predictable
+                else:
+                    return {
+                        'should_block': False,
+                        'risk_score': 30,
+                        'reason': f'Large deviation ({deviation_pct:.1f}%) - market has clear expectation',
+                        'category': 'CLEAR_EXPECTATION'
+                    }
+
+        except (ValueError, TypeError, ZeroDivisionError):
+            pass  # Fall through to string comparison
+
+    # String comparison fallback
+    if forecast and previous and str(forecast).strip() == str(previous).strip():
+        if is_high_volatility:
+            return {
+                'should_block': True,
+                'risk_score': 75,
+                'reason': 'Forecast = Previous (text match) - uncertain market reaction',
+                'category': 'TEXT_MATCH_UNCLEAR'
+            }
+
+    # Default: Allow trading with moderate caution
+    return {
+        'should_block': False,
+        'risk_score': 40,
+        'reason': 'Forecast differs from previous - predictable direction',
+        'category': 'PREDICTABLE'
+    }
+
+
 def get_calendar_risk(pair):
     """
     Calculate calendar risk for a pair - with data quality tracking
-    v9.2.4: Enhanced to only flag HIGH impact events within 6 hours with unclear expectations
+    v9.2.4: Smart analysis to decide whether to block based on news data
     """
     calendar_data = get_economic_calendar()
 
@@ -5193,8 +5363,9 @@ def get_calendar_risk(pair):
 
     high_impact = 0
     medium_impact = 0
-    high_impact_imminent = 0  # v9.2.4: HIGH impact within 6 hours with unclear expectations
-    imminent_events = []  # v9.2.4: Track the actual imminent events
+    high_impact_imminent = 0  # For G5 gate
+    imminent_events = []  # Details of imminent events that should block
+    safe_events = []  # Events that are safe to trade through
     now = datetime.now()
 
     for event in events:
@@ -5207,50 +5378,45 @@ def get_calendar_risk(pair):
             if impact == 'high':
                 high_impact += 1
 
-                # v9.2.4: Check if this HIGH impact event is imminent (within 6 hours)
-                # and has unclear expectations (no forecast or forecast == previous)
+                # Check if event is imminent (within 6 hours)
                 event_time_str = event.get('time')
-                forecast = event.get('estimate') or event.get('forecast')
-                previous = event.get('previous')
-
-                # Parse event time
+                hours_until = None
                 is_within_6_hours = False
+
                 if event_time_str:
                     try:
-                        # Handle ISO format datetime
                         event_time = datetime.fromisoformat(event_time_str.replace('Z', '+00:00'))
                         if event_time.tzinfo:
-                            event_time = event_time.replace(tzinfo=None)  # Make naive for comparison
+                            event_time = event_time.replace(tzinfo=None)
 
-                        hours_until_event = (event_time - now).total_seconds() / 3600
-                        # Only flag if event is 0-6 hours in the future (not past events)
-                        is_within_6_hours = 0 <= hours_until_event <= 6
+                        hours_until = (event_time - now).total_seconds() / 3600
+                        is_within_6_hours = 0 <= hours_until <= 6
                     except (ValueError, TypeError):
-                        # If we can't parse the time, assume it could be imminent
                         is_within_6_hours = True
+                        hours_until = 0
                 else:
-                    # No time available - assume today's events are potentially imminent
                     is_within_6_hours = True
+                    hours_until = 0
 
-                # Check if expectations are unclear
-                # Unclear = no forecast, or forecast equals previous (unpredictable reaction)
-                expectations_unclear = False
-                if not forecast:
-                    expectations_unclear = True
-                elif previous and str(forecast).strip() == str(previous).strip():
-                    # Forecast same as previous = market may react unpredictably
-                    expectations_unclear = True
+                if is_within_6_hours:
+                    # v9.2.4: Use smart analysis to decide
+                    analysis = analyze_news_risk_smart(event)
 
-                # Only count as imminent risk if BOTH conditions met
-                if is_within_6_hours and expectations_unclear:
-                    high_impact_imminent += 1
-                    imminent_events.append({
+                    event_info = {
                         'event': event.get('event', 'Unknown'),
                         'country': country,
                         'time': event_time_str,
-                        'forecast': forecast,
-                        'previous': previous
-                    })
+                        'hours_until': round(hours_until, 1) if hours_until else 0,
+                        'forecast': event.get('estimate') or event.get('forecast'),
+                        'previous': event.get('previous'),
+                        'analysis': analysis
+                    }
+
+                    if analysis['should_block']:
+                        high_impact_imminent += 1
+                        imminent_events.append(event_info)
+                    else:
+                        safe_events.append(event_info)
 
             elif impact == 'medium':
                 medium_impact += 1
@@ -5261,10 +5427,11 @@ def get_calendar_risk(pair):
         'risk_score': risk_score,
         'high_impact_events': high_impact,
         'medium_impact_events': medium_impact,
-        'high_impact_imminent': high_impact_imminent,  # v9.2.4: For G5 gate
-        'imminent_events': imminent_events,  # v9.2.4: Details of imminent events
+        'high_impact_imminent': high_impact_imminent,  # Count of events that SHOULD block
+        'imminent_events': imminent_events,  # Events that will block (with analysis)
+        'safe_events': safe_events,  # Events that are safe to trade through
         'signal': 'HIGH_RISK' if risk_score > 50 else 'MEDIUM_RISK' if risk_score > 25 else 'LOW_RISK',
-        'data_quality': data_quality  # Pass through data quality
+        'data_quality': data_quality
     }
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -6552,7 +6719,8 @@ def calculate_factor_scores(pair):
         'details': {
             'high_events': calendar['high_impact_events'],
             'high_impact_imminent': calendar.get('high_impact_imminent', 0),  # v9.2.4: For G5 gate
-            'imminent_events': calendar.get('imminent_events', []),  # v9.2.4: Details of imminent events
+            'imminent_events': calendar.get('imminent_events', []),  # v9.2.4: Events that block (with analysis)
+            'safe_events': calendar.get('safe_events', []),  # v9.2.4: Events safe to trade through
             'seasonality': seasonality.get('notes', []),
             'seasonal_adjustment': seasonal_adj,
             'risk_score': calendar['risk_score'],
@@ -7040,13 +7208,25 @@ def generate_signal(pair):
         atr_20_avg = DEFAULT_ATR.get(pair, 0.005)  # Use default as 20-period proxy
         atr_ratio = atr_gate / atr_20_avg if atr_20_avg > 0 else 1.0
 
-        # Calendar risk check for gate G5 (v9.2.4: Enhanced calendar gate)
-        # Only block when:
-        # 1. HIGH impact news affects this pair's currencies
-        # 2. Event is within 6 hours (imminent)
-        # 3. Expectations are unclear (no forecast or forecast == previous)
-        high_impact_imminent = factors.get('calendar', {}).get('details', {}).get('high_impact_imminent', 0)
-        has_high_impact_event = high_impact_imminent > 0  # Only block for imminent HIGH events with unclear expectations
+        # Calendar risk check for gate G5 (v9.2.4: Smart calendar analysis)
+        # Uses intelligent analysis to determine if news should block trading:
+        # - Central bank/NFP events ALWAYS block (inherently unpredictable)
+        # - Other HIGH events: check forecast vs previous deviation
+        # - Clear expectations (large deviation) = safe to trade
+        # - Unclear expectations (same/similar values) = block
+        calendar_details = factors.get('calendar', {}).get('details', {})
+        high_impact_imminent = calendar_details.get('high_impact_imminent', 0)
+        imminent_events = calendar_details.get('imminent_events', [])
+        safe_events = calendar_details.get('safe_events', [])
+        has_high_impact_event = high_impact_imminent > 0
+
+        # Get the first blocking event's reason for display
+        g5_reason = ""
+        if imminent_events and len(imminent_events) > 0:
+            first_event = imminent_events[0]
+            event_name = first_event.get('event', 'Unknown')[:20]
+            analysis = first_event.get('analysis', {})
+            g5_reason = f"{event_name}: {analysis.get('reason', 'Risky')}"
 
         # Trend confirmation check for gate G3 (v9.0 fix: require CONFIRMATION, not just "not contradict")
         tm_signal = factor_groups.get('trend_momentum', {}).get('signal', 'NEUTRAL')
@@ -7079,8 +7259,8 @@ def generate_signal(pair):
             },
             'G5_calendar_clear': {
                 'passed': not has_high_impact_event,
-                'value': f"{high_impact_imminent} imminent" if high_impact_imminent > 0 else "Clear",
-                'rule': 'No HIGH impact news within 6hrs with unclear expectations'
+                'value': g5_reason if high_impact_imminent > 0 else f"Clear ({len(safe_events)} safe)" if safe_events else "Clear",
+                'rule': 'Smart analysis: block unpredictable news, allow clear expectations'
             },
             'G6_atr_normal': {
                 'passed': 0.5 <= atr_ratio <= 2.5,
