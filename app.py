@@ -7551,25 +7551,77 @@ def generate_signal(pair):
         entry = current_price
 
         # ─────────────────────────────────────────────────────────────────────────
-        # v9.2.4: ENTRY RANGE CALCULATION (ATR-based for tight, practical ranges)
-        # Typically 30-50 pips range - not too wide, not too tight
+        # v9.2.4: SMART ENTRY RANGE CALCULATION
+        # Uses pivot levels, EMA, trend analysis - not just simple ATR
         # ─────────────────────────────────────────────────────────────────────────
-        # Use ATR for dynamic, volatility-adjusted entry range
-        # LONG: Wait for pullback (entry_min), don't chase too high (entry_max)
-        # SHORT: Don't chase too low (entry_min), wait for bounce (entry_max)
+
+        # Get key levels for smart entry calculation
+        structure_details = factors.get('structure', {}).get('details', {})
+        pivot_point = structure_details.get('pivot', current_price)
+        pivot_s1 = structure_details.get('pivot_s1', current_price - atr)
+        pivot_r1 = structure_details.get('pivot_r1', current_price + atr)
+        nearest_support = structure_details.get('nearest_support', current_price * 0.995)
+        nearest_resistance = structure_details.get('nearest_resistance', current_price * 1.005)
+
+        # Get trend info
+        ema_signal = tech.get('ema_signal', 'NEUTRAL')
+        trend_strength = 'STRONG' if adx > 30 else 'MODERATE' if adx > 20 else 'WEAK'
+
+        # Calculate position relative to pivot
+        above_pivot = current_price > pivot_point
+        distance_to_s1 = current_price - pivot_s1
+        distance_to_r1 = pivot_r1 - current_price
 
         if direction == 'LONG':
-            # For LONG: ideal = pullback 0.5x ATR below, max = 0.2x ATR above current
-            entry_min = current_price - (atr * 0.5)  # Wait for small pullback
-            entry_max = current_price + (atr * 0.2)  # Don't chase too high
+            # SMART LONG ENTRY:
+            # If in downtrend (EMA BEARISH), wait for deeper pullback to support
+            # If in uptrend (EMA BULLISH), tighter range is OK
+            if ema_signal == 'BEARISH':
+                # Counter-trend LONG - need strong reversal zone
+                # Entry min: near S1 or nearest support (wait for deep pullback)
+                # Entry max: current price only (don't chase in downtrend!)
+                entry_min = max(pivot_s1, nearest_support, current_price - atr * 1.0)
+                entry_max = current_price  # Don't buy above current in downtrend
+            elif ema_signal == 'BULLISH':
+                # With-trend LONG - tighter range OK
+                # Entry min: small pullback (0.3x ATR)
+                # Entry max: current + 0.3x ATR (can chase slightly in uptrend)
+                entry_min = max(pivot_point, current_price - atr * 0.3)
+                entry_max = current_price + atr * 0.3
+            else:
+                # Neutral trend - moderate range
+                entry_min = current_price - atr * 0.5
+                entry_max = current_price + atr * 0.2
+
         elif direction == 'SHORT':
-            # For SHORT: min = 0.2x ATR below current, ideal = bounce 0.5x ATR above
-            entry_min = current_price - (atr * 0.2)  # Don't chase too low
-            entry_max = current_price + (atr * 0.5)  # Wait for small bounce
+            # SMART SHORT ENTRY:
+            # If in uptrend (EMA BULLISH), wait for deeper bounce to resistance
+            # If in downtrend (EMA BEARISH), tighter range is OK
+            if ema_signal == 'BULLISH':
+                # Counter-trend SHORT - need strong reversal zone
+                # Entry min: current price only (don't sell below current in uptrend!)
+                # Entry max: near R1 or nearest resistance (wait for deep bounce)
+                entry_min = current_price  # Don't sell below current in uptrend
+                entry_max = min(pivot_r1, nearest_resistance, current_price + atr * 1.0)
+            elif ema_signal == 'BEARISH':
+                # With-trend SHORT - tighter range OK
+                # Entry min: current - 0.3x ATR (can chase slightly in downtrend)
+                # Entry max: small bounce (0.3x ATR)
+                entry_min = current_price - atr * 0.3
+                entry_max = min(pivot_point, current_price + atr * 0.3)
+            else:
+                # Neutral trend - moderate range
+                entry_min = current_price - atr * 0.2
+                entry_max = current_price + atr * 0.5
+
         else:
             # NEUTRAL - no entry range
             entry_min = current_price
             entry_max = current_price
+
+        # Ensure entry range is sensible (min < current < max for valid entries)
+        entry_min = min(entry_min, current_price)
+        entry_max = max(entry_max, current_price)
 
         # Convert ATR to pips for this pair
         atr_pips = atr / pip_size
@@ -7876,6 +7928,20 @@ def generate_signal(pair):
                 'entry': round(entry, 5),
                 'entry_min': round(entry_min, 5),  # v9.2.4: Optimal entry zone (pullback level)
                 'entry_max': round(entry_max, 5),  # v9.2.4: Maximum acceptable entry
+                'entry_quality': (  # v9.2.4: How good is current price for entry?
+                    'OPTIMAL' if (direction == 'LONG' and current_price <= entry_min * 1.001) or
+                                 (direction == 'SHORT' and current_price >= entry_max * 0.999)
+                    else 'GOOD' if entry_min <= current_price <= entry_max
+                    else 'WAIT' if (direction == 'LONG' and current_price > entry_max) or
+                                   (direction == 'SHORT' and current_price < entry_min)
+                    else 'OK'
+                ),
+                'entry_advice': (  # v9.2.4: Action advice
+                    f"Wait for pullback to {round(entry_min, 5)}" if direction == 'LONG' and current_price > entry_max
+                    else f"Wait for bounce to {round(entry_max, 5)}" if direction == 'SHORT' and current_price < entry_min
+                    else "Good entry zone - can enter now" if entry_min <= current_price <= entry_max
+                    else "Monitor for entry"
+                ),
                 'sl': round(sl, 5),
                 'tp1': round(tp1, 5),
                 'tp2': round(tp2, 5),
