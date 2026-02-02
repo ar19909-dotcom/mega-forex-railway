@@ -6043,11 +6043,8 @@ def calculate_ai_factor(pair, tech_data, sentiment_data, rate_data, preliminary_
                 factor_summary = f"  (Factor summary unavailable: {str(e)[:80]})"
                 logger.warning(f"AI Factor: Could not build factor summary: {e}")
 
-        # Build enhanced prompt for GPT-4o-mini with DUAL ROLE
-        prompt = f"""You are an expert forex analyst performing TWO roles:
-
-ROLE 1: CROSS-VALIDATE all factor scores against the raw data and scoring methodology.
-ROLE 2: Provide your own INDEPENDENT trading recommendation.
+        # Build enhanced prompt for GPT-4o-mini with COMPREHENSIVE ANALYSIS
+        prompt = f"""You are an expert forex analyst providing COMPREHENSIVE market analysis.
 
 ═══════════════════════════════════════
 PAIR: {pair}
@@ -6057,41 +6054,57 @@ MARKET REGIME: {market_regime.upper()}
 
 RAW MARKET DATA:
 - RSI (14): {rsi:.1f} (Oversold <30, Overbought >70)
-- MACD Histogram: {macd_hist:.6f} (Positive = Bullish)
-- ADX: {adx:.1f} (>25 = Strong trend)
-- Bollinger %B: {bb_pct:.1f}% (0% = Lower band, 100% = Upper)
-- ATR: {atr:.5f}
-- DXY: {dxy:.1f} (>104 = Strong USD, bearish for EUR/xxx)
-- Gold: ${gold:.0f} (Risk-off, inverse USD)
+- MACD Histogram: {macd_hist:.6f} (Positive = Bullish momentum)
+- ADX: {adx:.1f} (>25 = Strong trend, <15 = Weak/ranging)
+- Bollinger %B: {bb_pct:.1f}% (0% = Lower band touch, 100% = Upper band)
+- ATR: {atr:.5f} (Volatility measure)
+- DXY (USD Index): {dxy:.1f} (>104 = Strong USD)
+- Gold: ${gold:.0f} (Risk-off indicator, inverse to USD)
 - US 10Y Yield: {us_10y:.2f}% (Higher = USD strength)
-- Oil: ${oil:.1f} (CAD, NOK positive correlation)
+- Oil: ${oil:.1f} (Affects CAD, NOK)
 - Sentiment: {sentiment_signal} (Score: {sentiment_score}/100)
 
 ═══════════════════════════════════════
-CURRENT FACTOR SCORES TO VALIDATE:
+CURRENT FACTOR SCORES:
 {factor_summary}
 
 PRELIMINARY COMPOSITE: {preliminary_score:.1f}/100
 ═══════════════════════════════════════
 
-SCORING METHODOLOGY RULES:
+YOUR TASKS:
+1. VALIDATE each factor score against raw data - flag any inconsistencies
+2. Provide DETAILED analysis explaining WHY each major factor supports or conflicts
+3. Identify the KEY DRIVERS for this trade
+4. Assess overall TRADE QUALITY and RISK LEVEL
+5. Give your INDEPENDENT recommendation
+
+SCORING RULES:
 - Score >58 = BULLISH, <42 = BEARISH, 42-58 = NEUTRAL
-- RSI <30 should push Technical BULLISH (oversold bounce), RSI >70 should push BEARISH
-- Positive MACD histogram + MACD above signal = Bullish momentum
-- ADX >25 amplifies trend, ADX <15 reduces confidence
-- High DXY = Bearish for EUR/GBP/etc vs USD, Bullish for USD/xxx
-- Interest rate differential >1% favoring base = Fundamental BULLISH
-- Contrarian sentiment: if most traders are LONG, signal should lean SHORT
+- RSI <30 = oversold (bullish bounce), RSI >70 = overbought (bearish)
+- ADX >25 amplifies trend confidence
+- High DXY = Bearish for EUR,GBP vs USD; Bullish for USD/xxx pairs
+- Contrarian sentiment: retail majority LONG = lean SHORT
 
-CROSS-VALIDATION TASK:
-Check each factor score against its raw data. Flag any factor where the score seems WRONG given the data.
-
-Respond in exact JSON:
-{{"score": 65, "signal": "LONG", "confidence": "MEDIUM", "analysis": "Key reasoning in one sentence", "validation": {{"consistent": true, "flags": [], "recommended_direction": "LONG"}}}}
-
-If factors are inconsistent, set consistent=false and list flags like:
-"flags": ["Technical score 75 but RSI is 52 - should be closer to neutral", "Sentiment BULLISH but contrarian data suggests SHORT"]
-"recommended_direction" should be what the OVERALL data truly supports."""
+Respond in EXACT JSON format:
+{{
+  "score": 65,
+  "signal": "LONG",
+  "confidence": "HIGH",
+  "analysis": "2-3 sentence comprehensive analysis covering key factors and reasoning",
+  "key_drivers": ["Driver 1: explanation", "Driver 2: explanation"],
+  "risk_factors": ["Risk 1", "Risk 2"],
+  "trade_quality": "A/B/C grade with reason",
+  "validation": {{
+    "consistent": true,
+    "flags": ["Any inconsistency found"],
+    "recommended_direction": "LONG",
+    "factor_analysis": {{
+      "strongest_bullish": "Factor name and why",
+      "strongest_bearish": "Factor name and why",
+      "most_uncertain": "Factor name and why"
+    }}
+  }}
+}}"""
 
         # Call OpenAI API
         headers = {
@@ -6102,11 +6115,11 @@ If factors are inconsistent, set consistent=false and list flags like:
         payload = {
             'model': AI_FACTOR_CONFIG.get('model', 'gpt-4o-mini'),
             'messages': [
-                {'role': 'system', 'content': 'You are an expert forex analyst and scoring auditor. You have TWO jobs: (1) Cross-validate all factor scores against raw market data and flag any inconsistencies, (2) Provide your own independent trading recommendation. Be strict — if raw data contradicts a factor score, flag it. Always respond in valid JSON format.'},
+                {'role': 'system', 'content': 'You are an expert forex analyst providing comprehensive market analysis. Validate all factor scores against raw data, identify key drivers and risks, and provide detailed trading insights. Be thorough but concise. Always respond in valid JSON format.'},
                 {'role': 'user', 'content': prompt}
             ],
-            'max_tokens': 350,  # Increased for validation response
-            'temperature': 0.2  # Lower temperature for more consistent validation
+            'max_tokens': 600,  # v9.2.4: Increased for detailed analysis
+            'temperature': 0.3  # Slightly higher for more insightful analysis
         }
 
         # Rate limiting delay
@@ -6154,6 +6167,12 @@ If factors are inconsistent, set consistent=false and list flags like:
                 flags = validation.get('flags', [])
                 is_consistent = validation.get('consistent', True)
                 recommended_dir = validation.get('recommended_direction', ai_data.get('signal', 'NEUTRAL'))
+                factor_analysis = validation.get('factor_analysis', {})
+
+                # v9.2.4: Extract enhanced analysis fields
+                key_drivers = ai_data.get('key_drivers', [])
+                risk_factors = ai_data.get('risk_factors', [])
+                trade_quality = ai_data.get('trade_quality', '')
 
                 ai_result = {
                     'score': max(0, min(100, float(ai_data.get('score', 50)))),
@@ -6161,11 +6180,19 @@ If factors are inconsistent, set consistent=false and list flags like:
                     'analysis': ai_data.get('analysis', 'AI analysis completed'),
                     'confidence': ai_data.get('confidence', 'MEDIUM').upper(),
                     'data_quality': 'AI_REAL',
+                    'key_drivers': key_drivers[:4] if key_drivers else [],  # Limit to 4 drivers
+                    'risk_factors': risk_factors[:3] if risk_factors else [],  # Limit to 3 risks
+                    'trade_quality': trade_quality,
                     'validation': {
                         'consistent': is_consistent,
                         'flags': flags[:5] if flags else [],  # Limit to 5 flags
                         'recommended_direction': recommended_dir.upper() if isinstance(recommended_dir, str) else 'NEUTRAL',
-                        'factors_checked': len(all_factors) - 1 if all_factors else 0  # Exclude AI itself
+                        'factors_checked': len(all_factors) - 1 if all_factors else 0,  # Exclude AI itself
+                        'factor_analysis': {
+                            'strongest_bullish': factor_analysis.get('strongest_bullish', ''),
+                            'strongest_bearish': factor_analysis.get('strongest_bearish', ''),
+                            'most_uncertain': factor_analysis.get('most_uncertain', '')
+                        }
                     }
                 }
 
