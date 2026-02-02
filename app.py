@@ -5161,9 +5161,12 @@ def get_economic_calendar():
     }
 
 def get_calendar_risk(pair):
-    """Calculate calendar risk for a pair - with data quality tracking"""
+    """
+    Calculate calendar risk for a pair - with data quality tracking
+    v9.2.4: Enhanced to only flag HIGH impact events within 6 hours with unclear expectations
+    """
     calendar_data = get_economic_calendar()
-    
+
     # Handle both old format (list) and new format (dict with quality)
     if isinstance(calendar_data, dict):
         events = calendar_data.get('events', [])
@@ -5171,9 +5174,9 @@ def get_calendar_risk(pair):
     else:
         events = calendar_data
         data_quality = 'UNKNOWN'
-    
+
     base, quote = pair.split('/')
-    
+
     currency_map = {
         'USD': ['US', 'USA', 'United States'],
         'EUR': ['EU', 'Euro', 'Germany', 'France'],
@@ -5184,31 +5187,82 @@ def get_calendar_risk(pair):
         'CAD': ['CA', 'Canada'],
         'CHF': ['CH', 'Switzerland']
     }
-    
+
     base_countries = currency_map.get(base, [base])
     quote_countries = currency_map.get(quote, [quote])
-    
+
     high_impact = 0
     medium_impact = 0
-    
+    high_impact_imminent = 0  # v9.2.4: HIGH impact within 6 hours with unclear expectations
+    imminent_events = []  # v9.2.4: Track the actual imminent events
+    now = datetime.now()
+
     for event in events:
         country = event.get('country', '').upper()
         impact = event.get('impact', 'low').lower()
-        
+
         is_relevant = any(c.upper() in country for c in base_countries + quote_countries)
-        
+
         if is_relevant:
             if impact == 'high':
                 high_impact += 1
+
+                # v9.2.4: Check if this HIGH impact event is imminent (within 6 hours)
+                # and has unclear expectations (no forecast or forecast == previous)
+                event_time_str = event.get('time')
+                forecast = event.get('estimate') or event.get('forecast')
+                previous = event.get('previous')
+
+                # Parse event time
+                is_within_6_hours = False
+                if event_time_str:
+                    try:
+                        # Handle ISO format datetime
+                        event_time = datetime.fromisoformat(event_time_str.replace('Z', '+00:00'))
+                        if event_time.tzinfo:
+                            event_time = event_time.replace(tzinfo=None)  # Make naive for comparison
+
+                        hours_until_event = (event_time - now).total_seconds() / 3600
+                        # Only flag if event is 0-6 hours in the future (not past events)
+                        is_within_6_hours = 0 <= hours_until_event <= 6
+                    except (ValueError, TypeError):
+                        # If we can't parse the time, assume it could be imminent
+                        is_within_6_hours = True
+                else:
+                    # No time available - assume today's events are potentially imminent
+                    is_within_6_hours = True
+
+                # Check if expectations are unclear
+                # Unclear = no forecast, or forecast equals previous (unpredictable reaction)
+                expectations_unclear = False
+                if not forecast:
+                    expectations_unclear = True
+                elif previous and str(forecast).strip() == str(previous).strip():
+                    # Forecast same as previous = market may react unpredictably
+                    expectations_unclear = True
+
+                # Only count as imminent risk if BOTH conditions met
+                if is_within_6_hours and expectations_unclear:
+                    high_impact_imminent += 1
+                    imminent_events.append({
+                        'event': event.get('event', 'Unknown'),
+                        'country': country,
+                        'time': event_time_str,
+                        'forecast': forecast,
+                        'previous': previous
+                    })
+
             elif impact == 'medium':
                 medium_impact += 1
-    
+
     risk_score = min(100, high_impact * 25 + medium_impact * 10)
-    
+
     return {
         'risk_score': risk_score,
         'high_impact_events': high_impact,
         'medium_impact_events': medium_impact,
+        'high_impact_imminent': high_impact_imminent,  # v9.2.4: For G5 gate
+        'imminent_events': imminent_events,  # v9.2.4: Details of imminent events
         'signal': 'HIGH_RISK' if risk_score > 50 else 'MEDIUM_RISK' if risk_score > 25 else 'LOW_RISK',
         'data_quality': data_quality  # Pass through data quality
     }
@@ -6497,6 +6551,8 @@ def calculate_factor_scores(pair):
         'data_quality': cal_data_quality,
         'details': {
             'high_events': calendar['high_impact_events'],
+            'high_impact_imminent': calendar.get('high_impact_imminent', 0),  # v9.2.4: For G5 gate
+            'imminent_events': calendar.get('imminent_events', []),  # v9.2.4: Details of imminent events
             'seasonality': seasonality.get('notes', []),
             'seasonal_adjustment': seasonal_adj,
             'risk_score': calendar['risk_score'],
@@ -6984,11 +7040,13 @@ def generate_signal(pair):
         atr_20_avg = DEFAULT_ATR.get(pair, 0.005)  # Use default as 20-period proxy
         atr_ratio = atr_gate / atr_20_avg if atr_20_avg > 0 else 1.0
 
-        # Calendar risk check for gate G5 (v9.2.4: only HIGH impact events that affect this pair)
-        # Previously used score-based check which could block on medium impact events
-        # Now: Only block when HIGH impact news directly affects the pair's currencies
-        high_impact_events = factors.get('calendar', {}).get('details', {}).get('high_events', 0)
-        has_high_impact_event = high_impact_events > 0  # Only block for HIGH impact events affecting this pair
+        # Calendar risk check for gate G5 (v9.2.4: Enhanced calendar gate)
+        # Only block when:
+        # 1. HIGH impact news affects this pair's currencies
+        # 2. Event is within 6 hours (imminent)
+        # 3. Expectations are unclear (no forecast or forecast == previous)
+        high_impact_imminent = factors.get('calendar', {}).get('details', {}).get('high_impact_imminent', 0)
+        has_high_impact_event = high_impact_imminent > 0  # Only block for imminent HIGH events with unclear expectations
 
         # Trend confirmation check for gate G3 (v9.0 fix: require CONFIRMATION, not just "not contradict")
         tm_signal = factor_groups.get('trend_momentum', {}).get('signal', 'NEUTRAL')
@@ -7021,8 +7079,8 @@ def generate_signal(pair):
             },
             'G5_calendar_clear': {
                 'passed': not has_high_impact_event,
-                'value': f"{high_impact_events} HIGH events" if high_impact_events > 0 else "Clear",
-                'rule': 'No HIGH impact news affecting this pair'
+                'value': f"{high_impact_imminent} imminent" if high_impact_imminent > 0 else "Clear",
+                'rule': 'No HIGH impact news within 6hrs with unclear expectations'
             },
             'G6_atr_normal': {
                 'passed': 0.5 <= atr_ratio <= 2.5,
@@ -7296,6 +7354,29 @@ def generate_signal(pair):
         # ─────────────────────────────────────────────────────────────────────────
         pip_size = 0.0001 if 'JPY' not in pair else 0.01
         entry = current_price
+
+        # ─────────────────────────────────────────────────────────────────────────
+        # v9.2.4: ENTRY RANGE CALCULATION
+        # Define optimal entry zone based on S/R to avoid entering at poor levels
+        # ─────────────────────────────────────────────────────────────────────────
+        nearest_support = factors.get('structure', {}).get('details', {}).get('nearest_support', current_price * 0.995)
+        nearest_resistance = factors.get('structure', {}).get('details', {}).get('nearest_resistance', current_price * 1.005)
+
+        # Calculate reasonable entry range (max 0.5% from current price)
+        max_entry_distance = current_price * 0.005  # 0.5% max distance
+
+        if direction == 'LONG':
+            # For LONG: ideal entry is at support (pullback), max at current price + small buffer
+            entry_min = max(nearest_support, current_price - max_entry_distance)
+            entry_max = current_price + (atr * 0.3)  # Allow slight buffer above current
+        elif direction == 'SHORT':
+            # For SHORT: ideal entry is at resistance (pullback), min at current price - small buffer
+            entry_min = current_price - (atr * 0.3)  # Allow slight buffer below current
+            entry_max = min(nearest_resistance, current_price + max_entry_distance)
+        else:
+            # NEUTRAL - no entry range
+            entry_min = current_price
+            entry_max = current_price
 
         # Convert ATR to pips for this pair
         atr_pips = atr / pip_size
@@ -7600,6 +7681,8 @@ def generate_signal(pair):
             },
             'trade_setup': {
                 'entry': round(entry, 5),
+                'entry_min': round(entry_min, 5),  # v9.2.4: Optimal entry zone (pullback level)
+                'entry_max': round(entry_max, 5),  # v9.2.4: Maximum acceptable entry
                 'sl': round(sl, 5),
                 'tp1': round(tp1, 5),
                 'tp2': round(tp2, 5),

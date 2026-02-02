@@ -2404,6 +2404,11 @@
                             <div class="setup-item entry">
                                 <div class="label">ENTRY</div>
                                 <div class="value">${signal.trade_setup?.entry?.toFixed(5) || 'N/A'}</div>
+                                ${signal.trade_setup?.entry_min && signal.trade_setup?.entry_max && signal.direction !== 'NEUTRAL' ? `
+                                <div style="font-size: 0.6rem; color: #60a5fa; margin-top: 0.2rem;">
+                                    Range: ${signal.trade_setup.entry_min.toFixed(5)} - ${signal.trade_setup.entry_max.toFixed(5)}
+                                </div>
+                                ` : ''}
                             </div>
                             <div class="setup-item sl">
                                 <div class="label">SL (${signal.trade_setup?.sl_pips?.toFixed(0) || 0}p)</div>
@@ -2703,6 +2708,11 @@
                                 <div class="setup-item entry">
                                     <div class="label">ENTRY</div>
                                     <div class="value">${signal.trade_setup?.entry?.toFixed(5) || 'N/A'}</div>
+                                    ${signal.trade_setup?.entry_min && signal.trade_setup?.entry_max && signal.direction !== 'NEUTRAL' ? `
+                                    <div style="font-size: 0.55rem; color: #60a5fa; margin-top: 0.2rem;">
+                                        ${signal.trade_setup.entry_min.toFixed(5)} - ${signal.trade_setup.entry_max.toFixed(5)}
+                                    </div>
+                                    ` : ''}
                                 </div>
                                 <div class="setup-item sl">
                                     <div class="label">SL (${signal.trade_setup?.sl_pips?.toFixed(0) || 0}p)</div>
