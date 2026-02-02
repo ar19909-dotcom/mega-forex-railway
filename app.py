@@ -6984,9 +6984,11 @@ def generate_signal(pair):
         atr_20_avg = DEFAULT_ATR.get(pair, 0.005)  # Use default as 20-period proxy
         atr_ratio = atr_gate / atr_20_avg if atr_20_avg > 0 else 1.0
 
-        # Calendar risk check for gate G5
-        cal_score = factors.get('calendar', {}).get('score', 50)
-        has_high_impact_event = cal_score <= 30  # Low cal score = high-impact event imminent
+        # Calendar risk check for gate G5 (v9.2.4: only HIGH impact events that affect this pair)
+        # Previously used score-based check which could block on medium impact events
+        # Now: Only block when HIGH impact news directly affects the pair's currencies
+        high_impact_events = factors.get('calendar', {}).get('details', {}).get('high_events', 0)
+        has_high_impact_event = high_impact_events > 0  # Only block for HIGH impact events affecting this pair
 
         # Trend confirmation check for gate G3 (v9.0 fix: require CONFIRMATION, not just "not contradict")
         tm_signal = factor_groups.get('trend_momentum', {}).get('signal', 'NEUTRAL')
@@ -7019,8 +7021,8 @@ def generate_signal(pair):
             },
             'G5_calendar_clear': {
                 'passed': not has_high_impact_event,
-                'value': cal_score,
-                'rule': 'No high-impact event imminent'
+                'value': f"{high_impact_events} HIGH events" if high_impact_events > 0 else "Clear",
+                'rule': 'No HIGH impact news affecting this pair'
             },
             'G6_atr_normal': {
                 'passed': 0.5 <= atr_ratio <= 2.5,
