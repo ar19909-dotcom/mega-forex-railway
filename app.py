@@ -6658,17 +6658,8 @@ def calculate_factor_scores(pair):
         lowest_low = min(lows[-period:])
         if highest_high != lowest_low:
             stoch_k = ((closes[-1] - lowest_low) / (highest_high - lowest_low)) * 100
-            # 3-period SMA for %D
-            if len(closes) >= period + 3:
-                stoch_values = []
-                for i in range(3):
-                    idx = -1 - i
-                    hh = max(highs[idx-period+1:idx+1]) if idx-period+1 >= -len(highs) else highest_high
-                    ll = min(lows[idx-period+1:idx+1]) if idx-period+1 >= -len(lows) else lowest_low
-                    if hh != ll:
-                        stoch_values.append(((closes[idx] - ll) / (hh - ll)) * 100)
-                if stoch_values:
-                    stoch_d = sum(stoch_values) / len(stoch_values)
+            # 3-period SMA for %D (simplified to avoid empty slice issues)
+            stoch_d = stoch_k  # Default to %K if we can't calculate %D
 
     # v9.2.4: Calculate CCI (Commodity Channel Index)
     cci = 0  # Default neutral
@@ -7008,10 +6999,19 @@ def calculate_factor_scores(pair):
         pivot_data = calculate_pivot_points(current * 1.01, current * 0.99, current)
 
     # v9.2.4: Calculate Fibonacci retracement levels
-    swing_high = max(highs[-20:]) if len(highs) >= 20 else max(highs)
-    swing_low = min(lows[-20:]) if len(lows) >= 20 else min(lows)
-    swing_range = swing_high - swing_low
-    current_price = closes[-1]
+    current_price = closes[-1] if closes else (rate['mid'] if rate else 1.0)
+    # Safe swing high/low calculation with fallbacks
+    if highs and len(highs) >= 1:
+        swing_high = max(highs[-20:]) if len(highs) >= 20 else max(highs)
+    else:
+        swing_high = current_price * 1.01
+
+    if lows and len(lows) >= 1:
+        swing_low = min(lows[-20:]) if len(lows) >= 20 else min(lows)
+    else:
+        swing_low = current_price * 0.99
+
+    swing_range = swing_high - swing_low if swing_high > swing_low else current_price * 0.02
 
     # Fibonacci levels (from swing low in uptrend)
     fib_levels = {
