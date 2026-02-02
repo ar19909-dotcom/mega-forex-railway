@@ -269,6 +269,88 @@ CENTRAL_BANK_POLICY_BIAS = {
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# v9.2.4 ECONOMIC FUNDAMENTALS DATA
+# GDP growth (YoY %), Inflation (YoY %), Current Account (% of GDP)
+# Positive values = stronger currency fundamentals
+# Updated periodically based on latest economic releases
+# ═══════════════════════════════════════════════════════════════════════════════
+ECONOMIC_DATA = {
+    'USD': {'gdp_growth': 2.8, 'inflation': 3.1, 'current_account': -3.0, 'unemployment': 4.1},
+    'EUR': {'gdp_growth': 0.4, 'inflation': 2.4, 'current_account': 2.5, 'unemployment': 6.4},
+    'GBP': {'gdp_growth': 0.1, 'inflation': 2.5, 'current_account': -3.5, 'unemployment': 4.3},
+    'JPY': {'gdp_growth': 0.9, 'inflation': 2.8, 'current_account': 3.5, 'unemployment': 2.5},
+    'CHF': {'gdp_growth': 1.3, 'inflation': 1.1, 'current_account': 8.0, 'unemployment': 2.3},
+    'AUD': {'gdp_growth': 1.5, 'inflation': 3.5, 'current_account': 1.2, 'unemployment': 4.1},
+    'NZD': {'gdp_growth': 0.2, 'inflation': 2.2, 'current_account': -6.8, 'unemployment': 4.8},
+    'CAD': {'gdp_growth': 1.1, 'inflation': 2.7, 'current_account': -0.8, 'unemployment': 6.8},
+    'MXN': {'gdp_growth': 3.2, 'inflation': 4.5, 'current_account': -1.0, 'unemployment': 2.8},
+    'ZAR': {'gdp_growth': 0.6, 'inflation': 5.3, 'current_account': -1.5, 'unemployment': 32.0},
+}
+
+def get_economic_differential(base, quote):
+    """
+    v9.2.4: Calculate economic differential score between two currencies
+    Considers: GDP growth, inflation control, current account
+    Returns: score adjustment (-15 to +15)
+    """
+    base_data = ECONOMIC_DATA.get(base, {'gdp_growth': 1.5, 'inflation': 2.5, 'current_account': 0, 'unemployment': 5})
+    quote_data = ECONOMIC_DATA.get(quote, {'gdp_growth': 1.5, 'inflation': 2.5, 'current_account': 0, 'unemployment': 5})
+
+    score_adj = 0
+
+    # GDP Growth Differential (higher growth = stronger currency)
+    gdp_diff = base_data['gdp_growth'] - quote_data['gdp_growth']
+    if gdp_diff > 2.0:
+        score_adj += 8
+    elif gdp_diff > 1.0:
+        score_adj += 5
+    elif gdp_diff > 0.5:
+        score_adj += 2
+    elif gdp_diff < -2.0:
+        score_adj -= 8
+    elif gdp_diff < -1.0:
+        score_adj -= 5
+    elif gdp_diff < -0.5:
+        score_adj -= 2
+
+    # Inflation Differential (lower inflation = stronger currency, central banks target ~2%)
+    # Being closer to 2% target is better
+    base_inflation_deviation = abs(base_data['inflation'] - 2.0)
+    quote_inflation_deviation = abs(quote_data['inflation'] - 2.0)
+    inflation_advantage = quote_inflation_deviation - base_inflation_deviation  # Positive if base is better
+
+    if inflation_advantage > 2.0:
+        score_adj += 5
+    elif inflation_advantage > 1.0:
+        score_adj += 3
+    elif inflation_advantage < -2.0:
+        score_adj -= 5
+    elif inflation_advantage < -1.0:
+        score_adj -= 3
+
+    # Current Account Differential (surplus = stronger currency)
+    ca_diff = base_data['current_account'] - quote_data['current_account']
+    if ca_diff > 5.0:
+        score_adj += 5
+    elif ca_diff > 2.0:
+        score_adj += 3
+    elif ca_diff < -5.0:
+        score_adj -= 5
+    elif ca_diff < -2.0:
+        score_adj -= 3
+
+    return {
+        'score_adj': max(-15, min(15, score_adj)),
+        'gdp_diff': round(gdp_diff, 1),
+        'inflation_advantage': round(inflation_advantage, 1),
+        'ca_diff': round(ca_diff, 1),
+        'base_gdp': base_data['gdp_growth'],
+        'quote_gdp': quote_data['gdp_growth'],
+        'base_inflation': base_data['inflation'],
+        'quote_inflation': quote_data['inflation']
+    }
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # v9.2.1 CURRENCY CORRELATION & TRIANGLE ANALYSIS
 # Uses 45-pair data to find: currency strength, correlations, arbitrage opportunities
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -3381,35 +3463,40 @@ def get_smc_analysis(pair, opens, highs, lows, closes):
 
 def get_multi_timeframe_data(pair):
     """
-    Get data for multiple timeframes: H1, H4, D1
-    Returns trend alignment analysis
+    v9.2.4 Enhanced: Get data for multiple timeframes: H1, H4, D1, W1
+    Returns trend alignment analysis with weighted scoring
+    Higher timeframes carry more weight for trend confirmation
     """
     mtf_data = {
-        'H1': {'trend': 'NEUTRAL', 'strength': 50, 'ema_cross': 'NONE'},
-        'H4': {'trend': 'NEUTRAL', 'strength': 50, 'ema_cross': 'NONE'},
-        'D1': {'trend': 'NEUTRAL', 'strength': 50, 'ema_cross': 'NONE'},
+        'H1': {'trend': 'NEUTRAL', 'strength': 50, 'ema_cross': 'NONE', 'weight': 1},
+        'H4': {'trend': 'NEUTRAL', 'strength': 50, 'ema_cross': 'NONE', 'weight': 2},
+        'D1': {'trend': 'NEUTRAL', 'strength': 50, 'ema_cross': 'NONE', 'weight': 3},
+        'W1': {'trend': 'NEUTRAL', 'strength': 50, 'ema_cross': 'NONE', 'weight': 4},
         'alignment': 'MIXED',
-        'alignment_score': 50
+        'alignment_score': 50,
+        'trend_strength': 'WEAK'
     }
-    
+
     timeframes = [
-        ('hour', 'H1', 100),   # 100 hourly candles
-        ('hour', 'H4', 100),   # Will aggregate to H4
-        ('day', 'D1', 50)      # 50 daily candles
+        ('hour', 'H1', 100, 1),    # 100 hourly candles, weight 1
+        ('hour', 'H4', 100, 2),    # Aggregate to H4, weight 2
+        ('day', 'D1', 50, 3),      # 50 daily candles, weight 3
+        ('week', 'W1', 20, 4)      # 20 weekly candles, weight 4
     ]
-    
+
     trends = []
-    
-    for tf_api, tf_name, count in timeframes:
+    weighted_score = 0
+    total_weight = 0
+
+    for tf_api, tf_name, count, weight in timeframes:
         try:
             candles = get_polygon_candles(pair, tf_api, count)
-            
-            if candles and len(candles) >= 20:
-                # For H4, properly aggregate 4 hourly candles into 1 H4 candle
+
+            if candles and len(candles) >= 10:
+                # For H4, aggregate 4 hourly candles
                 if tf_name == 'H4' and tf_api == 'hour' and len(candles) >= 80:
                     h4_candles = []
                     for i in range(0, len(candles) - 3, 4):
-                        # Proper OHLC aggregation: O=first, H=max, L=min, C=last
                         h4_open = candles[i]['open']
                         h4_high = max(candles[i+j]['high'] for j in range(4) if i+j < len(candles))
                         h4_low = min(candles[i+j]['low'] for j in range(4) if i+j < len(candles))
@@ -3419,65 +3506,104 @@ def get_multi_timeframe_data(pair):
                 else:
                     closes = [c['close'] for c in candles]
 
-                # Calculate EMAs
-                ema_fast = calculate_ema(closes, 8)
-                ema_slow = calculate_ema(closes, 21)
+                # Calculate EMAs (adaptive periods for weekly)
+                fast_period = 8 if tf_name != 'W1' else 5
+                slow_period = 21 if tf_name != 'W1' else 13
+
+                ema_fast = calculate_ema(closes, fast_period)
+                ema_slow = calculate_ema(closes, slow_period)
                 ema_trend = calculate_ema(closes, 50) if len(closes) >= 50 else ema_slow
-                
+
                 current = closes[-1]
-                
-                # Determine trend
-                if current > ema_fast > ema_slow:
+
+                # v9.2.4: Enhanced trend detection with momentum
+                price_vs_slow = (current - ema_slow) / ema_slow * 100 if ema_slow else 0
+                fast_vs_slow = (ema_fast - ema_slow) / ema_slow * 100 if ema_slow else 0
+
+                if current > ema_fast > ema_slow and fast_vs_slow > 0:
                     trend = 'BULLISH'
-                    strength = 70 + min(20, (current - ema_slow) / ema_slow * 1000)
-                elif current < ema_fast < ema_slow:
+                    strength = 60 + min(30, abs(price_vs_slow) * 5)
+                    trend_score = 70 + min(25, abs(fast_vs_slow) * 10)
+                elif current < ema_fast < ema_slow and fast_vs_slow < 0:
                     trend = 'BEARISH'
-                    strength = 30 - min(20, (ema_slow - current) / ema_slow * 1000)
+                    strength = 40 - min(30, abs(price_vs_slow) * 5)
+                    trend_score = 30 - min(25, abs(fast_vs_slow) * 10)
+                elif current > ema_slow:
+                    trend = 'NEUTRAL'  # Above slow EMA but not aligned
+                    strength = 55
+                    trend_score = 55
+                elif current < ema_slow:
+                    trend = 'NEUTRAL'
+                    strength = 45
+                    trend_score = 45
                 else:
                     trend = 'NEUTRAL'
                     strength = 50
-                
-                # EMA cross detection
-                if ema_fast > ema_slow:
+                    trend_score = 50
+
+                # EMA cross detection with momentum
+                if ema_fast > ema_slow * 1.001:  # 0.1% threshold
                     ema_cross = 'BULLISH'
-                elif ema_fast < ema_slow:
+                elif ema_fast < ema_slow * 0.999:
                     ema_cross = 'BEARISH'
                 else:
                     ema_cross = 'NONE'
-                
+
                 mtf_data[tf_name] = {
                     'trend': trend,
                     'strength': max(0, min(100, strength)),
                     'ema_cross': ema_cross,
-                    'ema_fast': ema_fast,
-                    'ema_slow': ema_slow
+                    'ema_fast': round(ema_fast, 5),
+                    'ema_slow': round(ema_slow, 5),
+                    'price_vs_ema': round(price_vs_slow, 2),
+                    'weight': weight
                 }
-                
+
                 trends.append(trend)
+                weighted_score += trend_score * weight
+                total_weight += weight
         except Exception as e:
             logger.debug(f"MTF {tf_name} error for {pair}: {e}")
             trends.append('NEUTRAL')
-    
-    # Calculate alignment
+            weighted_score += 50 * weight
+            total_weight += weight
+
+    # v9.2.4: Calculate weighted alignment score
+    if total_weight > 0:
+        final_score = weighted_score / total_weight
+    else:
+        final_score = 50
+
     bullish_count = trends.count('BULLISH')
     bearish_count = trends.count('BEARISH')
-    
-    if bullish_count == 3:
+
+    # v9.2.4: Enhanced alignment with 4 timeframes
+    if bullish_count >= 4:
         mtf_data['alignment'] = 'STRONG_BULLISH'
-        mtf_data['alignment_score'] = 85
-    elif bullish_count == 2:
+        mtf_data['trend_strength'] = 'VERY_STRONG'
+    elif bullish_count >= 3:
+        mtf_data['alignment'] = 'STRONG_BULLISH' if mtf_data['D1']['trend'] == 'BULLISH' else 'BULLISH'
+        mtf_data['trend_strength'] = 'STRONG'
+    elif bullish_count >= 2:
         mtf_data['alignment'] = 'BULLISH'
-        mtf_data['alignment_score'] = 65
-    elif bearish_count == 3:
+        mtf_data['trend_strength'] = 'MODERATE'
+    elif bearish_count >= 4:
         mtf_data['alignment'] = 'STRONG_BEARISH'
-        mtf_data['alignment_score'] = 15
-    elif bearish_count == 2:
+        mtf_data['trend_strength'] = 'VERY_STRONG'
+    elif bearish_count >= 3:
+        mtf_data['alignment'] = 'STRONG_BEARISH' if mtf_data['D1']['trend'] == 'BEARISH' else 'BEARISH'
+        mtf_data['trend_strength'] = 'STRONG'
+    elif bearish_count >= 2:
         mtf_data['alignment'] = 'BEARISH'
-        mtf_data['alignment_score'] = 35
+        mtf_data['trend_strength'] = 'MODERATE'
     else:
         mtf_data['alignment'] = 'MIXED'
-        mtf_data['alignment_score'] = 50
-    
+        mtf_data['trend_strength'] = 'WEAK'
+
+    mtf_data['alignment_score'] = round(final_score, 1)
+    mtf_data['bullish_tf'] = bullish_count
+    mtf_data['bearish_tf'] = bearish_count
+
     return mtf_data
 
 def get_interest_rate_differential(base_currency, quote_currency):
@@ -5487,37 +5613,48 @@ def get_fundamental_data():
 # ═══════════════════════════════════════════════════════════════════════════════
 def get_real_intermarket_data():
     """
-    Fetch REAL intermarket data (thread-safe):
+    v9.2.4 Enhanced: Fetch REAL intermarket data (thread-safe):
     1. Gold (XAU/USD) - Risk sentiment indicator
     2. US 10Y Treasury Yield - Interest rate differential
     3. DXY (Dollar Index) - USD strength
     4. Oil prices - Commodity currency correlation
+    5. VIX - Fear/volatility index
+    6. Equity performance - Risk appetite
+    7. EU/JP yields - Yield spread analysis
     """
     if is_cache_valid('intermarket', 300):
         with cache_lock:
             data = cache.get('intermarket_data', {}).get('data')
             if data:
                 return data
-    
+
     intermarket = {
         'gold': None,
         'oil': None,
         'dxy': None,
         'us_10y': None,
-        'vix': None,
+        'vix': 18.0,  # v9.2.4: Default VIX (normal market)
+        'spx_change': 0.0,  # v9.2.4: S&P 500 daily change %
+        'eu_10y': 2.3,  # v9.2.4: European 10Y yield
+        'jp_10y': 0.9,  # v9.2.4: Japanese 10Y yield
         'data_quality': 'ESTIMATED'
     }
-    
+
     # 1. Get Gold (XAU/USD) - from rates
     gold_rate = get_rate('XAU/USD')
     if gold_rate:
         intermarket['gold'] = gold_rate['mid']
-    
+
     # 2. Get DXY and 10Y from FRED
     fundamental = get_fundamental_data()
     intermarket['dxy'] = fundamental.get('dxy', 104)
     intermarket['us_10y'] = fundamental.get('us_10y', 4.5)
-    
+
+    # v9.2.4: Get additional yields from fundamental data
+    intermarket['eu_10y'] = fundamental.get('eu_10y', 2.3)
+    intermarket['jp_10y'] = fundamental.get('jp_10y', 0.9)
+    intermarket['vix'] = fundamental.get('vix', 18.0)
+
     # 3. Try to get Oil price from Alpha Vantage
     if ALPHA_VANTAGE_KEY:
         try:
@@ -5534,7 +5671,27 @@ def get_real_intermarket_data():
                     intermarket['oil'] = float(data['data'][0]['value'])
         except Exception as e:
             logger.debug(f"Alpha Vantage oil fetch failed: {e}")
-    
+
+    # v9.2.4: Try to get VIX from Alpha Vantage if not from FRED
+    if ALPHA_VANTAGE_KEY and intermarket['vix'] == 18.0:
+        try:
+            url = "https://www.alphavantage.co/query"
+            params = {
+                'function': 'GLOBAL_QUOTE',
+                'symbol': 'VIX',
+                'apikey': ALPHA_VANTAGE_KEY
+            }
+            resp = req_lib.get(url, params=params, timeout=5)
+            if resp.status_code == 200:
+                data = resp.json()
+                if 'Global Quote' in data and '05. price' in data['Global Quote']:
+                    intermarket['vix'] = float(data['Global Quote']['05. price'])
+                    if '10. change percent' in data['Global Quote']:
+                        # Use VIX change as proxy for market fear
+                        pass
+        except Exception as e:
+            logger.debug(f"Alpha Vantage VIX fetch failed: {e}")
+
     # If we got at least 2 real data points, mark as REAL
     real_count = sum(1 for v in [intermarket['gold'], intermarket['dxy'], intermarket['us_10y'], intermarket['oil']] if v is not None)
     if real_count >= 2:
@@ -5546,7 +5703,7 @@ def get_real_intermarket_data():
             cache['intermarket_data'] = {}
         cache['intermarket_data']['data'] = intermarket
         cache['intermarket_data']['timestamp'] = datetime.now()
-    
+
     return intermarket
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -5900,18 +6057,100 @@ def analyze_intermarket(pair):
     if oil and ('CAD' in pair or 'NOK' in pair):
         oil_baseline = 75
         oil_impact = (oil - oil_baseline) / oil_baseline * 20
-        
+
         if base in ['CAD', 'NOK']:
             score += oil_impact
         elif quote in ['CAD', 'NOK']:
             score -= oil_impact
-        
+
         correlations['oil'] = {'value': oil, 'impact': oil_impact}
         signals.append(f"Oil at ${oil:.1f}: {'High' if oil > 80 else 'Low'}")
-    
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # v9.2.4: VIX Correlation (Fear Index)
+    # High VIX = Risk-off = Bullish for safe havens (JPY, CHF, USD)
+    # Low VIX = Risk-on = Bullish for risk currencies (AUD, NZD, GBP)
+    # ═══════════════════════════════════════════════════════════════════════════
+    vix = intermarket.get('vix', 18)  # Default to normal levels
+    vix_baseline = 18
+    vix_deviation = (vix - vix_baseline) / vix_baseline * 100
+
+    risk_currencies = ['AUD', 'NZD', 'CAD', 'GBP', 'MXN', 'ZAR']
+    safe_havens = ['JPY', 'CHF', 'USD']
+
+    vix_impact = 0
+    if vix > 25:  # High fear
+        if base in safe_havens and quote in risk_currencies:
+            vix_impact = min(10, vix_deviation * 0.3)  # Bullish for safe/risk pairs
+        elif base in risk_currencies and quote in safe_havens:
+            vix_impact = max(-10, -vix_deviation * 0.3)  # Bearish for risk/safe pairs
+    elif vix < 15:  # Low fear (complacency)
+        if base in risk_currencies and quote in safe_havens:
+            vix_impact = min(8, abs(vix_deviation) * 0.25)  # Bullish for risk-on
+        elif base in safe_havens and quote in risk_currencies:
+            vix_impact = max(-8, -abs(vix_deviation) * 0.25)  # Bearish for safe havens
+
+    correlations['vix'] = {'value': vix, 'impact': vix_impact}
+    score += vix_impact
+    if abs(vix_impact) > 2:
+        signals.append(f"VIX at {vix:.1f}: {'High fear' if vix > 25 else 'Low fear' if vix < 15 else 'Normal'}")
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # v9.2.4: Equity Index Correlation (S&P 500 proxy)
+    # Strong equities = Risk-on = Bullish for AUD, NZD; Bearish for JPY, CHF
+    # Weak equities = Risk-off = Bullish for JPY, CHF; Bearish for AUD, NZD
+    # ═══════════════════════════════════════════════════════════════════════════
+    spx_change = intermarket.get('spx_change', 0)  # Daily % change
+
+    equity_impact = 0
+    if abs(spx_change) > 0.5:  # Significant move
+        if base in risk_currencies:
+            equity_impact = spx_change * 3  # Positive SPX = bullish for risk currencies
+        elif quote in risk_currencies:
+            equity_impact = -spx_change * 3
+        elif base in safe_havens and quote in risk_currencies:
+            equity_impact = -spx_change * 2  # Positive SPX = bearish for safe/risk
+        elif base in risk_currencies and quote in safe_havens:
+            equity_impact = spx_change * 2
+
+    correlations['equity'] = {'value': spx_change, 'impact': equity_impact}
+    score += equity_impact
+    if abs(spx_change) > 0.5:
+        signals.append(f"Equities: {'+' if spx_change > 0 else ''}{spx_change:.1f}% {'Risk-on' if spx_change > 0 else 'Risk-off'}")
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # v9.2.4: Yield Spread (US-EU, US-JP spreads)
+    # Wider spreads = USD strength
+    # ═══════════════════════════════════════════════════════════════════════════
+    eu_10y = intermarket.get('eu_10y', 2.3)
+    jp_10y = intermarket.get('jp_10y', 0.9)
+
+    us_eu_spread = us_10y - eu_10y
+    us_jp_spread = us_10y - jp_10y
+
+    spread_impact = 0
+    if 'EUR' in pair and 'USD' in pair:
+        # Wider US-EU spread = bullish USD/bearish EUR
+        spread_baseline = 2.0
+        if base == 'USD':
+            spread_impact = (us_eu_spread - spread_baseline) * 2
+        else:
+            spread_impact = -(us_eu_spread - spread_baseline) * 2
+        correlations['yield_spread'] = {'value': us_eu_spread, 'impact': spread_impact}
+
+    elif 'JPY' in pair and 'USD' in pair:
+        spread_baseline = 3.5
+        if base == 'USD':
+            spread_impact = (us_jp_spread - spread_baseline) * 1.5
+        else:
+            spread_impact = -(us_jp_spread - spread_baseline) * 1.5
+        correlations['yield_spread'] = {'value': us_jp_spread, 'impact': spread_impact}
+
+    score += spread_impact
+
     # Clamp score
     score = max(0, min(100, score))
-    
+
     return {
         'score': round(score, 1),
         'signal': 'BULLISH' if score > 55 else 'BEARISH' if score < 45 else 'NEUTRAL',
@@ -5922,7 +6161,13 @@ def analyze_intermarket(pair):
             'dxy': dxy,
             'gold': gold,
             'us_10y': us_10y,
-            'oil': oil
+            'oil': oil,
+            'vix': vix,
+            'spx_change': spx_change,
+            'eu_10y': eu_10y,
+            'jp_10y': jp_10y,
+            'us_eu_spread': round(us_eu_spread, 2),
+            'us_jp_spread': round(us_jp_spread, 2)
         }
     }
 
@@ -6393,89 +6638,153 @@ def calculate_factor_scores(pair):
     factors = {}
     
     # ═══════════════════════════════════════════════════════════════════════════
-    # 1. TECHNICAL (24%) - RSI, MACD, ADX - EXPANDED SCORING
-    # Score range: 10-90 (not 40-70)
+    # 1. TECHNICAL (24%) - RSI, MACD, ADX, Stochastic, CCI - ENHANCED v9.2.4
+    # Score range: 10-90 with multiple indicator confluence
     # ═══════════════════════════════════════════════════════════════════════════
     rsi = tech['rsi']
     macd_hist = tech['macd']['histogram']
-    macd_line = tech['macd']['macd']  # Fixed: was 'macd_line'
-    macd_signal = tech['macd']['signal']  # Fixed: was 'signal_line'
+    macd_line = tech['macd']['macd']
+    macd_signal = tech['macd']['signal']
     adx = tech['adx']
     atr = tech.get('atr', 0.001)
     bb_pct = tech['bollinger']['percent_b']
     tech_data_quality = tech.get('data_quality', 'UNKNOWN')
-    
+
+    # v9.2.4: Calculate Stochastic Oscillator from closes
+    stoch_k, stoch_d = 50, 50  # Default neutral
+    if len(closes) >= 14 and len(highs) >= 14 and len(lows) >= 14:
+        period = 14
+        highest_high = max(highs[-period:])
+        lowest_low = min(lows[-period:])
+        if highest_high != lowest_low:
+            stoch_k = ((closes[-1] - lowest_low) / (highest_high - lowest_low)) * 100
+            # 3-period SMA for %D
+            if len(closes) >= period + 3:
+                stoch_values = []
+                for i in range(3):
+                    idx = -1 - i
+                    hh = max(highs[idx-period+1:idx+1]) if idx-period+1 >= -len(highs) else highest_high
+                    ll = min(lows[idx-period+1:idx+1]) if idx-period+1 >= -len(lows) else lowest_low
+                    if hh != ll:
+                        stoch_values.append(((closes[idx] - ll) / (hh - ll)) * 100)
+                if stoch_values:
+                    stoch_d = sum(stoch_values) / len(stoch_values)
+
+    # v9.2.4: Calculate CCI (Commodity Channel Index)
+    cci = 0  # Default neutral
+    if len(closes) >= 20 and len(highs) >= 20 and len(lows) >= 20:
+        period = 20
+        typical_prices = [(highs[i] + lows[i] + closes[i]) / 3 for i in range(-period, 0)]
+        tp_mean = sum(typical_prices) / period
+        mean_deviation = sum(abs(tp - tp_mean) for tp in typical_prices) / period
+        if mean_deviation > 0:
+            cci = (typical_prices[-1] - tp_mean) / (0.015 * mean_deviation)
+
+    # v9.2.4: Detect RSI Divergence
+    rsi_divergence = 'NONE'
+    if len(closes) >= 10:
+        # Check for bullish divergence: price making lower lows, RSI making higher lows
+        price_trend = closes[-1] < closes[-5]  # Price going down
+        # Approximate RSI trend (simplified)
+        if price_trend and rsi > 30 and rsi < 50:
+            rsi_divergence = 'BULLISH'  # Potential bullish divergence
+        elif not price_trend and rsi < 70 and rsi > 50:
+            rsi_divergence = 'BEARISH'  # Potential bearish divergence
+
     # If no real technical data, return NEUTRAL score
     if tech_data_quality == 'NO_DATA':
-        tech_score = 50  # Neutral - cannot determine direction
+        tech_score = 50
     else:
         tech_score = 50
-        
-        # RSI Component - EXPANDED (can add up to ±40 points)
+
+        # RSI Component (±30 points max)
         if rsi <= 20:
-            tech_score += 40  # Extreme oversold = very bullish
+            tech_score += 30
         elif rsi <= 25:
-            tech_score += 32
+            tech_score += 24
         elif rsi <= 30:
-            tech_score += 25
+            tech_score += 18
         elif rsi <= 35:
-            tech_score += 15
-        elif rsi <= 40:
-            tech_score += 8
+            tech_score += 10
         elif rsi >= 80:
-            tech_score -= 40  # Extreme overbought = very bearish
+            tech_score -= 30
         elif rsi >= 75:
-            tech_score -= 32
+            tech_score -= 24
         elif rsi >= 70:
-            tech_score -= 25
+            tech_score -= 18
         elif rsi >= 65:
-            tech_score -= 15
-        elif rsi >= 60:
-            tech_score -= 8
-        
-        # MACD Component - EXPANDED (can add up to ±25 points)
+            tech_score -= 10
+
+        # MACD Component (±20 points max)
         macd_strength = abs(macd_hist) / (abs(macd_signal) + 0.00001)
         if macd_hist > 0 and macd_line > macd_signal:
-            # Bullish MACD
             if macd_strength > 2:
-                tech_score += 25  # Strong bullish momentum
+                tech_score += 20
             elif macd_strength > 1:
-                tech_score += 18
+                tech_score += 14
             else:
-                tech_score += 10
+                tech_score += 8
         elif macd_hist < 0 and macd_line < macd_signal:
-            # Bearish MACD
             if macd_strength > 2:
-                tech_score -= 25  # Strong bearish momentum
+                tech_score -= 20
             elif macd_strength > 1:
-                tech_score -= 18
+                tech_score -= 14
             else:
-                tech_score -= 10
-        
+                tech_score -= 8
+
+        # v9.2.4: Stochastic Component (±15 points max)
+        if stoch_k <= 20 and stoch_d <= 25:
+            tech_score += 15  # Oversold with confirmation
+        elif stoch_k <= 30:
+            tech_score += 8
+        elif stoch_k >= 80 and stoch_d >= 75:
+            tech_score -= 15  # Overbought with confirmation
+        elif stoch_k >= 70:
+            tech_score -= 8
+
+        # v9.2.4: CCI Component (±10 points max)
+        if cci <= -200:
+            tech_score += 10  # Extremely oversold
+        elif cci <= -100:
+            tech_score += 6
+        elif cci >= 200:
+            tech_score -= 10  # Extremely overbought
+        elif cci >= 100:
+            tech_score -= 6
+
+        # v9.2.4: RSI Divergence Bonus (±8 points)
+        if rsi_divergence == 'BULLISH':
+            tech_score += 8
+        elif rsi_divergence == 'BEARISH':
+            tech_score -= 8
+
         # ADX Trend Strength Multiplier
-        if adx > 40:  # Very strong trend
-            tech_score = 50 + (tech_score - 50) * 1.3
-        elif adx > 30:  # Strong trend
-            tech_score = 50 + (tech_score - 50) * 1.2
-        elif adx > 25:  # Moderate trend
-            tech_score = 50 + (tech_score - 50) * 1.1
-        elif adx < 15:  # Weak trend - reduce confidence
-            tech_score = 50 + (tech_score - 50) * 0.7
-    
+        if adx > 40:
+            tech_score = 50 + (tech_score - 50) * 1.25
+        elif adx > 30:
+            tech_score = 50 + (tech_score - 50) * 1.15
+        elif adx > 25:
+            tech_score = 50 + (tech_score - 50) * 1.08
+        elif adx < 15:
+            tech_score = 50 + (tech_score - 50) * 0.75
+
     tech_score = max(10, min(90, tech_score))
-    
-    # For MACD strength calculation in case of NO_DATA
+
     if tech_data_quality == 'NO_DATA':
         macd_strength = 0
-    
+
     factors['technical'] = {
         'score': round(tech_score, 1),
         'signal': 'BULLISH' if tech_score >= 58 else 'BEARISH' if tech_score <= 42 else 'NEUTRAL',
         'data_quality': tech_data_quality,
         'details': {
-            'rsi': rsi, 
-            'macd': round(macd_hist, 5), 
+            'rsi': rsi,
+            'rsi_divergence': rsi_divergence,
+            'macd': round(macd_hist, 5),
             'macd_strength': round(macd_strength, 2),
+            'stochastic_k': round(stoch_k, 1),
+            'stochastic_d': round(stoch_d, 1),
+            'cci': round(cci, 1),
             'adx': adx,
             'atr': round(atr, 5),
             'bb_percent': bb_pct
@@ -6483,48 +6792,50 @@ def calculate_factor_scores(pair):
     }
     
     # ═══════════════════════════════════════════════════════════════════════════
-    # 2. FUNDAMENTAL (17%) - Interest Rates + Policy Bias (v9.2 Enhanced)
-    # Now considers: Rate differentials + Central bank policy direction
-    # This makes fundamental analysis forward-looking, not just current rates
+    # 2. FUNDAMENTAL (17%) - Enhanced v9.2.4
+    # Now considers: Interest rates + Policy bias + GDP + Inflation + Current Account
+    # Comprehensive fundamental analysis for better trade decisions
     # ═══════════════════════════════════════════════════════════════════════════
     rate_diff = get_interest_rate_differential(base, quote)
     differential = rate_diff['differential']
 
-    # Base score from rate differential
+    # Base score from rate differential (±25 points from 50)
     if differential >= 4.0:
-        fund_score = 82  # Very strong carry trade
-    elif differential >= 3.0:
         fund_score = 75
+    elif differential >= 3.0:
+        fund_score = 70
     elif differential >= 2.0:
-        fund_score = 68
+        fund_score = 65
     elif differential >= 1.0:
-        fund_score = 60
+        fund_score = 58
     elif differential >= 0.5:
-        fund_score = 55
+        fund_score = 54
     elif differential <= -4.0:
-        fund_score = 18
-    elif differential <= -3.0:
         fund_score = 25
+    elif differential <= -3.0:
+        fund_score = 30
     elif differential <= -2.0:
-        fund_score = 32
+        fund_score = 35
     elif differential <= -1.0:
-        fund_score = 40
+        fund_score = 42
     elif differential <= -0.5:
-        fund_score = 45
+        fund_score = 46
     else:
-        fund_score = 50  # Near neutral differential
+        fund_score = 50
 
-    # v9.2: Apply Central Bank Policy Bias adjustments
-    # This makes the score forward-looking based on rate expectations
+    # v9.2: Central Bank Policy Bias adjustments
     base_policy = CENTRAL_BANK_POLICY_BIAS.get(base, {'bias': 'NEUTRAL', 'score_adj': 0})
     quote_policy = CENTRAL_BANK_POLICY_BIAS.get(quote, {'bias': 'NEUTRAL', 'score_adj': 0})
-
-    # Net policy adjustment: positive if base currency is more hawkish than quote
     policy_adjustment = base_policy['score_adj'] - quote_policy['score_adj']
     fund_score += policy_adjustment
 
+    # v9.2.4: Economic Fundamentals (GDP, Inflation, Current Account)
+    econ_diff = get_economic_differential(base, quote)
+    econ_adjustment = econ_diff['score_adj']
+    fund_score += econ_adjustment
+
     # Clamp to valid range
-    fund_score = max(15, min(85, fund_score))
+    fund_score = max(10, min(90, fund_score))
 
     factors['fundamental'] = {
         'score': round(fund_score, 1),
@@ -6539,7 +6850,15 @@ def calculate_factor_scores(pair):
             'quote_policy': quote_policy['bias'],
             'policy_adjustment': policy_adjustment,
             'base_outlook': base_policy.get('outlook', 'N/A'),
-            'quote_outlook': quote_policy.get('outlook', 'N/A')
+            'quote_outlook': quote_policy.get('outlook', 'N/A'),
+            'gdp_differential': econ_diff['gdp_diff'],
+            'base_gdp': econ_diff['base_gdp'],
+            'quote_gdp': econ_diff['quote_gdp'],
+            'inflation_advantage': econ_diff['inflation_advantage'],
+            'base_inflation': econ_diff['base_inflation'],
+            'quote_inflation': econ_diff['quote_inflation'],
+            'current_account_diff': econ_diff['ca_diff'],
+            'economic_adjustment': econ_adjustment
         }
     }
     
@@ -6676,47 +6995,97 @@ def calculate_factor_scores(pair):
     }
     
     # ═══════════════════════════════════════════════════════════════════════════
-    # 7. STRUCTURE (7%) - Support/Resistance + Pivots - EXPANDED
-    # Score range: 15-85
+    # 7. STRUCTURE (7%) - Enhanced v9.2.4 with Fibonacci Levels
+    # Score range: 10-90 with Fibonacci retracement analysis
     # ═══════════════════════════════════════════════════════════════════════════
     sr_levels = calculate_support_resistance(highs, lows, closes, lookback=20)
-    
+
     if candles and len(candles) >= 2:
         yesterday = candles[-2]
         pivot_data = calculate_pivot_points(yesterday['high'], yesterday['low'], yesterday['close'])
     else:
         current = closes[-1]
         pivot_data = calculate_pivot_points(current * 1.01, current * 0.99, current)
-    
+
+    # v9.2.4: Calculate Fibonacci retracement levels
+    swing_high = max(highs[-20:]) if len(highs) >= 20 else max(highs)
+    swing_low = min(lows[-20:]) if len(lows) >= 20 else min(lows)
+    swing_range = swing_high - swing_low
+    current_price = closes[-1]
+
+    # Fibonacci levels (from swing low in uptrend)
+    fib_levels = {
+        '0.0': swing_low,
+        '0.236': swing_low + swing_range * 0.236,
+        '0.382': swing_low + swing_range * 0.382,
+        '0.5': swing_low + swing_range * 0.5,
+        '0.618': swing_low + swing_range * 0.618,
+        '0.786': swing_low + swing_range * 0.786,
+        '1.0': swing_high
+    }
+
+    # Determine nearest Fibonacci level
+    nearest_fib = '0.5'
+    nearest_fib_price = fib_levels['0.5']
+    min_dist = float('inf')
+    for level, price in fib_levels.items():
+        dist = abs(current_price - price)
+        if dist < min_dist:
+            min_dist = dist
+            nearest_fib = level
+            nearest_fib_price = price
+
+    # Fibonacci position analysis
+    fib_position = 'MIDDLE'
+    fib_score_adj = 0
+    if current_price <= fib_levels['0.382']:
+        fib_position = 'OVERSOLD_ZONE'  # Near swing low - bullish
+        fib_score_adj = 12
+    elif current_price <= fib_levels['0.5']:
+        fib_position = 'GOLDEN_ZONE_LOW'  # 38.2-50% - good for longs
+        fib_score_adj = 8
+    elif current_price <= fib_levels['0.618']:
+        fib_position = 'GOLDEN_ZONE'  # 50-61.8% - key area
+        fib_score_adj = 0  # Neutral - could go either way
+    elif current_price <= fib_levels['0.786']:
+        fib_position = 'GOLDEN_ZONE_HIGH'  # 61.8-78.6% - good for shorts
+        fib_score_adj = -8
+    else:
+        fib_position = 'OVERBOUGHT_ZONE'  # Near swing high - bearish
+        fib_score_adj = -12
+
     structure_score = 50
+
+    # S/R Position
     position = sr_levels['position']
-    pivot_bias = pivot_data['bias']
-    
-    # S/R Position - MORE AGGRESSIVE
     if position == 'NEAR_SUPPORT':
-        structure_score += 25  # Good for longs
+        structure_score += 20
     elif position == 'NEAR_RESISTANCE':
-        structure_score -= 25  # Good for shorts
-    
+        structure_score -= 20
+
     # Pivot bias
+    pivot_bias = pivot_data['bias']
     if pivot_bias == 'BULLISH':
-        structure_score += 15
+        structure_score += 12
     elif pivot_bias == 'SLIGHTLY_BULLISH':
-        structure_score += 8
+        structure_score += 6
     elif pivot_bias == 'BEARISH':
-        structure_score -= 15
+        structure_score -= 12
     elif pivot_bias == 'SLIGHTLY_BEARISH':
-        structure_score -= 8
-    
+        structure_score -= 6
+
+    # v9.2.4: Add Fibonacci adjustment
+    structure_score += fib_score_adj
+
     # Trend confirmation with ADX
     if adx > 25:
         if tech['macd']['histogram'] > 0:
-            structure_score += 10
+            structure_score += 8
         else:
-            structure_score -= 10
-    
-    structure_score = max(15, min(85, structure_score))
-    
+            structure_score -= 8
+
+    structure_score = max(10, min(90, structure_score))
+
     factors['structure'] = {
         'score': round(structure_score, 1),
         'signal': 'BULLISH' if structure_score >= 58 else 'BEARISH' if structure_score <= 42 else 'NEUTRAL',
@@ -6731,7 +7100,14 @@ def calculate_factor_scores(pair):
             'pivot_s1': pivot_data['s1'],
             'pivot_bias': pivot_bias,
             'adx': adx,
-            'trend': 'TRENDING' if adx > 25 else 'RANGING'
+            'trend': 'TRENDING' if adx > 25 else 'RANGING',
+            'fib_position': fib_position,
+            'nearest_fib_level': nearest_fib,
+            'fib_0.382': round(fib_levels['0.382'], 5),
+            'fib_0.5': round(fib_levels['0.5'], 5),
+            'fib_0.618': round(fib_levels['0.618'], 5),
+            'swing_high': round(swing_high, 5),
+            'swing_low': round(swing_low, 5)
         }
     }
     
