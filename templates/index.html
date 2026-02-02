@@ -2402,11 +2402,16 @@
                         <div class="setup-title">TRADE SETUP ${signal.trade_setup?.trade_quality ? `<span style="color: ${signal.trade_setup.trade_quality === 'A+' ? '#00ff88' : signal.trade_setup.trade_quality === 'A' ? '#00cc66' : signal.trade_setup.trade_quality === 'B' ? '#ffaa00' : '#ff6666'}; margin-left: 0.5rem;">[${signal.trade_setup.trade_quality}]</span>` : ''}</div>
                         <div class="setup-grid" style="grid-template-columns: repeat(5, 1fr);">
                             <div class="setup-item entry">
-                                <div class="label">ENTRY ZONE</div>
+                                <div class="label" style="display: flex; align-items: center; gap: 0.3rem; justify-content: center;">
+                                    ENTRY
+                                    ${signal.trade_setup?.entry_quality && signal.direction !== 'NEUTRAL' ? `
+                                    <span style="display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; font-size: 0.6rem; font-weight: 700; background: ${signal.trade_setup.entry_quality === 'OPTIMAL' ? '#003300' : signal.trade_setup.entry_quality === 'GOOD' ? '#14532d' : signal.trade_setup.entry_quality === 'WAIT' ? '#a16207' : '#444'}; color: white; box-shadow: 0 0 8px ${signal.trade_setup.entry_quality === 'OPTIMAL' ? '#003300' : signal.trade_setup.entry_quality === 'GOOD' ? '#14532d' : signal.trade_setup.entry_quality === 'WAIT' ? '#a16207' : '#444'};">${signal.trade_setup.entry_quality === 'OPTIMAL' ? '★' : signal.trade_setup.entry_quality === 'GOOD' ? '✓' : signal.trade_setup.entry_quality === 'WAIT' ? '!' : '•'}</span>
+                                    ` : ''}
+                                </div>
                                 ${signal.trade_setup?.entry_min && signal.trade_setup?.entry_max && signal.direction !== 'NEUTRAL' ? `
-                                <div class="value" style="font-size: 0.75rem;">${signal.trade_setup.entry_min.toFixed(5)}</div>
-                                <div style="font-size: 0.5rem; color: var(--text-muted);">to</div>
-                                <div class="value" style="font-size: 0.75rem;">${signal.trade_setup.entry_max.toFixed(5)}</div>
+                                <div class="value" style="font-size: 0.7rem;">${signal.trade_setup.entry_min.toFixed(5)}</div>
+                                <div style="font-size: 0.45rem; color: var(--text-muted);">to</div>
+                                <div class="value" style="font-size: 0.7rem;">${signal.trade_setup.entry_max.toFixed(5)}</div>
                                 ` : `<div class="value">${signal.trade_setup?.entry?.toFixed(5) || 'N/A'}</div>`}
                             </div>
                             <div class="setup-item sl">
@@ -2710,11 +2715,16 @@
                         <div class="trade-setup">
                             <div class="setup-grid" style="grid-template-columns: repeat(5, 1fr);">
                                 <div class="setup-item entry">
-                                    <div class="label">ENTRY ZONE</div>
+                                    <div class="label" style="display: flex; align-items: center; gap: 0.25rem; justify-content: center;">
+                                        ENTRY
+                                        ${signal.trade_setup?.entry_quality && signal.direction !== 'NEUTRAL' ? `
+                                        <span style="display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; font-size: 0.5rem; font-weight: 700; background: ${signal.trade_setup.entry_quality === 'OPTIMAL' ? '#003300' : signal.trade_setup.entry_quality === 'GOOD' ? '#14532d' : signal.trade_setup.entry_quality === 'WAIT' ? '#a16207' : '#444'}; color: white;">${signal.trade_setup.entry_quality === 'OPTIMAL' ? '★' : signal.trade_setup.entry_quality === 'GOOD' ? '✓' : signal.trade_setup.entry_quality === 'WAIT' ? '!' : '•'}</span>
+                                        ` : ''}
+                                    </div>
                                     ${signal.trade_setup?.entry_min && signal.trade_setup?.entry_max && signal.direction !== 'NEUTRAL' ? `
-                                    <div class="value" style="font-size: 0.7rem;">${signal.trade_setup.entry_min.toFixed(5)}</div>
-                                    <div style="font-size: 0.45rem; color: var(--text-muted);">to</div>
-                                    <div class="value" style="font-size: 0.7rem;">${signal.trade_setup.entry_max.toFixed(5)}</div>
+                                    <div class="value" style="font-size: 0.65rem;">${signal.trade_setup.entry_min.toFixed(5)}</div>
+                                    <div style="font-size: 0.4rem; color: var(--text-muted);">to</div>
+                                    <div class="value" style="font-size: 0.65rem;">${signal.trade_setup.entry_max.toFixed(5)}</div>
                                     ` : `<div class="value">${signal.trade_setup?.entry?.toFixed(5) || 'N/A'}</div>`}
                                 </div>
                                 <div class="setup-item sl">
