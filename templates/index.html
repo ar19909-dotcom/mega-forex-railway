@@ -2565,7 +2565,12 @@
                     const aiConf = aiDet.confidence || 'N/A';
                     const aiRecDir = aiVal.recommended_direction || 'N/A';
 
-                    if (aiAnalysisText || aiFlags.length > 0) {
+                    // v9.2.4: Don't show AI errors for NEUTRAL (FILTERED) signals
+                    const isFiltered = signal.direction === 'NEUTRAL' && signal.filter_reason;
+                    const hasAiError = aiAnalysisText.toLowerCase().includes('error:') || aiAnalysisText.toLowerCase().includes('timed out');
+                    const shouldShowAi = !isFiltered || !hasAiError;  // Show if not filtered OR if no error
+
+                    if ((aiAnalysisText || aiFlags.length > 0) && shouldShowAi) {
                         const borderColor = aiConsistent ? 'rgba(52, 211, 153, 0.4)' : 'rgba(239, 68, 68, 0.5)';
                         const statusBg = aiConsistent ? 'rgba(52, 211, 153, 0.2)' : 'rgba(239, 68, 68, 0.2)';
                         const statusColor = aiConsistent ? '#34d399' : '#ef4444';
