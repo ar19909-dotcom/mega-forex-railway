@@ -170,7 +170,7 @@ AI_FACTOR_CONFIG = {
     'cache_ttl': 1800,                  # 30 minutes cache
     'min_signal_strength': 5,           # Only call AI for signals with strength >= 5 (faster load)
     'max_pairs_per_refresh': 10,        # Reduced from 15 to speed up loading
-    'timeout': 5,                       # Reduced from 8 to 5 seconds for faster failures
+    'timeout': 15,                      # v9.2.4: Increased to 15s to avoid timeout errors
     'rate_limit_delay': 0.05            # Reduced delay for faster throughput
 }
 
@@ -6113,14 +6113,29 @@ If factors are inconsistent, set consistent=false and list flags like:
         import time
         time.sleep(AI_FACTOR_CONFIG.get('rate_limit_delay', 0.1))
 
-        response = req_lib.post(
-            'https://api.openai.com/v1/chat/completions',
-            headers=headers,
-            json=payload,
-            timeout=AI_FACTOR_CONFIG.get('timeout', 8)
-        )
+        # v9.2.4: Retry mechanism for timeout errors
+        max_retries = 2
+        response = None
+        last_error = None
 
-        if response.status_code == 200:
+        for attempt in range(max_retries + 1):
+            try:
+                response = req_lib.post(
+                    'https://api.openai.com/v1/chat/completions',
+                    headers=headers,
+                    json=payload,
+                    timeout=AI_FACTOR_CONFIG.get('timeout', 15)
+                )
+                break  # Success, exit retry loop
+            except (req_lib.exceptions.Timeout, req_lib.exceptions.ConnectionError) as e:
+                last_error = e
+                if attempt < max_retries:
+                    logger.warning(f"AI Factor timeout (attempt {attempt + 1}/{max_retries + 1}), retrying...")
+                    time.sleep(1)  # Wait 1 second before retry
+                else:
+                    raise  # Re-raise on final attempt
+
+        if response and response.status_code == 200:
             result = response.json()
             ai_response = result['choices'][0]['message']['content'].strip()
 
