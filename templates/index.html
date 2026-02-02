@@ -2579,7 +2579,33 @@
                         const statusBg = aiConsistent ? 'rgba(52, 211, 153, 0.2)' : 'rgba(239, 68, 68, 0.2)';
                         const statusColor = aiConsistent ? '#34d399' : '#ef4444';
                         const statusText = aiConsistent ? 'CONSISTENT' : 'FLAGS FOUND';
-                        const dirColor = aiRecDir === 'LONG' ? '#34d399' : aiRecDir === 'SHORT' ? '#ef4444' : '#fbbf24';
+
+                        // v9.2.4: Smart AI direction display - avoid showing conflicting directions
+                        const overallDir = signal.direction;
+                        const aiMatchesOverall = (aiRecDir === 'LONG' && overallDir === 'LONG') ||
+                                                 (aiRecDir === 'SHORT' && overallDir === 'SHORT') ||
+                                                 ((aiRecDir === 'BEARISH' || aiRecDir === 'SHORT') && overallDir === 'SHORT') ||
+                                                 ((aiRecDir === 'BULLISH' || aiRecDir === 'LONG') && overallDir === 'LONG');
+                        const aiIsNeutral = aiRecDir === 'NEUTRAL' || aiRecDir === 'N/A';
+
+                        let aiDirDisplay, aiDirColor;
+                        if (aiMatchesOverall) {
+                            // AI agrees with overall direction
+                            aiDirDisplay = 'CONFIRMS ' + overallDir;
+                            aiDirColor = overallDir === 'LONG' ? '#34d399' : '#ef4444';
+                        } else if (aiIsNeutral && overallDir !== 'NEUTRAL') {
+                            // AI says neutral but overall is directional - show caution
+                            aiDirDisplay = 'CAUTION: Mixed signals';
+                            aiDirColor = '#fbbf24';
+                        } else if (overallDir === 'NEUTRAL') {
+                            // Overall is neutral
+                            aiDirDisplay = aiRecDir;
+                            aiDirColor = '#fbbf24';
+                        } else {
+                            // AI disagrees with overall direction - show conflict
+                            aiDirDisplay = 'CONFLICT: AI suggests ' + aiRecDir;
+                            aiDirColor = '#f97316';
+                        }
 
                         let flagsHtml = '';
                         if (aiFlags.length > 0) {
@@ -2599,7 +2625,7 @@
                             '<div style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.4;"><strong style="color: #a78bfa;">AI Analysis:</strong> ' + aiAnalysisText + '</div>' +
                             '</div>' +
                             '<div style="display: flex; gap: 1rem; flex-wrap: wrap;">' +
-                            '<div style="font-size: 0.8rem; color: var(--text-muted);">AI Recommended Direction: <strong style="color: ' + dirColor + ';">' + aiRecDir + '</strong></div>' +
+                            '<div style="font-size: 0.8rem; color: var(--text-muted);">AI Validation: <strong style="color: ' + aiDirColor + ';">' + aiDirDisplay + '</strong></div>' +
                             '<div style="font-size: 0.8rem; color: var(--text-muted);">Factors Checked: <strong>' + (aiVal.factors_checked || 0) + '</strong></div>' +
                             '</div>' +
                             flagsHtml +
