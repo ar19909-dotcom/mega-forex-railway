@@ -158,6 +158,10 @@ EIA_API_URL = "https://api.eia.gov/v2"
 GOLDAPI_KEY = os.getenv('GOLDAPI_KEY', '')
 GOLDAPI_URL = "https://www.goldapi.io/api"
 
+# v9.3.0: API Ninjas (free commodity prices - oil, copper, etc.)
+API_NINJAS_KEY = os.getenv('API_NINJAS_KEY', '')
+API_NINJAS_URL = "https://api.api-ninjas.com/v1/commodityprice"
+
 # IG Markets API (for REAL client sentiment)
 IG_API_KEY = os.getenv('IG_API_KEY', '')
 IG_USERNAME = os.getenv('IG_USERNAME', '')
@@ -2435,6 +2439,37 @@ def get_goldapi_rate(pair):
         logger.debug(f"GoldAPI fetch failed for {pair}: {e}")
     return None
 
+def get_api_ninjas_commodity(pair):
+    """v9.3.0: Fetch oil/copper prices from API Ninjas (free tier available)"""
+    if not API_NINJAS_KEY:
+        return None
+    # API Ninjas commodity names
+    ninjas_commodities = {
+        'WTI/USD': 'crude_oil_wti',
+        'BRENT/USD': 'crude_oil_brent',
+        'XCU/USD': 'copper',
+    }
+    commodity = ninjas_commodities.get(pair)
+    if not commodity:
+        return None
+    try:
+        url = f"{API_NINJAS_URL}?name={commodity}"
+        headers = {'X-Api-Key': API_NINJAS_KEY}
+        resp = req_lib.get(url, headers=headers, timeout=5)
+        if resp.status_code == 200:
+            data = resp.json()
+            if data and 'price' in data:
+                price = float(data['price'])
+                return {
+                    'bid': price * 0.9998,
+                    'ask': price * 1.0002,
+                    'mid': price,
+                    'source': 'api_ninjas'
+                }
+    except Exception as e:
+        logger.debug(f"API Ninjas commodity fetch failed for {pair}: {e}")
+    return None
+
 def get_eia_oil_data():
     """v9.3.0: Fetch EIA weekly petroleum inventory data (free US govt API)"""
     if not EIA_API_KEY:
@@ -2491,6 +2526,12 @@ def get_rate(pair):
     # Tier 4: GoldAPI.io (precious metals only - 500 free req/month)
     if is_commodity(pair) and pair in ['XAU/USD', 'XAG/USD', 'XPT/USD']:
         rate = get_goldapi_rate(pair)
+        if rate:
+            return rate
+
+    # Tier 4.5: API Ninjas (oil + copper - free tier available)
+    if pair in ['WTI/USD', 'BRENT/USD', 'XCU/USD']:
+        rate = get_api_ninjas_commodity(pair)
         if rate:
             return rate
 
@@ -9727,6 +9768,13 @@ def run_system_audit():
         'coverage': 'WTI/Brent crude oil supply'
     }
 
+    # v9.3.0: API Ninjas (oil/copper commodity prices)
+    audit['api_status']['api_ninjas'] = {
+        'status': 'OK' if API_NINJAS_KEY else 'NOT_CONFIGURED',
+        'purpose': 'Live oil & copper prices (free tier)',
+        'coverage': 'WTI, Brent, Copper'
+    }
+
     # ═══════════════════════════════════════════════════════════════════════════
     # DATA QUALITY CHECK
     # ═══════════════════════════════════════════════════════════════════════════
@@ -12335,6 +12383,7 @@ if __name__ == '__main__':
     print(f"  CurrencyLayer:   {'✓ (100/month)' if CURRENCYLAYER_KEY else '✗'}")
     print(f"  ExchangeRate:    ✓ (Free, no key needed)")
     print(f"  GoldAPI.io:      {'✓ (Precious metals)' if GOLDAPI_KEY else '✗ (Optional)'}")
+    print(f"  API Ninjas:      {'✓ (Oil/Copper prices)' if API_NINJAS_KEY else '✗ (Optional)'}")
     print(f"  EIA Open Data:   {'✓ (Oil inventory/supply)' if EIA_API_KEY else '✗ (Optional)'}")
     print("=" * 70)
     print("  v9.3.0 PRO FEATURES:")
