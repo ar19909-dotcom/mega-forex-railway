@@ -3322,11 +3322,17 @@
                     const weights = data.weights;
 
                     // v9.3.0: Commodity weights (read-only, Supply & Demand replaces Currency Strength)
-                    const commodityWeights = {
-                        'trend_momentum': 22, 'intermarket': 15, 'sentiment': 13,
-                        'fundamental': 12, 'mean_reversion': 12, 'ai_synthesis': 10,
-                        'supply_demand': 8, 'calendar_risk': 8
-                    };
+                    // Ordered to match Forex weights display order
+                    const commodityWeights = [
+                        ['trend_momentum', 22],
+                        ['fundamental', 12],
+                        ['sentiment', 13],
+                        ['intermarket', 15],
+                        ['mean_reversion', 12],
+                        ['calendar_risk', 8],
+                        ['ai_synthesis', 10],
+                        ['supply_demand', 8]  // Replaces currency_strength for commodities
+                    ];
 
                     const groupLabels = {
                         'trend_momentum': 'Trend & Momentum',
@@ -3362,7 +3368,7 @@
 
                         <h3 style="margin-top: 2rem; margin-bottom: 0.75rem; color: #f59e0b;">🏗️ Commodity Weights (6 instruments) — Fixed Profile</h3>
                         <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.75rem;">Commodity weights are optimized separately. Supply & Demand replaces Currency Strength.</p>
-                        ${Object.entries(commodityWeights).map(([name, value]) => `
+                        ${commodityWeights.map(([name, value]) => `
                             <div class="weight-row">
                                 <span class="weight-label">${groupLabels[name] || name.replace(/_/g, ' ').replace(/\b\\w/g, l => l.toUpperCase())}</span>
                                 <input type="range" class="weight-slider" min="0" max="40" value="${value}" disabled
@@ -3372,7 +3378,7 @@
                         `).join('')}
                         <div class="weights-total" style="margin-top: 0.5rem;">
                             <span>Total:</span>
-                            <span style="color: #f59e0b;">${Object.values(commodityWeights).reduce((a, b) => a + b, 0)}%</span>
+                            <span style="color: #f59e0b;">${commodityWeights.reduce((sum, [_, v]) => sum + v, 0)}%</span>
                         </div>
                     `;
                 }

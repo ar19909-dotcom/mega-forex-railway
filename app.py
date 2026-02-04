@@ -2231,13 +2231,13 @@ def get_polygon_rate(pair):
         return None
     try:
         # v9.3.0: Commodity ticker mapping for Polygon
+        # Note: Polygon forex API only supports precious metals, NOT oil/copper futures
         polygon_commodity_tickers = {
-            'XAU/USD': 'C:XAUUSD',
-            'XAG/USD': 'C:XAGUSD',
-            'XPT/USD': 'C:XPTUSD',
-            'WTI/USD': 'C:WTIUSD',    # Polygon forex-style WTI
-            'BRENT/USD': 'C:BRENTUSD', # Polygon forex-style Brent
-            'XCU/USD': 'C:XCUUSD',    # Polygon forex-style Copper
+            'XAU/USD': 'C:XAUUSD',   # Gold - supported
+            'XAG/USD': 'C:XAGUSD',   # Silver - supported
+            'XPT/USD': 'C:XPTUSD',   # Platinum - supported
+            # WTI, BRENT, XCU are NOT supported via Polygon forex API
+            # They will fallback to TwelveData/TraderMade
         }
         ticker = polygon_commodity_tickers.get(pair, f"C:{pair.replace('/', '')}")
         url = f"https://api.polygon.io/v2/aggs/ticker/{ticker}/prev"
@@ -2284,13 +2284,14 @@ def get_twelvedata_rate(pair):
         return None
     try:
         # v9.3.0: Commodity symbol mapping for TwelveData
+        # https://twelvedata.com/commodities - verified symbols:
         twelvedata_symbols = {
-            'XAU/USD': 'XAU/USD',    # Natively supported
-            'XAG/USD': 'XAG/USD',    # Natively supported
-            'XPT/USD': 'XPT/USD',    # Natively supported
-            'WTI/USD': 'WTI/USD',    # TwelveData: native WTI/USD format
-            'BRENT/USD': 'BRENT/USD', # TwelveData: native BRENT/USD format
-            'XCU/USD': 'XCU/USD',    # TwelveData: native XCU/USD format
+            'XAU/USD': 'XAU/USD',    # Gold - natively supported
+            'XAG/USD': 'XAG/USD',    # Silver - natively supported
+            'XPT/USD': 'XPT/USD',    # Platinum - natively supported
+            'WTI/USD': 'WTI/USD',    # WTI Oil - TwelveData commodity
+            'BRENT/USD': 'XBR/USD',  # Brent Oil - TwelveData uses XBR symbol
+            'XCU/USD': 'XCU/USD',    # Copper - commodity format
         }
         symbol = twelvedata_symbols.get(pair, pair)
         url = f"{TWELVE_DATA_URL}/price"
@@ -10386,9 +10387,18 @@ def run_ai_system_health_check(use_ai=True):
     if health['overall_score'] < 0:
         health['overall_score'] = 0
 
+    # v9.3.0: Each warning deducts 2 points if not already accounted for
+    # This ensures health score reflects warning count
+    warning_count = len(health['warnings'])
+    if warning_count > 0:
+        # Ensure score is capped based on warning severity
+        max_with_warnings = 98 - (warning_count * 2)
+        if health['overall_score'] > max_with_warnings:
+            health['overall_score'] = max(50, max_with_warnings)
+
     if health['errors']:
         health['overall_status'] = 'CRITICAL'
-    elif health['overall_score'] < 70:
+    elif health['warnings'] or health['overall_score'] < 70:
         health['overall_status'] = 'WARNING'
     elif health['overall_score'] < 90:
         health['overall_status'] = 'GOOD'
