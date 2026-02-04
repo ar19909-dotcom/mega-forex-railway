@@ -10171,6 +10171,34 @@ def run_ai_system_health_check(use_ai=True):
     except Exception as e:
         api_check['details']['cot'] = f'ERROR: {str(e)[:50]}'
 
+    # v9.3.0: Test GoldAPI (precious metals)
+    if GOLDAPI_KEY:
+        api_check['details']['goldapi'] = 'OK (500/month)'
+    else:
+        api_check['details']['goldapi'] = 'NOT_CONFIGURED'
+
+    # v9.3.0: Test API Ninjas (oil/copper prices)
+    if API_NINJAS_KEY:
+        try:
+            rate = get_api_ninjas_commodity('WTI/USD')
+            api_check['details']['api_ninjas'] = 'OK' if rate else 'LIMITED'
+        except Exception as e:
+            api_check['details']['api_ninjas'] = f'ERROR: {str(e)[:50]}'
+    else:
+        api_check['details']['api_ninjas'] = 'NOT_CONFIGURED'
+        # If no API Ninjas and commodities are showing static, add warning
+        health['warnings'].append({
+            'type': 'COMMODITY_API_MISSING',
+            'message': 'API Ninjas not configured - WTI/BRENT/XCU using static rates',
+            'severity': 'MEDIUM'
+        })
+
+    # v9.3.0: Test EIA (US oil inventory data)
+    if EIA_API_KEY:
+        api_check['details']['eia'] = 'OK (free govt API)'
+    else:
+        api_check['details']['eia'] = 'NOT_CONFIGURED'
+
     health['checks']['apis'] = api_check
 
     # ═══════════════════════════════════════════════════════════════════════════
@@ -12015,6 +12043,13 @@ def api_status():
             'status': 'OK' if EIA_API_KEY else 'NOT_CONFIGURED',
             'purpose': 'US petroleum inventory data (free govt API)',
             'coverage': 'WTI/Brent crude oil supply data'
+        },
+        'api_ninjas': {
+            'configured': bool(API_NINJAS_KEY),
+            'status': 'OK' if API_NINJAS_KEY else 'NOT_CONFIGURED',
+            'purpose': 'Live oil & copper prices (free tier)',
+            'tier': 4.5,
+            'coverage': 'WTI, Brent, Copper'
         }
     }
 
