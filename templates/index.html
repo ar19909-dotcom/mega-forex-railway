@@ -3638,20 +3638,38 @@
                                 </div>
                             </div>
                             
-                            <h4 style="margin-top: 1rem; margin-bottom: 0.5rem;">Multi-Pair Test Results:</h4>
+                            <h4 style="margin-top: 1rem; margin-bottom: 0.5rem;">Multi-Pair Test Results (Forex + Commodities):</h4>
                             <table class="data-table">
-                                <thead><tr><th>Pair</th><th>Score</th><th>Direction</th><th>Factors</th></tr></thead>
+                                <thead><tr><th>Pair</th><th>Type</th><th>Score</th><th>Direction</th><th>Factors</th></tr></thead>
                                 <tbody>
-                                    ${(data.scoring_quality?.test_pairs || []).map(p => `
-                                        <tr>
-                                            <td>${p.pair}</td>
+                                    ${(data.scoring_quality?.test_pairs || []).map(p => {
+                                        const isCommodity = ['XAU/USD','XAG/USD','XPT/USD','WTI/USD','BRENT/USD','XCU/USD'].includes(p.pair);
+                                        return `
+                                        <tr style="${isCommodity ? 'border-left: 3px solid #f59e0b; background: rgba(245,158,11,0.05);' : ''}">
+                                            <td style="font-weight: 600;">${p.pair}</td>
+                                            <td><span style="font-size: 0.7rem; padding: 2px 6px; border-radius: 3px; background: ${isCommodity ? '#f59e0b' : 'var(--accent-blue)'}; color: ${isCommodity ? '#000' : '#fff'};">${isCommodity ? 'CMD' : 'FX'}</span></td>
                                             <td style="color: ${p.score >= 60 ? 'var(--accent-green)' : p.score <= 40 ? 'var(--accent-red)' : 'var(--text-primary)'}; font-weight: 600;">${p.score || p.error || 'N/A'}</td>
                                             <td><span class="status-badge ${p.direction === 'LONG' ? 'ok' : p.direction === 'SHORT' ? 'error' : 'limited'}">${p.direction || '-'}</span></td>
                                             <td>${p.factors_count || 0}/8</td>
-                                        </tr>
-                                    `).join('')}
+                                        </tr>`;
+                                    }).join('')}
                                 </tbody>
                             </table>
+
+                            <div style="margin-top: 1rem; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                <div style="background: rgba(59,130,246,0.1); padding: 0.75rem; border-radius: 8px; border-left: 3px solid var(--accent-blue);">
+                                    <h5 style="margin: 0 0 0.5rem 0; color: var(--accent-blue);">📊 Forex Weights (45 pairs)</h5>
+                                    <div style="font-size: 0.8rem; color: var(--text-secondary);">
+                                        Trend 21% | Fund 15% | Sent 13% | Inter 12% | M.Rev 11% | <strong>Currency Str 10%</strong> | AI 10% | Cal 8%
+                                    </div>
+                                </div>
+                                <div style="background: rgba(245,158,11,0.1); padding: 0.75rem; border-radius: 8px; border-left: 3px solid #f59e0b;">
+                                    <h5 style="margin: 0 0 0.5rem 0; color: #f59e0b;">🏗️ Commodity Weights (6 instruments)</h5>
+                                    <div style="font-size: 0.8rem; color: var(--text-secondary);">
+                                        Trend 22% | Inter 15% | Sent 13% | Fund 12% | M.Rev 12% | AI 10% | <strong style="color: #f59e0b;">Supply&Demand 8%</strong> | Cal 8%
+                                    </div>
+                                </div>
+                            </div>
                             
                             <h4 style="margin-top: 1rem; margin-bottom: 0.5rem;">Quality Checks:</h4>
                             <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
