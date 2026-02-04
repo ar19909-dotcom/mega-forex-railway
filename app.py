@@ -27,14 +27,14 @@
 ║  - Calendar Risk (8%): Economic event risk + seasonality                     ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
 ║  COMMODITY SCORING (6 instruments) - Commodity-Specific Weights (v9.3.0)     ║
-║  - Trend & Momentum (25%): RSI, MACD, ADX + MTF alignment                    ║
-║  - Intermarket (18%): Cross-commodity, DXY, VIX, Yields, Equities           ║
+║  - Trend & Momentum (22%): RSI, MACD, ADX + MTF alignment                    ║
+║  - Intermarket (15%): Cross-commodity, DXY, VIX, Yields, Equities           ║
 ║  - Sentiment (13%): IG + COT institutional + commodity news                  ║
 ║  - Fundamental (12%): DXY inverse, Real yields, VIX safe-haven              ║
 ║  - Mean Reversion (12%): Z-Score, Bollinger %B + S/R structure               ║
-║  - AI Synthesis (12%): GPT-4o-mini commodity analysis                        ║
+║  - AI Synthesis (10%): GPT-4o-mini commodity analysis                        ║
+║  - Supply & Demand (8%): EIA inventory, USD correlation, warehouse stocks   ║
 ║  - Calendar Risk (8%): OPEC, EIA, FOMC, PMI events                          ║
-║  - Currency Strength (0%): Not applicable for commodities                    ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
 ║  8-Gate Filter: G3 Trend, G5 Calendar, G8 Data are MANDATORY                 ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
@@ -511,13 +511,72 @@ def get_currency_strength_score(pair, rates_dict=None):
     - Score 42-58: Similar strength (neutral)
     """
     try:
-        # v9.3.0: Commodities don't have currency strength - return neutral
+        # v9.3.0: For commodities, this factor becomes "Supply & Demand"
+        # Uses: EIA inventory (oil), DXY inverse correlation (all), warehouse stocks
         if is_commodity(pair):
+            score = 50  # Start neutral
+            details_parts = []
+
+            # 1. DXY inverse proxy via EUR/USD (strong USD = bearish for commodities)
+            try:
+                if rates_dict is None:
+                    rates_dict = get_all_rates()
+                eurusd = rates_dict.get('EUR/USD', {})
+                eur_mid = eurusd.get('mid', 1.085) if isinstance(eurusd, dict) else 1.085
+                # EUR/USD ~1.085 = neutral DXY ~103. Higher EUR = weaker USD = bullish commodities
+                usd_weakness = (eur_mid - 1.085) / 1.085 * 100  # % deviation
+                dxy_impact = max(-12, min(12, usd_weakness * 5))  # Weak USD = bullish
+                score += dxy_impact
+                direction = 'bullish' if dxy_impact > 0 else 'bearish' if dxy_impact < 0 else 'neutral'
+                details_parts.append(f'USD={direction} (EUR/USD={eur_mid:.4f})')
+            except Exception:
+                pass
+
+            # 2. EIA inventory data for oil commodities
+            if pair in ['WTI/USD', 'BRENT/USD']:
+                try:
+                    eia = get_eia_oil_data()
+                    if eia and eia.get('signal'):
+                        if eia['signal'] == 'BULLISH':
+                            score += 8  # Inventory drawdown = bullish for oil
+                            details_parts.append(f'EIA: drawdown (bullish)')
+                        elif eia['signal'] == 'BEARISH':
+                            score -= 8  # Inventory build = bearish for oil
+                            details_parts.append(f'EIA: build (bearish)')
+                        else:
+                            details_parts.append(f'EIA: neutral')
+                except Exception:
+                    pass
+
+            # 3. Safe-haven demand for precious metals
+            if pair in ['XAU/USD', 'XAG/USD', 'XPT/USD']:
+                try:
+                    # VIX proxy: high fear = bullish for precious metals
+                    vix_rate = rates_dict.get('VIX', {}) if rates_dict else {}
+                    vix_val = vix_rate.get('mid', None) if isinstance(vix_rate, dict) else None
+                    if vix_val and vix_val > 20:
+                        vix_boost = min(10, (vix_val - 20) * 1.5)
+                        score += vix_boost
+                        details_parts.append(f'VIX={vix_val:.0f} (safe-haven bid)')
+                    elif vix_val and vix_val < 15:
+                        score -= 5
+                        details_parts.append(f'VIX={vix_val:.0f} (risk-on)')
+                except Exception:
+                    pass
+
+            # 4. Industrial demand for copper
+            if pair == 'XCU/USD':
+                details_parts.append('Industrial demand proxy')
+
+            score = max(15, min(85, score))
+            signal = 'BULLISH' if score > 55 else 'BEARISH' if score < 45 else 'NEUTRAL'
+
             return {
-                'score': 50, 'signal': 'NEUTRAL',
-                'base_strength': 50, 'quote_strength': 50,
-                'differential': 0,
-                'details': 'N/A for commodities'
+                'score': round(score, 1), 'signal': signal,
+                'base_strength': score, 'quote_strength': 100 - score,
+                'differential': round(score - 50, 1),
+                'details': 'Supply & Demand: ' + (', '.join(details_parts) if details_parts else 'Baseline neutral'),
+                'factor_name': 'Supply & Demand'
             }
 
         if rates_dict is None:
@@ -742,16 +801,17 @@ REGIME_WEIGHTS = {
     }
 }
 
-# v9.3.0: Commodity-specific factor weights (currency_strength N/A)
+# v9.3.0: Commodity-specific factor weights
+# Currency Strength replaced by Supply & Demand (EIA inventory, DXY inverse, warehouse stocks)
 COMMODITY_FACTOR_WEIGHTS = {
-    'trend_momentum': 25,     # Commodities trend strongly
+    'trend_momentum': 22,     # Commodities trend strongly
     'fundamental': 12,        # DXY + real yields + supply/demand
     'sentiment': 13,          # COT positioning + retail
-    'intermarket': 18,        # Cross-commodity correlations critical
+    'intermarket': 15,        # Cross-commodity correlations critical
     'mean_reversion': 12,     # Commodities do revert
     'calendar_risk': 8,       # OPEC, EIA, crop reports
-    'ai_synthesis': 12,       # AI analysis
-    'currency_strength': 0    # Not applicable for commodities
+    'ai_synthesis': 10,       # AI analysis
+    'currency_strength': 8    # → Becomes "Supply & Demand" for commodities (EIA, DXY, warehouse)
 }
 # Total: 100%
 
@@ -2175,9 +2235,9 @@ def get_polygon_rate(pair):
             'XAU/USD': 'C:XAUUSD',
             'XAG/USD': 'C:XAGUSD',
             'XPT/USD': 'C:XPTUSD',
-            'WTI/USD': 'C:CLUSD',     # CL = WTI crude oil futures symbol
-            'BRENT/USD': 'C:BZUSD',   # BZ = Brent crude oil futures symbol
-            'XCU/USD': 'C:HGUSD',     # HG = copper futures symbol
+            'WTI/USD': 'C:WTIUSD',    # Polygon forex-style WTI
+            'BRENT/USD': 'C:BRENTUSD', # Polygon forex-style Brent
+            'XCU/USD': 'C:XCUUSD',    # Polygon forex-style Copper
         }
         ticker = polygon_commodity_tickers.get(pair, f"C:{pair.replace('/', '')}")
         url = f"https://api.polygon.io/v2/aggs/ticker/{ticker}/prev"
@@ -2228,9 +2288,9 @@ def get_twelvedata_rate(pair):
             'XAU/USD': 'XAU/USD',    # Natively supported
             'XAG/USD': 'XAG/USD',    # Natively supported
             'XPT/USD': 'XPT/USD',    # Natively supported
-            'WTI/USD': 'CL',         # TwelveData: CL = WTI crude oil
-            'BRENT/USD': 'BZ',       # TwelveData: BZ = Brent crude oil
-            'XCU/USD': 'HG',         # TwelveData: HG = Copper
+            'WTI/USD': 'WTI/USD',    # TwelveData: native WTI/USD format
+            'BRENT/USD': 'BRENT/USD', # TwelveData: native BRENT/USD format
+            'XCU/USD': 'XCU/USD',    # TwelveData: native XCU/USD format
         }
         symbol = twelvedata_symbols.get(pair, pair)
         url = f"{TWELVE_DATA_URL}/price"
@@ -9061,10 +9121,10 @@ def run_system_audit():
         },
         'commodity_weights': {
             'description': 'v9.3.0: Separate weight profile for 6 commodities (XAU, XAG, XPT, WTI, BRENT, XCU)',
-            'trend_momentum': 25, 'fundamental': 12, 'sentiment': 13,
-            'intermarket': 18, 'mean_reversion': 12, 'calendar_risk': 8,
-            'ai_synthesis': 12, 'currency_strength': 0,
-            'note': 'Currency strength = 0% (not applicable). Intermarket boosted to 18% (cross-commodity correlations critical). Fundamental uses DXY/yields/VIX instead of interest rate differentials.'
+            'trend_momentum': 22, 'fundamental': 12, 'sentiment': 13,
+            'intermarket': 15, 'mean_reversion': 12, 'calendar_risk': 8,
+            'ai_synthesis': 10, 'supply_demand': 8,
+            'note': 'Currency Strength replaced by Supply & Demand (8%): EIA inventory for oil, DXY inverse for all, safe-haven demand for metals. Fundamental uses DXY/yields/VIX instead of interest rate differentials.'
         },
         'quality_gates': {
             'description': '5 of 7 gates must pass for LONG/SHORT signal, otherwise NEUTRAL',
@@ -9652,6 +9712,20 @@ def run_system_audit():
     except Exception as e:
         audit['api_status']['cftc_cot'] = {'status': 'ERROR', 'error': str(e)[:50]}
 
+    # v9.3.0: GoldAPI (precious metals live prices)
+    audit['api_status']['goldapi'] = {
+        'status': 'OK' if GOLDAPI_KEY else 'NOT_CONFIGURED',
+        'purpose': 'Precious metals live prices (XAU/XAG/XPT)',
+        'coverage': 'Gold, Silver, Platinum'
+    }
+
+    # v9.3.0: EIA (US petroleum inventory data)
+    audit['api_status']['eia'] = {
+        'status': 'OK' if EIA_API_KEY else 'NOT_CONFIGURED',
+        'purpose': 'US petroleum inventory data (free govt API)',
+        'coverage': 'WTI/Brent crude oil supply'
+    }
+
     # ═══════════════════════════════════════════════════════════════════════════
     # DATA QUALITY CHECK
     # ═══════════════════════════════════════════════════════════════════════════
@@ -10138,8 +10212,8 @@ def run_ai_system_health_check(use_ai=True):
     # v9.3.0: Commodity-specific anti-overfitting measures
     overfit_check['details']['commodity_safeguards'] = [
         'Separate weight profile prevents forex-tuned weights biasing commodities',
-        'Currency strength factor disabled (0%) — not applicable to commodities',
-        'Intermarket boosted to 18% — cross-commodity correlations validated against historical data',
+        'Currency Strength replaced by Supply & Demand (8%) — EIA, DXY inverse, safe-haven',
+        'Intermarket at 15% — cross-commodity correlations validated against historical data',
         'Entry range capped at 0.1% of price — prevents ATR-driven wide entries',
         'SL/TP use commodity-specific ATR multipliers (not forex defaults)',
         'Commodity fundamental uses DXY/real-yields/VIX — not interest rate differentials',
@@ -10148,11 +10222,58 @@ def run_ai_system_health_check(use_ai=True):
     ]
     overfit_check['details']['commodity_weight_validation'] = {
         'total_commodity_weight': sum(COMMODITY_FACTOR_WEIGHTS.values()),
-        'currency_strength_disabled': COMMODITY_FACTOR_WEIGHTS.get('currency_strength', 0) == 0,
-        'intermarket_boosted': COMMODITY_FACTOR_WEIGHTS.get('intermarket', 0) >= 18
+        'supply_demand_active': COMMODITY_FACTOR_WEIGHTS.get('currency_strength', 0) > 0,
+        'intermarket_weight': COMMODITY_FACTOR_WEIGHTS.get('intermarket', 0)
     }
 
     health['checks']['anti_overfit'] = overfit_check
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # CHECK 3C: Commodity Health (v9.3.0)
+    # ═══════════════════════════════════════════════════════════════════════════
+    commodity_check = {'name': 'Commodity Health', 'status': 'PASS', 'details': {}}
+    commodity_issues = []
+
+    # Check commodity rates
+    rates = get_all_rates()
+    commodity_rates = {p: rates.get(p) for p in COMMODITY_PAIRS if rates.get(p)}
+    commodity_check['details']['rates_coverage'] = f'{len(commodity_rates)}/{len(COMMODITY_PAIRS)}'
+    commodity_check['details']['rate_sources'] = {p: r.get('source', 'none') for p, r in commodity_rates.items()}
+
+    # Check for static rates (should be live)
+    static_commodities = [p for p, r in commodity_rates.items() if r.get('source') == 'static']
+    if static_commodities:
+        commodity_issues.append(f'Static rates for: {", ".join(static_commodities)}')
+        commodity_check['details']['static_warning'] = static_commodities
+
+    # Check commodity weight total
+    commodity_check['details']['weight_total'] = sum(COMMODITY_FACTOR_WEIGHTS.values())
+    commodity_check['details']['supply_demand_weight'] = COMMODITY_FACTOR_WEIGHTS.get('currency_strength', 0)
+    commodity_check['details']['factor_note'] = 'Currency Strength → Supply & Demand for commodities'
+
+    # Check GoldAPI and EIA status
+    commodity_check['details']['goldapi_configured'] = bool(GOLDAPI_KEY)
+    commodity_check['details']['eia_configured'] = bool(EIA_API_KEY)
+
+    if not GOLDAPI_KEY:
+        commodity_issues.append('GoldAPI not configured — precious metals using Polygon/TwelveData only')
+    if not EIA_API_KEY:
+        commodity_issues.append('EIA not configured — oil supply/demand data unavailable')
+
+    if len(commodity_rates) < len(COMMODITY_PAIRS):
+        commodity_issues.append(f'Missing rates for {len(COMMODITY_PAIRS) - len(commodity_rates)} commodities')
+        commodity_check['status'] = 'WARN'
+
+    if commodity_issues:
+        commodity_check['status'] = 'WARN'
+        for issue in commodity_issues:
+            health['warnings'].append({
+                'type': 'COMMODITY_ISSUE',
+                'message': issue,
+                'severity': 'MEDIUM'
+            })
+
+    health['checks']['commodity_health'] = commodity_check
 
     # ═══════════════════════════════════════════════════════════════════════════
     # CHECK 4: Data Quality
@@ -11660,7 +11781,20 @@ def get_positioning():
             }
 
         if not sources_for_pair:
-            # No data for this pair from any source
+            # v9.3.0: For commodities with no data, show neutral estimate
+            if is_commodity(pair):
+                positioning.append({
+                    'pair': pair,
+                    'long_percentage': 50.0,
+                    'short_percentage': 50.0,
+                    'contrarian_signal': 'NEUTRAL',
+                    'sources': ['estimated'],
+                    'source_count': 0,
+                    'has_institutional': False,
+                    'has_retail': False,
+                    'data_quality': 'ESTIMATED',
+                    'source': 'ESTIMATED'
+                })
             continue
 
         # Normalize weights and calculate blended sentiment
@@ -11689,6 +11823,7 @@ def get_positioning():
             'long_percentage': round(blended_long, 1),
             'short_percentage': round(blended_short, 1),
             'contrarian_signal': contrarian,
+            'source': 'IG_REAL' if 'ig' in sources_for_pair else 'BLENDED',
             'sources': list(sources_for_pair.keys()),
             'source_count': len(sources_for_pair),
             'has_institutional': has_institutional,

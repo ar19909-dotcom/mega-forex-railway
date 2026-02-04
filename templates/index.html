@@ -3016,15 +3016,15 @@
                                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
                                     <span style="font-weight: 600;">${p.pair}${isCommodity ? ' <span style="font-size:0.6rem;background:#f59e0b;color:#000;padding:1px 4px;border-radius:3px;">CMD</span>' : ''}</span>
                                     <div style="display: flex; gap: 0.5rem; align-items: center;">
-                                        ${p.source === 'IG_REAL' ? '<span style="font-size: 0.7rem; color: var(--accent-green);">● IG</span>' : ''}
-                                        <span class="status-badge ${p.contrarian_signal === 'LONG' ? 'ok' : p.contrarian_signal === 'SHORT' ? 'error' : 'limited'}">
+                                        ${p.source === 'IG_REAL' ? '<span style="font-size: 0.7rem; color: var(--accent-green);">● IG</span>' : p.source === 'ESTIMATED' ? '<span style="font-size: 0.7rem; color: var(--text-muted);">~ Est</span>' : p.source === 'BLENDED' ? '<span style="font-size: 0.7rem; color: var(--accent-blue);">● Blended</span>' : ''}
+                                        <span class="status-badge ${p.contrarian_signal.includes('LONG') ? 'ok' : p.contrarian_signal.includes('SHORT') ? 'error' : 'limited'}">
                                             Contrarian: ${p.contrarian_signal}
                                         </span>
                                     </div>
                                 </div>
                                 <div class="position-bar">
-                                    <div class="position-long" style="width: ${p.long_percentage}%">${p.long_percentage}% Long</div>
-                                    <div class="position-short" style="width: ${p.short_percentage}%">${p.short_percentage}% Short</div>
+                                    <div class="position-long" style="width: ${(p.long_percentage || 50).toFixed(1)}%">${(p.long_percentage || 50).toFixed(1)}% Long</div>
+                                    <div class="position-short" style="width: ${(p.short_percentage || 50).toFixed(1)}%">${(p.short_percentage || 50).toFixed(1)}% Short</div>
                                 </div>
                             </div>
                         `}).join('');
@@ -3321,11 +3321,11 @@
                     const editor = document.getElementById('weights-editor');
                     const weights = data.weights;
 
-                    // v9.3.0: Commodity weights (read-only display)
+                    // v9.3.0: Commodity weights (read-only, Supply & Demand replaces Currency Strength)
                     const commodityWeights = {
-                        'trend_momentum': 25, 'fundamental': 12, 'sentiment': 13,
-                        'intermarket': 18, 'mean_reversion': 12, 'calendar_risk': 8,
-                        'ai_synthesis': 12, 'currency_strength': 0
+                        'trend_momentum': 22, 'intermarket': 15, 'sentiment': 13,
+                        'fundamental': 12, 'mean_reversion': 12, 'ai_synthesis': 10,
+                        'supply_demand': 8, 'calendar_risk': 8
                     };
 
                     const groupLabels = {
@@ -3336,7 +3336,8 @@
                         'mean_reversion': 'Mean Reversion',
                         'calendar_risk': 'Calendar Risk',
                         'ai_synthesis': 'AI Synthesis',
-                        'currency_strength': 'Currency Strength'
+                        'currency_strength': 'Currency Strength',
+                        'supply_demand': 'Supply & Demand'
                     };
                     editor.innerHTML = `
                         <h3 style="margin-bottom: 0.75rem; color: var(--accent-green);">📊 Forex Weights (45 pairs) — Editable</h3>
@@ -3360,14 +3361,13 @@
                         </div>
 
                         <h3 style="margin-top: 2rem; margin-bottom: 0.75rem; color: #f59e0b;">🏗️ Commodity Weights (6 instruments) — Fixed Profile</h3>
-                        <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.75rem;">Commodity weights are optimized separately and not editable to prevent overfitting.</p>
+                        <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.75rem;">Commodity weights are optimized separately. Supply & Demand replaces Currency Strength.</p>
                         ${Object.entries(commodityWeights).map(([name, value]) => `
-                            <div class="weight-row" style="opacity: ${value === 0 ? '0.4' : '0.85'};">
+                            <div class="weight-row">
                                 <span class="weight-label">${groupLabels[name] || name.replace(/_/g, ' ').replace(/\b\\w/g, l => l.toUpperCase())}</span>
-                                <div style="flex: 1; height: 6px; background: var(--bg-secondary); border-radius: 3px; position: relative;">
-                                    <div style="width: ${value * 2.5}%; height: 100%; background: #f59e0b; border-radius: 3px;"></div>
-                                </div>
-                                <span class="weight-value" style="color: ${value === 0 ? '#ef4444' : '#f59e0b'};">${value}%</span>
+                                <input type="range" class="weight-slider" min="0" max="40" value="${value}" disabled
+                                    style="opacity: 0.7; pointer-events: none;">
+                                <span class="weight-value" style="color: #f59e0b;">${value}%</span>
                             </div>
                         `).join('')}
                         <div class="weights-total" style="margin-top: 0.5rem;">
@@ -3383,9 +3383,9 @@
         
         function updateWeightValue(name, value) {
             document.getElementById(`value-${name}`).textContent = `${value}%`;
-            
-            // Calculate total
-            const sliders = document.querySelectorAll('.weight-slider');
+
+            // Calculate total (only editable forex sliders, not disabled commodity ones)
+            const sliders = document.querySelectorAll('.weight-slider:not([disabled])');
             let total = 0;
             sliders.forEach(s => total += parseInt(s.value));
             
@@ -3710,14 +3710,14 @@
                             <table class="data-table">
                                 <thead><tr><th>Group</th><th>Commodity Weight</th><th>Sources</th></tr></thead>
                                 <tbody>
-                                    <tr><td><strong>Trend & Momentum</strong></td><td style="font-weight: 600; color: #f59e0b;">25%</td><td>Commodities trend strongly — RSI/MACD/ADX + MTF</td></tr>
-                                    <tr><td><strong>Intermarket</strong></td><td style="font-weight: 600; color: #f59e0b;">18%</td><td>Cross-commodity, DXY, VIX, Yields, Equities</td></tr>
+                                    <tr><td><strong>Trend & Momentum</strong></td><td style="font-weight: 600; color: #f59e0b;">22%</td><td>Commodities trend strongly — RSI/MACD/ADX + MTF</td></tr>
+                                    <tr><td><strong>Intermarket</strong></td><td style="font-weight: 600; color: #f59e0b;">15%</td><td>Cross-commodity, DXY, VIX, Yields, Equities</td></tr>
                                     <tr><td><strong>Sentiment</strong></td><td style="font-weight: 600;">13%</td><td>IG + COT institutional + commodity news</td></tr>
-                                    <tr><td><strong>Fundamental</strong></td><td style="font-weight: 600; color: #f59e0b;">12%</td><td>DXY inverse, Real yields, VIX, EIA inventory</td></tr>
-                                    <tr><td><strong>Mean Reversion</strong></td><td style="font-weight: 600; color: #f59e0b;">12%</td><td>Z-Score, Bollinger %B + S/R structure</td></tr>
-                                    <tr><td><strong>AI Synthesis</strong></td><td style="font-weight: 600; color: #f59e0b;">12%</td><td>GPT-4o-mini commodity analysis</td></tr>
+                                    <tr><td><strong>Fundamental</strong></td><td style="font-weight: 600;">12%</td><td>DXY inverse, Real yields, VIX, EIA inventory</td></tr>
+                                    <tr><td><strong>Mean Reversion</strong></td><td style="font-weight: 600;">12%</td><td>Z-Score, Bollinger %B + S/R structure</td></tr>
+                                    <tr><td><strong>AI Synthesis</strong></td><td style="font-weight: 600;">10%</td><td>GPT-4o-mini commodity analysis</td></tr>
+                                    <tr style="background: rgba(245, 158, 11, 0.15);"><td><strong>Supply & Demand</strong> <span style="color: #f59e0b; font-size: 0.7rem;">NEW</span></td><td style="font-weight: 600; color: #f59e0b;">8%</td><td>EIA inventory, USD correlation, safe-haven demand</td></tr>
                                     <tr><td><strong>Calendar Risk</strong></td><td style="font-weight: 600;">8%</td><td>OPEC, EIA, FOMC, PMI events</td></tr>
-                                    <tr style="background: rgba(239, 68, 68, 0.1);"><td><strong>Currency Strength</strong></td><td style="font-weight: 600; color: #ef4444;">0%</td><td>Not applicable for commodities</td></tr>
                                 </tbody>
                             </table>
                             <p style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);">
