@@ -11701,7 +11701,7 @@ if __name__ == '__main__':
     print(f"  ExchangeRate:    ✓ (Free, no key needed)")
     print("=" * 70)
     print("  v9.2.4 PRO FEATURES:")
-    print("    ✨ 8-Group Scoring (12 factors incl. Currency Strength)")
+    print("    ✨ 8-Group Scoring (11 factors incl. Currency Strength)")
     print("    ✨ 8-Gate Quality Filter (G3 Trend, G5 Calendar, G8 Data = MANDATORY)")
     print("    ✨ Conviction Metric (breadth x strength, separate from score)")
     print("    ✨ Dynamic Regime Weights (trending/ranging/volatile/quiet)")
