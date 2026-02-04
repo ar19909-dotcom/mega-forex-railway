@@ -9910,8 +9910,8 @@ def run_system_audit():
     # SCORING QUALITY VALIDATION - Verify real data & proper calibration
     # ═══════════════════════════════════════════════════════════════════════════
     
-    # Test multiple pairs to verify scoring distribution
-    test_pairs = ['EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'EUR/GBP', 'USD/CHF']
+    # Test multiple pairs to verify scoring distribution (v9.3.0: includes commodities)
+    test_pairs = ['EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'XAU/USD', 'WTI/USD', 'XCU/USD']
     pair_scores = []
     factor_distributions = {f: [] for f in FACTOR_WEIGHTS.keys()}
     
@@ -10248,8 +10248,8 @@ def run_ai_system_health_check(use_ai=True):
     # ═══════════════════════════════════════════════════════════════════════════
     scoring_check = {'name': 'Scoring System', 'status': 'PASS', 'details': {}}
 
-    # Test signal generation for multiple pairs
-    test_pairs = ['EUR/USD', 'GBP/USD', 'USD/JPY']
+    # Test signal generation for multiple pairs (v9.3.0: includes commodities)
+    test_pairs = ['EUR/USD', 'GBP/USD', 'XAU/USD', 'WTI/USD']
     signals_generated = 0
     scoring_issues = []
 
