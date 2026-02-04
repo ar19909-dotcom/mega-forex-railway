@@ -2470,6 +2470,42 @@ def get_api_ninjas_commodity(pair):
         logger.debug(f"API Ninjas commodity fetch failed for {pair}: {e}")
     return None
 
+def get_eia_oil_spot_price(pair):
+    """v9.3.0: Fetch WTI/Brent spot prices from EIA (free US govt API)"""
+    if not EIA_API_KEY:
+        return None
+    # EIA series IDs for spot prices
+    eia_series = {
+        'WTI/USD': 'PET.RWTC.D',      # WTI Cushing spot price daily
+        'BRENT/USD': 'PET.RBRTE.D',   # Brent Europe spot price daily
+    }
+    series_id = eia_series.get(pair)
+    if not series_id:
+        return None
+    try:
+        # EIA API v2: Get spot price using seriesid endpoint
+        url = f"{EIA_API_URL}/seriesid/{series_id}"
+        params = {
+            'api_key': EIA_API_KEY,
+            'length': 1  # Just latest price
+        }
+        resp = req_lib.get(url, params=params, timeout=8)
+        if resp.status_code == 200:
+            data = resp.json()
+            records = data.get('response', {}).get('data', [])
+            if records and len(records) > 0:
+                price = float(records[0].get('value', 0))
+                if price > 0:
+                    return {
+                        'bid': price * 0.9995,
+                        'ask': price * 1.0005,
+                        'mid': price,
+                        'source': 'eia'
+                    }
+    except Exception as e:
+        logger.debug(f"EIA spot price fetch failed for {pair}: {e}")
+    return None
+
 def get_eia_oil_data():
     """v9.3.0: Fetch EIA weekly petroleum inventory data (free US govt API)"""
     if not EIA_API_KEY:
@@ -2529,8 +2565,14 @@ def get_rate(pair):
         if rate:
             return rate
 
-    # Tier 4.5: API Ninjas (oil + copper - free tier available)
-    if pair in ['WTI/USD', 'BRENT/USD', 'XCU/USD']:
+    # Tier 4.5: EIA (WTI + Brent oil spot prices - FREE govt API)
+    if pair in ['WTI/USD', 'BRENT/USD']:
+        rate = get_eia_oil_spot_price(pair)
+        if rate:
+            return rate
+
+    # Tier 4.6: API Ninjas (copper - needs premium for oil)
+    if pair == 'XCU/USD':
         rate = get_api_ninjas_commodity(pair)
         if rate:
             return rate
