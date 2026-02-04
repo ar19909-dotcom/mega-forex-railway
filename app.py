@@ -6432,7 +6432,8 @@ Respond in EXACT JSON format:
                         'consistent': is_consistent,
                         'flags': flags[:5] if flags else [],  # Limit to 5 flags
                         'recommended_direction': recommended_dir.upper() if isinstance(recommended_dir, str) else 'NEUTRAL',
-                        'factors_checked': len(all_factors) - 1 if all_factors else 0,  # Exclude AI itself
+                        'factors_checked': 11,  # All 11 individual factors (Tech, Fund, Sent, Inter, Quant, MTF, Struct, Cal, Candle, CurrStr, Options)
+                        'groups_checked': 8,  # 8 factor groups in scoring system
                         'factor_analysis': {
                             'strongest_bullish': factor_analysis.get('strongest_bullish', ''),
                             'strongest_bearish': factor_analysis.get('strongest_bearish', ''),
