@@ -8387,26 +8387,32 @@ def generate_signal(pair):
         distance_to_s1 = current_price - pivot_s1
         distance_to_r1 = pivot_r1 - current_price
 
+        # v9.3.0: Tighter ATR multipliers for commodities (large ATR values)
+        if is_commodity(pair):
+            entry_atr_tight = atr * 0.08   # ~$2.4 for Gold, ~$0.14 for Oil
+            entry_atr_wide = atr * 0.20    # ~$6 for Gold, ~$0.36 for Oil
+            entry_atr_mid = atr * 0.12     # ~$3.6 for Gold, ~$0.22 for Oil
+        else:
+            entry_atr_tight = atr * 0.3
+            entry_atr_wide = atr * 1.0
+            entry_atr_mid = atr * 0.5
+
         if direction == 'LONG':
             # SMART LONG ENTRY:
             # If in downtrend (EMA BEARISH), wait for deeper pullback to support
             # If in uptrend (EMA BULLISH), tighter range is OK
             if ema_signal == 'BEARISH':
                 # Counter-trend LONG - need strong reversal zone
-                # Entry min: near S1 or nearest support (wait for deep pullback)
-                # Entry max: current price only (don't chase in downtrend!)
-                entry_min = max(pivot_s1, nearest_support, current_price - atr * 1.0)
+                entry_min = max(pivot_s1, nearest_support, current_price - entry_atr_wide)
                 entry_max = current_price  # Don't buy above current in downtrend
             elif ema_signal == 'BULLISH':
                 # With-trend LONG - tighter range OK
-                # Entry min: small pullback (0.3x ATR)
-                # Entry max: current + 0.3x ATR (can chase slightly in uptrend)
-                entry_min = max(pivot_point, current_price - atr * 0.3)
-                entry_max = current_price + atr * 0.3
+                entry_min = max(pivot_point, current_price - entry_atr_tight)
+                entry_max = current_price + entry_atr_tight
             else:
                 # Neutral trend - moderate range
-                entry_min = current_price - atr * 0.5
-                entry_max = current_price + atr * 0.2
+                entry_min = current_price - entry_atr_mid
+                entry_max = current_price + entry_atr_tight * 0.7
 
         elif direction == 'SHORT':
             # SMART SHORT ENTRY:
@@ -8414,20 +8420,16 @@ def generate_signal(pair):
             # If in downtrend (EMA BEARISH), tighter range is OK
             if ema_signal == 'BULLISH':
                 # Counter-trend SHORT - need strong reversal zone
-                # Entry min: current price only (don't sell below current in uptrend!)
-                # Entry max: near R1 or nearest resistance (wait for deep bounce)
                 entry_min = current_price  # Don't sell below current in uptrend
-                entry_max = min(pivot_r1, nearest_resistance, current_price + atr * 1.0)
+                entry_max = min(pivot_r1, nearest_resistance, current_price + entry_atr_wide)
             elif ema_signal == 'BEARISH':
                 # With-trend SHORT - tighter range OK
-                # Entry min: current - 0.3x ATR (can chase slightly in downtrend)
-                # Entry max: small bounce (0.3x ATR)
-                entry_min = current_price - atr * 0.3
-                entry_max = min(pivot_point, current_price + atr * 0.3)
+                entry_min = current_price - entry_atr_tight
+                entry_max = min(pivot_point, current_price + entry_atr_tight)
             else:
                 # Neutral trend - moderate range
-                entry_min = current_price - atr * 0.2
-                entry_max = current_price + atr * 0.5
+                entry_min = current_price - entry_atr_tight * 0.7
+                entry_max = current_price + entry_atr_mid
 
         else:
             # NEUTRAL - no entry range
@@ -8437,6 +8439,16 @@ def generate_signal(pair):
         # Ensure entry range is sensible (min < current < max for valid entries)
         entry_min = min(entry_min, current_price)
         entry_max = max(entry_max, current_price)
+
+        # v9.3.0: Cap entry spread for commodities (prevent absurdly wide ranges)
+        # Commodities have large ATR values that create unrealistic entry windows
+        max_entry_spread_pct = 0.005 if is_commodity(pair) else 0.01  # 0.5% for commodities, 1% for forex
+        max_spread = current_price * max_entry_spread_pct
+        actual_spread = entry_max - entry_min
+        if actual_spread > max_spread:
+            midpoint = (entry_min + entry_max) / 2
+            entry_min = midpoint - max_spread / 2
+            entry_max = midpoint + max_spread / 2
 
         # Convert ATR to pips for this pair
         atr_pips = atr / pip_size
