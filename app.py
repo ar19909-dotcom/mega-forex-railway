@@ -877,7 +877,7 @@ CACHE_TTL = {
     'fundamental': 3600,
     'intermarket_data': 300,  # 5 minutes
     'positioning': 900,  # 15 minutes - IG sentiment doesn't change rapidly + avoid rate limits
-    'signals': 120,   # 2 minutes - balanced refresh rate
+    'signals': 180,   # 3 minutes - balanced refresh rate (51 instruments)
     'audit': 300      # 5 minutes - audit data doesn't change rapidly
 }
 
@@ -2175,9 +2175,9 @@ def get_polygon_rate(pair):
             'XAU/USD': 'C:XAUUSD',
             'XAG/USD': 'C:XAGUSD',
             'XPT/USD': 'C:XPTUSD',
-            'WTI/USD': 'C:USDWTI',   # Polygon may use inverted or custom format
-            'BRENT/USD': 'C:USDBRENT',
-            'XCU/USD': 'C:XCUUSD',
+            'WTI/USD': 'C:CLUSD',     # CL = WTI crude oil futures symbol
+            'BRENT/USD': 'C:BZUSD',   # BZ = Brent crude oil futures symbol
+            'XCU/USD': 'C:HGUSD',     # HG = copper futures symbol
         }
         ticker = polygon_commodity_tickers.get(pair, f"C:{pair.replace('/', '')}")
         url = f"https://api.polygon.io/v2/aggs/ticker/{ticker}/prev"
@@ -2187,17 +2187,33 @@ def get_polygon_rate(pair):
             data = resp.json()
             if data.get('results') and len(data['results']) > 0:
                 r = data['results'][0]
-                return {
-                    'bid': r.get('l', r['c'] * 0.9999),
-                    'ask': r.get('h', r['c'] * 1.0001),
-                    'mid': r['c'],
-                    'open': r.get('o', r['c']),
-                    'high': r.get('h', r['c']),
-                    'low': r.get('l', r['c']),
-                    'close': r['c'],
-                    'volume': r.get('v', 0),
-                    'source': 'polygon'
-                }
+                close = r['c']
+                # v9.3.0: For commodities, use close price with tight synthetic spread
+                # Daily low/high creates absurdly wide spreads for commodities
+                if is_commodity(pair):
+                    return {
+                        'bid': close * 0.9998,
+                        'ask': close * 1.0002,
+                        'mid': close,
+                        'open': r.get('o', close),
+                        'high': r.get('h', close),
+                        'low': r.get('l', close),
+                        'close': close,
+                        'volume': r.get('v', 0),
+                        'source': 'polygon'
+                    }
+                else:
+                    return {
+                        'bid': r.get('l', close * 0.9999),
+                        'ask': r.get('h', close * 1.0001),
+                        'mid': close,
+                        'open': r.get('o', close),
+                        'high': r.get('h', close),
+                        'low': r.get('l', close),
+                        'close': close,
+                        'volume': r.get('v', 0),
+                        'source': 'polygon'
+                    }
     except Exception as e:
         logger.debug(f"Polygon rate fetch failed for {pair}: {e}")
     return None
@@ -2212,9 +2228,9 @@ def get_twelvedata_rate(pair):
             'XAU/USD': 'XAU/USD',    # Natively supported
             'XAG/USD': 'XAG/USD',    # Natively supported
             'XPT/USD': 'XPT/USD',    # Natively supported
-            'WTI/USD': 'WTI/USD',    # TwelveData supports WTI/USD
-            'BRENT/USD': 'BRENT/USD',
-            'XCU/USD': 'XCU/USD',
+            'WTI/USD': 'CL',         # TwelveData: CL = WTI crude oil
+            'BRENT/USD': 'BZ',       # TwelveData: BZ = Brent crude oil
+            'XCU/USD': 'HG',         # TwelveData: HG = Copper
         }
         symbol = twelvedata_symbols.get(pair, pair)
         url = f"{TWELVE_DATA_URL}/price"
@@ -2248,8 +2264,8 @@ def get_tradermade_rate(pair):
             'XAG/USD': 'XAGUSD',
             'XPT/USD': 'XPTUSD',
             'WTI/USD': 'OILUSD',     # TraderMade uses OILUSD for WTI
-            'BRENT/USD': 'UKOUSD',    # TraderMade uses UKOUSD for Brent
-            'XCU/USD': 'XCUUSD',
+            'BRENT/USD': 'UKOUSD',   # TraderMade uses UKOUSD for Brent
+            'XCU/USD': 'XCUUSD',     # Copper
         }
         symbol = tradermade_symbols.get(pair, pair.replace('/', ''))
         url = f"{TRADERMADE_URL}/live"
@@ -2346,8 +2362,8 @@ def get_goldapi_rate(pair):
             if 'price' in data:
                 price = float(data['price'])
                 return {
-                    'bid': data.get('price_gram_24k', price * 0.9999),
-                    'ask': price * 1.0001,
+                    'bid': price * 0.9998,
+                    'ask': price * 1.0002,
                     'mid': price,
                     'open': data.get('open_price', price),
                     'high': data.get('high_price', price),
@@ -2448,7 +2464,7 @@ def get_all_rates():
                 return cache['rates']['data']
 
     rates = {}
-    with ThreadPoolExecutor(max_workers=10) as executor:
+    with ThreadPoolExecutor(max_workers=15) as executor:
         future_to_pair = {executor.submit(get_rate, pair): pair for pair in ALL_INSTRUMENTS}
         for future in as_completed(future_to_pair):
             pair = future_to_pair[future]
@@ -8389,9 +8405,9 @@ def generate_signal(pair):
 
         # v9.3.0: Tighter ATR multipliers for commodities (large ATR values)
         if is_commodity(pair):
-            entry_atr_tight = atr * 0.08   # ~$2.4 for Gold, ~$0.14 for Oil
-            entry_atr_wide = atr * 0.20    # ~$6 for Gold, ~$0.36 for Oil
-            entry_atr_mid = atr * 0.12     # ~$3.6 for Gold, ~$0.22 for Oil
+            entry_atr_tight = atr * 0.03   # ~$0.8 for Gold, ~$0.05 for Oil
+            entry_atr_wide = atr * 0.08    # ~$2.4 for Gold, ~$0.14 for Oil
+            entry_atr_mid = atr * 0.05     # ~$1.5 for Gold, ~$0.09 for Oil
         else:
             entry_atr_tight = atr * 0.3
             entry_atr_wide = atr * 1.0
@@ -8442,7 +8458,7 @@ def generate_signal(pair):
 
         # v9.3.0: Cap entry spread for commodities (prevent absurdly wide ranges)
         # Commodities have large ATR values that create unrealistic entry windows
-        max_entry_spread_pct = 0.005 if is_commodity(pair) else 0.01  # 0.5% for commodities, 1% for forex
+        max_entry_spread_pct = 0.001 if is_commodity(pair) else 0.01  # 0.1% for commodities, 1% for forex
         max_spread = current_price * max_entry_spread_pct
         actual_spread = entry_max - entry_min
         if actual_spread > max_spread:
@@ -10119,6 +10135,23 @@ def run_ai_system_health_check(use_ai=True):
         'Regime-aware weighting adapts to market conditions'
     ]
 
+    # v9.3.0: Commodity-specific anti-overfitting measures
+    overfit_check['details']['commodity_safeguards'] = [
+        'Separate weight profile prevents forex-tuned weights biasing commodities',
+        'Currency strength factor disabled (0%) — not applicable to commodities',
+        'Intermarket boosted to 18% — cross-commodity correlations validated against historical data',
+        'Entry range capped at 0.1% of price — prevents ATR-driven wide entries',
+        'SL/TP use commodity-specific ATR multipliers (not forex defaults)',
+        'Commodity fundamental uses DXY/real-yields/VIX — not interest rate differentials',
+        'Gold-Silver (0.88), WTI-Brent (0.96) correlations prevent double-counting',
+        'EIA inventory data provides independent supply/demand signal for oil'
+    ]
+    overfit_check['details']['commodity_weight_validation'] = {
+        'total_commodity_weight': sum(COMMODITY_FACTOR_WEIGHTS.values()),
+        'currency_strength_disabled': COMMODITY_FACTOR_WEIGHTS.get('currency_strength', 0) == 0,
+        'intermarket_boosted': COMMODITY_FACTOR_WEIGHTS.get('intermarket', 0) >= 18
+    }
+
     health['checks']['anti_overfit'] = overfit_check
 
     # ═══════════════════════════════════════════════════════════════════════════
@@ -10130,7 +10163,7 @@ def run_ai_system_health_check(use_ai=True):
     coverage = len(rates) / len(ALL_INSTRUMENTS) * 100
 
     data_check['details']['pairs_with_rates'] = len(rates)
-    data_check['details']['total_pairs'] = len(FOREX_PAIRS)
+    data_check['details']['total_pairs'] = len(ALL_INSTRUMENTS)
     data_check['details']['coverage'] = f'{coverage:.1f}%'
 
     if coverage < 90:
@@ -11598,7 +11631,7 @@ def get_positioning():
         list(ig_data_map.keys()) +
         list(saxo_map.keys()) +
         list(cot_pair_map.keys()) +
-        ALL_INSTRUMENTS[:31]  # Ensure we cover main pairs + all commodities
+        ALL_INSTRUMENTS  # Ensure we cover all 51 instruments including commodities
     ))
 
     for pair in pairs_to_process:
@@ -11776,6 +11809,19 @@ def api_status():
             'status': 'OK' if CURRENCYLAYER_KEY else 'NOT_CONFIGURED',
             'purpose': 'Exchange rates (100/month)',
             'tier': 5
+        },
+        'goldapi': {
+            'configured': bool(GOLDAPI_KEY),
+            'status': 'OK' if GOLDAPI_KEY else 'NOT_CONFIGURED',
+            'purpose': 'Precious metals live prices - XAU/XAG/XPT (500/month)',
+            'tier': 4,
+            'coverage': 'Gold, Silver, Platinum'
+        },
+        'eia': {
+            'configured': bool(EIA_API_KEY),
+            'status': 'OK' if EIA_API_KEY else 'NOT_CONFIGURED',
+            'purpose': 'US petroleum inventory data (free govt API)',
+            'coverage': 'WTI/Brent crude oil supply data'
         }
     }
 

@@ -2019,15 +2019,16 @@
         
         <!-- Live Rates Tab -->
         <div class="tab-content" id="tab-rates">
-            <h2 style="margin-bottom: 1rem;">💹 Live Forex Rates</h2>
+            <h2 style="margin-bottom: 1rem;">💹 Live Market Rates</h2>
             <div class="filters-bar">
                 <div class="filter-group">
                     <span class="filter-label">Category:</span>
                     <select id="rates-category">
-                        <option value="all">All (45)</option>
+                        <option value="all">All (51)</option>
                         <option value="major">Major (7)</option>
                         <option value="cross">Cross (23)</option>
                         <option value="exotic">Exotic (15)</option>
+                        <option value="commodity">Commodity (6)</option>
                     </select>
                 </div>
             </div>
@@ -2096,7 +2097,7 @@
         
         <!-- News Tab -->
         <div class="tab-content" id="tab-news">
-            <h2 style="margin-bottom: 1rem;">📰 Forex News & Sentiment</h2>
+            <h2 style="margin-bottom: 1rem;">📰 Market News & Sentiment</h2>
             <div id="news-container">
                 <div class="loading"><div class="spinner"></div>Loading...</div>
             </div>
@@ -2156,7 +2157,7 @@
         
         <!-- Weights Editor Tab -->
         <div class="tab-content" id="tab-weights">
-            <h2 style="margin-bottom: 1rem;">⚖️ Factor Group Weights Editor (v9.2.4)</h2>
+            <h2 style="margin-bottom: 1rem;">⚖️ Factor Group Weights Editor (v9.3.0)</h2>
             <div class="weights-editor" id="weights-editor">
                 <div class="loading"><div class="spinner"></div>Loading weights...</div>
             </div>
@@ -2211,7 +2212,7 @@
         let refreshInterval;
         let countdown = 120;  // 2 minutes auto-refresh
         
-        // All 45 Forex Pairs for Pair Analyzer
+        // All 51 Instruments (45 Forex + 6 Commodities) for Pair Analyzer
         const ALL_PAIRS = [
             // Majors (7)
             'EUR/USD', 'GBP/USD', 'USD/JPY', 'USD/CHF', 'AUD/USD', 'USD/CAD', 'NZD/USD',
@@ -2491,22 +2492,37 @@
             try {
                 const response = await fetch(`${API_BASE}/rates`);
                 const data = await response.json();
-                
+
                 if (data.success) {
                     const tbody = document.getElementById('rates-body');
                     const category = document.getElementById('rates-category').value;
-                    
+                    const commodityPairs = ['XAU/USD', 'XAG/USD', 'XPT/USD', 'WTI/USD', 'BRENT/USD', 'XCU/USD'];
+                    const majorPairs = ['EUR/USD', 'GBP/USD', 'USD/JPY', 'USD/CHF', 'AUD/USD', 'USD/CAD', 'NZD/USD'];
+                    const exoticPairs = ['USD/SGD', 'USD/HKD', 'USD/MXN', 'USD/ZAR', 'USD/TRY', 'USD/NOK', 'USD/SEK', 'USD/DKK', 'USD/PLN', 'EUR/TRY', 'EUR/PLN', 'EUR/NOK', 'EUR/SEK', 'EUR/HUF', 'EUR/CZK'];
+
                     let rates = Object.entries(data.rates);
-                    
-                    tbody.innerHTML = rates.map(([pair, rate]) => `
-                        <tr>
-                            <td style="font-weight: 600;">${pair}</td>
-                            <td>${rate.bid?.toFixed(5) || 'N/A'}</td>
-                            <td>${rate.ask?.toFixed(5) || 'N/A'}</td>
-                            <td>${((rate.ask - rate.bid) * 10000).toFixed(1)} pips</td>
-                            <td><span class="status-badge ${rate.source === 'polygon' ? 'ok' : rate.source === 'exchangerate' ? 'limited' : 'error'}">${rate.source}</span></td>
-                        </tr>
-                    `).join('');
+
+                    // v9.3.0: Category filtering
+                    if (category === 'commodity') rates = rates.filter(([p]) => commodityPairs.includes(p));
+                    else if (category === 'major') rates = rates.filter(([p]) => majorPairs.includes(p));
+                    else if (category === 'exotic') rates = rates.filter(([p]) => exoticPairs.includes(p));
+                    else if (category === 'cross') rates = rates.filter(([p]) => !majorPairs.includes(p) && !exoticPairs.includes(p) && !commodityPairs.includes(p));
+
+                    tbody.innerHTML = rates.map(([pair, rate]) => {
+                        const isCommodity = commodityPairs.includes(pair);
+                        const pd = priceDecimals(pair);
+                        const pipSize = isCommodity ? ({'XAU/USD':0.10,'XAG/USD':0.01,'XPT/USD':0.10,'WTI/USD':0.01,'BRENT/USD':0.01,'XCU/USD':0.001}[pair] || 0.01) : (pair.includes('JPY') ? 0.01 : 0.0001);
+                        const spreadPips = ((rate.ask - rate.bid) / pipSize).toFixed(1);
+                        const liveClass = rate.source === 'static' ? 'error' : (rate.source === 'polygon' || rate.source === 'goldapi' || rate.source === 'twelvedata' || rate.source === 'tradermade') ? 'ok' : 'limited';
+                        return `
+                        <tr style="${isCommodity ? 'border-left: 3px solid #f59e0b;' : ''}">
+                            <td style="font-weight: 600;">${pair}${isCommodity ? ' <span style="font-size:0.55rem;background:#f59e0b;color:#000;padding:0 3px;border-radius:2px;">CMD</span>' : ''}</td>
+                            <td>${rate.bid?.toFixed(pd) || 'N/A'}</td>
+                            <td>${rate.ask?.toFixed(pd) || 'N/A'}</td>
+                            <td>${spreadPips} pips</td>
+                            <td><span class="status-badge ${liveClass}">${rate.source}</span></td>
+                        </tr>`;
+                    }).join('');
                 }
             } catch (error) {
                 console.error('Error loading rates:', error);
@@ -2516,17 +2532,22 @@
         // Load Analyzer Pairs
         function loadAnalyzerPairs() {
             const container = document.getElementById('analyzer-pairs');
-            
-            // Show ALL 45 pairs, with score from signalsData if available
-            container.innerHTML = ALL_PAIRS.map(pair => {
+            const commodities = ['XAU/USD', 'XAG/USD', 'XPT/USD', 'WTI/USD', 'BRENT/USD', 'XCU/USD'];
+            const forexPairs = ALL_PAIRS.filter(p => !commodities.includes(p));
+            // v9.3.0: Show commodities first, then forex pairs
+            const orderedPairs = [...commodities, ...forexPairs];
+
+            container.innerHTML = orderedPairs.map((pair, idx) => {
                 const signal = signalsData.find(s => s.pair === pair);
                 const score = signal ? signal.composite_score : '--';
                 const direction = signal ? signal.direction : 'NEUTRAL';
                 const color = direction === 'LONG' ? 'var(--accent-green)' : direction === 'SHORT' ? 'var(--accent-red)' : 'var(--text-secondary)';
-                
-                return `
-                    <div class="pair-list-item" onclick="analyzeSignal('${pair}')">
-                        <span>${pair}</span>
+                const isCommodity = commodities.includes(pair);
+                const separator = (idx === commodities.length) ? '<div style="border-top: 1px solid var(--bg-tertiary); margin: 0.25rem 0; padding-top: 0.25rem; font-size: 0.7rem; color: var(--text-muted); text-align: center;">FOREX PAIRS</div>' : '';
+
+                return `${separator}
+                    <div class="pair-list-item" onclick="analyzeSignal('${pair}')" style="${isCommodity ? 'border-left: 3px solid #f59e0b;' : ''}">
+                        <span>${pair}${isCommodity ? ' <span style="font-size:0.6rem;color:#f59e0b;">CMD</span>' : ''}</span>
                         <span style="color: ${color}">${score}</span>
                     </div>
                 `;
@@ -2723,7 +2744,7 @@
                             </div>
                         </div>
                         
-                        <h4 style="margin-bottom: 0.5rem;">v9.2.4 Factor Groups (8 Groups)</h4>
+                        <h4 style="margin-bottom: 0.5rem;">v9.3.0 Factor Groups (8 Groups)</h4>
                         <table class="data-table" style="margin-bottom: 1rem;">
                             <thead>
                                 <tr><th>Group</th><th>Weight</th><th>Score</th><th>Signal</th></tr>
@@ -2900,21 +2921,31 @@
             }
         }
         
-        // Load Technical - Show all 45 pairs
+        // Load Technical - Show all 51 instruments
         async function loadTechnical() {
             try {
                 const tbody = document.getElementById('technical-body');
-                tbody.innerHTML = signalsData.map(s => `
-                    <tr>
-                        <td style="font-weight: 600;">${s.pair}</td>
+                const commodityPairs = ['XAU/USD', 'XAG/USD', 'XPT/USD', 'WTI/USD', 'BRENT/USD', 'XCU/USD'];
+                // v9.3.0: Sort commodities first, then forex
+                const sorted = [...signalsData].sort((a, b) => {
+                    const aCmd = commodityPairs.includes(a.pair) ? 0 : 1;
+                    const bCmd = commodityPairs.includes(b.pair) ? 0 : 1;
+                    return aCmd - bCmd;
+                });
+                tbody.innerHTML = sorted.map(s => {
+                    const isCommodity = commodityPairs.includes(s.pair);
+                    const atrDec = isCommodity ? 2 : 5;
+                    return `
+                    <tr style="${isCommodity ? 'border-left: 3px solid #f59e0b;' : ''}">
+                        <td style="font-weight: 600;">${s.pair}${isCommodity ? ' <span style="font-size:0.55rem;background:#f59e0b;color:#000;padding:0 3px;border-radius:2px;">CMD</span>' : ''}</td>
                         <td style="color: ${s.technical?.rsi < 30 ? 'var(--accent-green)' : s.technical?.rsi > 70 ? 'var(--accent-red)' : 'inherit'}">${s.technical?.rsi?.toFixed(1) || 'N/A'}</td>
-                        <td style="color: ${s.technical?.macd?.histogram > 0 ? 'var(--accent-green)' : 'var(--accent-red)'}">${s.technical?.macd?.histogram?.toFixed(5) || 'N/A'}</td>
+                        <td style="color: ${s.technical?.macd?.histogram > 0 ? 'var(--accent-green)' : 'var(--accent-red)'}">${s.technical?.macd?.histogram?.toFixed(atrDec) || 'N/A'}</td>
                         <td>${s.technical?.adx?.toFixed(1) || 'N/A'}</td>
-                        <td>${s.technical?.atr?.toFixed(5) || 'N/A'}</td>
+                        <td>${s.technical?.atr?.toFixed(atrDec) || 'N/A'}</td>
                         <td>${s.technical?.bollinger?.percent_b?.toFixed(1) || 'N/A'}%</td>
                         <td><span class="status-badge ${s.technical?.ema_signal === 'BULLISH' ? 'ok' : s.technical?.ema_signal === 'BEARISH' ? 'error' : 'limited'}">${s.technical?.ema_signal || 'N/A'}</span></td>
-                    </tr>
-                `).join('');
+                    </tr>`;
+                }).join('');
             } catch (error) {
                 console.error('Error loading technical:', error);
             }
@@ -2965,10 +2996,25 @@
                             </code>
                         </div>`;
                     } else {
-                        html += data.data.map(p => `
-                            <div style="background: var(--bg-card); padding: 1rem; border-radius: 0.5rem; margin-bottom: 0.5rem;">
+                        // v9.3.0: Sort commodities first, then forex
+                        const commodityPairs = ['XAU/USD', 'XAG/USD', 'XPT/USD', 'WTI/USD', 'BRENT/USD', 'XCU/USD'];
+                        const sortedData = [...data.data].sort((a, b) => {
+                            const aCmd = commodityPairs.includes(a.pair) ? 0 : 1;
+                            const bCmd = commodityPairs.includes(b.pair) ? 0 : 1;
+                            return aCmd - bCmd;
+                        });
+                        let lastWasCommodity = false;
+                        html += sortedData.map(p => {
+                            const isCommodity = commodityPairs.includes(p.pair);
+                            let separator = '';
+                            if (lastWasCommodity && !isCommodity) {
+                                separator = '<div style="border-top: 2px solid var(--bg-tertiary); margin: 0.75rem 0; padding-top: 0.25rem; font-size: 0.7rem; color: var(--text-muted); text-align: center;">FOREX PAIRS</div>';
+                            }
+                            lastWasCommodity = isCommodity;
+                            return `${separator}
+                            <div style="background: var(--bg-card); padding: 1rem; border-radius: 0.5rem; margin-bottom: 0.5rem; ${isCommodity ? 'border-left: 3px solid #f59e0b;' : ''}">
                                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                                    <span style="font-weight: 600;">${p.pair}</span>
+                                    <span style="font-weight: 600;">${p.pair}${isCommodity ? ' <span style="font-size:0.6rem;background:#f59e0b;color:#000;padding:1px 4px;border-radius:3px;">CMD</span>' : ''}</span>
                                     <div style="display: flex; gap: 0.5rem; align-items: center;">
                                         ${p.source === 'IG_REAL' ? '<span style="font-size: 0.7rem; color: var(--accent-green);">● IG</span>' : ''}
                                         <span class="status-badge ${p.contrarian_signal === 'LONG' ? 'ok' : p.contrarian_signal === 'SHORT' ? 'error' : 'limited'}">
@@ -2981,7 +3027,7 @@
                                     <div class="position-short" style="width: ${p.short_percentage}%">${p.short_percentage}% Short</div>
                                 </div>
                             </div>
-                        `).join('');
+                        `}).join('');
                     }
                     
                     container.innerHTML = html;
@@ -3006,10 +3052,25 @@
                     const container = document.getElementById('news-container');
 
                     if (data.articles && data.articles.length > 0) {
-                        container.innerHTML = data.articles.map(article => `
+                        // v9.3.0: Tag news with affected instruments
+                        const commodityKeywords = {
+                            'XAU/USD': ['gold', 'bullion', 'precious metal'],
+                            'XAG/USD': ['silver'],
+                            'XPT/USD': ['platinum'],
+                            'WTI/USD': ['oil', 'crude', 'wti', 'petroleum', 'opec', 'eia', 'barrel'],
+                            'BRENT/USD': ['brent', 'oil', 'crude', 'opec'],
+                            'XCU/USD': ['copper']
+                        };
+                        container.innerHTML = data.articles.map(article => {
+                            const headline = (article.headline || '').toLowerCase();
+                            const affected = Object.entries(commodityKeywords)
+                                .filter(([, kws]) => kws.some(kw => headline.includes(kw)))
+                                .map(([pair]) => pair);
+                            const tags = affected.map(p => `<span style="background:#f59e0b;color:#000;font-size:0.6rem;padding:1px 4px;border-radius:3px;margin-left:4px;">${p}</span>`).join('');
+                            return `
                             <div class="news-item" style="cursor: pointer;" onclick="window.open('${article.url || '#'}', '_blank')">
                                 <div class="news-headline" style="color: var(--accent-blue); text-decoration: underline;">
-                                    ${article.headline}
+                                    ${article.headline}${tags}
                                 </div>
                                 <div class="news-meta">
                                     ${article.source} | ${new Date(article.datetime * 1000).toLocaleString()}
@@ -3018,7 +3079,7 @@
                                     Tap to read full article →
                                 </div>
                             </div>
-                        `).join('');
+                        `}).join('');
                     } else {
                         container.innerHTML = '<p style="color: var(--text-secondary);">No news available. Make sure Finnhub API key is configured.</p>';
                     }
@@ -3255,12 +3316,18 @@
             try {
                 const response = await fetch(`${API_BASE}/weights`);
                 const data = await response.json();
-                
+
                 if (data.success) {
                     const editor = document.getElementById('weights-editor');
                     const weights = data.weights;
-                    
-                    // v9.0: Format group names nicely
+
+                    // v9.3.0: Commodity weights (read-only display)
+                    const commodityWeights = {
+                        'trend_momentum': 25, 'fundamental': 12, 'sentiment': 13,
+                        'intermarket': 18, 'mean_reversion': 12, 'calendar_risk': 8,
+                        'ai_synthesis': 12, 'currency_strength': 0
+                    };
+
                     const groupLabels = {
                         'trend_momentum': 'Trend & Momentum',
                         'fundamental': 'Fundamental',
@@ -3268,26 +3335,44 @@
                         'intermarket': 'Intermarket',
                         'mean_reversion': 'Mean Reversion',
                         'calendar_risk': 'Calendar Risk',
-                        'ai_synthesis': 'AI Synthesis'
+                        'ai_synthesis': 'AI Synthesis',
+                        'currency_strength': 'Currency Strength'
                     };
                     editor.innerHTML = `
+                        <h3 style="margin-bottom: 0.75rem; color: var(--accent-green);">📊 Forex Weights (45 pairs) — Editable</h3>
                         ${Object.entries(weights).map(([name, value]) => `
                             <div class="weight-row">
-                                <span class="weight-label">${groupLabels[name] || name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
+                                <span class="weight-label">${groupLabels[name] || name.replace(/_/g, ' ').replace(/\b\\w/g, l => l.toUpperCase())}</span>
                                 <input type="range" class="weight-slider" id="weight-${name}" min="0" max="40" value="${value}"
                                     oninput="updateWeightValue('${name}', this.value)">
                                 <span class="weight-value" id="value-${name}">${value}%</span>
                             </div>
                         `).join('')}
-                        
+
                         <div class="weights-total" id="weights-total">
                             <span>Total:</span>
                             <span id="total-weight">${Object.values(weights).reduce((a, b) => a + b, 0)}%</span>
                         </div>
-                        
+
                         <div style="display: flex; gap: 1rem; margin-top: 1rem;">
-                            <button onclick="saveWeights()">💾 Save Weights</button>
+                            <button onclick="saveWeights()">💾 Save Forex Weights</button>
                             <button class="secondary" onclick="resetWeights()">🔄 Reset to Defaults</button>
+                        </div>
+
+                        <h3 style="margin-top: 2rem; margin-bottom: 0.75rem; color: #f59e0b;">🏗️ Commodity Weights (6 instruments) — Fixed Profile</h3>
+                        <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.75rem;">Commodity weights are optimized separately and not editable to prevent overfitting.</p>
+                        ${Object.entries(commodityWeights).map(([name, value]) => `
+                            <div class="weight-row" style="opacity: ${value === 0 ? '0.4' : '0.85'};">
+                                <span class="weight-label">${groupLabels[name] || name.replace(/_/g, ' ').replace(/\b\\w/g, l => l.toUpperCase())}</span>
+                                <div style="flex: 1; height: 6px; background: var(--bg-secondary); border-radius: 3px; position: relative;">
+                                    <div style="width: ${value * 2.5}%; height: 100%; background: #f59e0b; border-radius: 3px;"></div>
+                                </div>
+                                <span class="weight-value" style="color: ${value === 0 ? '#ef4444' : '#f59e0b'};">${value}%</span>
+                            </div>
+                        `).join('')}
+                        <div class="weights-total" style="margin-top: 0.5rem;">
+                            <span>Total:</span>
+                            <span style="color: #f59e0b;">${Object.values(commodityWeights).reduce((a, b) => a + b, 0)}%</span>
                         </div>
                     `;
                 }
@@ -3368,8 +3453,8 @@
                             <h3>📊 System Info - v${data.version || '8.3'}</h3>
                             <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1rem;">
                                 <div class="result-card">
-                                    <div class="value">${data.system_info?.total_pairs || 45}</div>
-                                    <div class="label">Forex Pairs</div>
+                                    <div class="value">${data.system_info?.total_pairs || 51}</div>
+                                    <div class="label">Instruments</div>
                                 </div>
                                 <div class="result-card">
                                     <div class="value">${data.system_info?.total_factors || 11}</div>
@@ -3430,7 +3515,7 @@
                                     <div class="label">Strength Label</div>
                                 </div>
                             </div>
-                            <h4 style="margin-top: 1rem;">v9.2.4 Factor Groups (8 Groups):</h4>
+                            <h4 style="margin-top: 1rem;">v9.3.0 Factor Groups (8 Groups):</h4>
                             <table class="data-table">
                                 <thead>
                                     <tr><th>Group</th><th>Weight</th><th>Score</th><th>Signal</th></tr>
@@ -3479,7 +3564,7 @@
                                 <span style="color: var(--accent-red);">⚠ FALLBACK</span> = Static placeholder
                             </div>
                             <div style="margin-top: 1rem; padding: 0.75rem; background: var(--bg-tertiary); border-radius: 8px;">
-                                <strong>v9.2.4 Conviction:</strong>
+                                <strong>v9.3.0 Conviction:</strong>
                                 Score ${data.score_validation?.conviction_v9?.score || 0} (${data.score_validation?.conviction_v9?.label || 'N/A'}) |
                                 <strong>Breadth:</strong> ${((data.score_validation?.conviction_v9?.breadth || 0) * 100).toFixed(0)}% |
                                 <strong>Groups:</strong> ${data.score_validation?.conviction_v9?.bullish_groups || 0} Bullish, ${data.score_validation?.conviction_v9?.bearish_groups || 0} Bearish |
@@ -3597,17 +3682,18 @@
                     const factors = data.factor_details;
                     container.innerHTML = `
                         <div class="audit-section">
-                            <h3>📖 Complete Scoring Methodology - v9.2.4 PRO (8-Gate Protected)</h3>
+                            <h3>📖 Complete Scoring Methodology - v9.3.0 PRO (8-Gate Protected)</h3>
                             <p style="color: var(--text-secondary); margin-bottom: 1rem;">
-                                This system merges 11 individual factors into <strong>8 independent groups</strong> (incl. Currency Strength from 45-pair analysis) with <strong>regime-dynamic weights</strong>, an <strong>8-gate quality filter</strong> (incl. AI alignment + data quality), and a separate <strong>conviction metric</strong> (breadth x strength).
+                                This system merges 11 individual factors into <strong>8 independent groups</strong> (incl. Currency Strength from 51-instrument analysis) with <strong>regime-dynamic weights</strong>, an <strong>8-gate quality filter</strong> (incl. AI alignment + data quality), and a separate <strong>conviction metric</strong> (breadth x strength).
+                                <strong>51 instruments</strong> (45 Forex + 6 Commodities) with <strong>separate weight profiles</strong>.
                                 All calculations use <strong>100% REAL market data + AI analysis</strong>. <strong style="color: #ef4444;">3 gates are MANDATORY (G3 Trend, G5 Calendar, G8 Data)</strong>.
                             </p>
                         </div>
 
                         <div class="audit-section">
-                            <h3>📦 8 Factor Groups (Regime-Weighted) - v9.2.4</h3>
+                            <h3>📦 8 Factor Groups — Forex Weights (Regime-Weighted) - v9.3.0</h3>
                             <table class="data-table">
-                                <thead><tr><th>Group</th><th>Default Weight</th><th>Sources</th></tr></thead>
+                                <thead><tr><th>Group</th><th>Forex Weight</th><th>Sources</th></tr></thead>
                                 <tbody>
                                     <tr><td><strong>Trend & Momentum</strong></td><td style="font-weight: 600;">21%</td><td>Technical (RSI/MACD/ADX) 60% + MTF (H1/H4/D1) 40%</td></tr>
                                     <tr><td><strong>Fundamental</strong></td><td style="font-weight: 600;">15%</td><td>Interest rate differentials + FRED macro data</td></tr>
@@ -3616,11 +3702,26 @@
                                     <tr><td><strong>Mean Reversion</strong></td><td style="font-weight: 600;">11%</td><td>Quantitative (Z-Score/Bollinger) 55% + Structure (S/R) 45%</td></tr>
                                     <tr><td><strong>Calendar Risk</strong></td><td style="font-weight: 600;">8%</td><td>Economic events + Seasonality</td></tr>
                                     <tr><td><strong>AI Synthesis</strong></td><td style="font-weight: 600;">10%</td><td>GPT enhanced analysis — activates when 2+ groups agree</td></tr>
-                                    <tr style="background: rgba(139, 92, 246, 0.1);"><td><strong>Currency Strength</strong> <span style="color: #a78bfa; font-size: 0.7rem;">NEW</span></td><td style="font-weight: 600; color: #a78bfa;">10%</td><td>45-pair analysis — base vs quote currency relative strength</td></tr>
+                                    <tr><td><strong>Currency Strength</strong></td><td style="font-weight: 600; color: #a78bfa;">10%</td><td>51-instrument analysis — base vs quote currency relative strength</td></tr>
+                                </tbody>
+                            </table>
+
+                            <h3 style="margin-top: 1.5rem;">🏗️ 8 Factor Groups — Commodity Weights (v9.3.0)</h3>
+                            <table class="data-table">
+                                <thead><tr><th>Group</th><th>Commodity Weight</th><th>Sources</th></tr></thead>
+                                <tbody>
+                                    <tr><td><strong>Trend & Momentum</strong></td><td style="font-weight: 600; color: #f59e0b;">25%</td><td>Commodities trend strongly — RSI/MACD/ADX + MTF</td></tr>
+                                    <tr><td><strong>Intermarket</strong></td><td style="font-weight: 600; color: #f59e0b;">18%</td><td>Cross-commodity, DXY, VIX, Yields, Equities</td></tr>
+                                    <tr><td><strong>Sentiment</strong></td><td style="font-weight: 600;">13%</td><td>IG + COT institutional + commodity news</td></tr>
+                                    <tr><td><strong>Fundamental</strong></td><td style="font-weight: 600; color: #f59e0b;">12%</td><td>DXY inverse, Real yields, VIX, EIA inventory</td></tr>
+                                    <tr><td><strong>Mean Reversion</strong></td><td style="font-weight: 600; color: #f59e0b;">12%</td><td>Z-Score, Bollinger %B + S/R structure</td></tr>
+                                    <tr><td><strong>AI Synthesis</strong></td><td style="font-weight: 600; color: #f59e0b;">12%</td><td>GPT-4o-mini commodity analysis</td></tr>
+                                    <tr><td><strong>Calendar Risk</strong></td><td style="font-weight: 600;">8%</td><td>OPEC, EIA, FOMC, PMI events</td></tr>
+                                    <tr style="background: rgba(239, 68, 68, 0.1);"><td><strong>Currency Strength</strong></td><td style="font-weight: 600; color: #ef4444;">0%</td><td>Not applicable for commodities</td></tr>
                                 </tbody>
                             </table>
                             <p style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);">
-                                Weights shift dynamically based on detected market regime (trending, ranging, volatile, quiet).
+                                Weights shift dynamically based on detected market regime. <strong style="color: #f59e0b;">Commodity weights</strong> are separate from forex to prevent overfitting.
                             </p>
                         </div>
 
@@ -4179,16 +4280,18 @@
                     container.innerHTML = `
                         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
                             ${Object.entries(data).filter(([k]) => k !== 'success').map(([name, info]) => `
-                                <div class="result-card">
+                                <div class="result-card" style="${['goldapi','eia'].includes(name) ? 'border-left: 3px solid #f59e0b;' : ''}">
                                     <div class="value">
                                         <span class="status-badge ${info.status === 'OK' ? 'ok' : ['NOT_CONFIGURED', 'RATE_LIMITED', 'SCHEDULED', 'PENDING'].includes(info.status) ? 'limited' : 'error'}">
                                             ${info.status}
                                         </span>
                                     </div>
-                                    <div class="label">${name.toUpperCase()}</div>
+                                    <div class="label">${name.toUpperCase().replace('_', ' ')}</div>
                                     <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">
                                         ${info.configured ? 'Configured' : 'Not Configured'}
                                         ${info.cooldown_min ? ` (${info.cooldown_min}m cooldown)` : ''}
+                                        ${info.purpose ? `<br>${info.purpose}` : ''}
+                                        ${info.coverage ? `<br><span style="color:#f59e0b;">${info.coverage}</span>` : ''}
                                     </div>
                                 </div>
                             `).join('')}
@@ -4354,7 +4457,7 @@
                         <!-- v9.2.4 Enhancements -->
                         ${data.enhancements ? `
                         <div class="audit-section" style="margin-top: 1rem;">
-                            <h3>🚀 v9.2.4 Factor Enhancements</h3>
+                            <h3>🚀 v9.3.0 Factor Enhancements</h3>
                             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem;">
                                 ${Object.entries(data.enhancements).filter(([k]) => k !== 'version').map(([factor, features]) => `
                                     <div style="padding: 0.75rem; background: linear-gradient(135deg, rgba(59,130,246,0.1), rgba(139,92,246,0.1)); border-radius: 0.5rem; border-left: 3px solid #8b5cf6;">
@@ -4495,9 +4598,9 @@
 
                     container.innerHTML = `
                         <div class="audit-section">
-                            <h3>📊 Currency Correlation Analysis (v9.2.4)</h3>
+                            <h3>📊 Currency & Commodity Correlation Analysis (v9.3.0)</h3>
                             <p style="color: var(--text-secondary); margin-bottom: 1rem;">
-                                Real-time currency strength analysis using all 45 pairs. Higher scores = stronger currency.
+                                Real-time currency strength analysis using all 51 instruments. Higher scores = stronger currency.
                             </p>
                         </div>
 
