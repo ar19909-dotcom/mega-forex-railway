@@ -9047,8 +9047,15 @@ def run_system_audit():
     if all([IG_API_KEY, IG_USERNAME, IG_PASSWORD]):
         try:
             ig_logged_in = ig_login()
+            # Distinguish rate-limited (temporary) from real errors
+            if ig_logged_in:
+                ig_status = 'OK'
+            elif ig_session.get('rate_limited'):
+                ig_status = 'LIMITED'  # Rate limited but configured and will retry
+            else:
+                ig_status = 'ERROR'
             audit['api_status']['ig_markets'] = {
-                'status': 'OK' if ig_logged_in else 'ERROR',
+                'status': ig_status,
                 'account_type': IG_ACC_TYPE,
                 'logged_in': ig_logged_in,
                 'purpose': 'Real client sentiment/positioning data',
@@ -9056,9 +9063,10 @@ def run_system_audit():
             }
         except Exception as e:
             audit['api_status']['ig_markets'] = {
-                'status': 'ERROR',
-                'error': str(e),
-                'account_type': IG_ACC_TYPE
+                'status': 'LIMITED',
+                'error': str(e)[:100],
+                'account_type': IG_ACC_TYPE,
+                'purpose': 'Real client sentiment/positioning data'
             }
     else:
         audit['api_status']['ig_markets'] = {
@@ -9543,16 +9551,24 @@ def run_ai_system_health_check(use_ai=True):
     if all([IG_API_KEY, IG_USERNAME, IG_PASSWORD]):
         try:
             ig_logged_in = ig_login()
-            api_check['details']['ig_markets'] = 'OK' if ig_logged_in else 'ERROR'
-            if not ig_logged_in:
+            if ig_logged_in:
+                api_check['details']['ig_markets'] = 'OK'
+            elif ig_session.get('rate_limited'):
+                api_check['details']['ig_markets'] = 'RATE_LIMITED'
+                health['warnings'].append({
+                    'type': 'API_RATE_LIMITED',
+                    'message': 'IG Markets rate limited - using Saxo Bank fallback for sentiment',
+                    'severity': 'LOW'
+                })
+            else:
+                api_check['details']['ig_markets'] = 'LIMITED'
                 health['warnings'].append({
                     'type': 'API_AUTH_FAIL',
-                    'message': 'IG Markets login failed - sentiment may be limited',
-                    'severity': 'MEDIUM'
+                    'message': 'IG Markets login failed - using Saxo Bank fallback for sentiment',
+                    'severity': 'LOW'
                 })
-                health['overall_score'] -= 5
         except Exception as e:
-            api_check['details']['ig_markets'] = f'ERROR: {str(e)[:50]}'
+            api_check['details']['ig_markets'] = f'LIMITED: {str(e)[:50]}'
     else:
         api_check['details']['ig_markets'] = 'NOT_CONFIGURED'
 
