@@ -8393,8 +8393,9 @@ def generate_signal(pair):
         confidence_result = calculate_signal_confidence(signal_data)
         signal_data['confidence'] = confidence_result
 
-        # Save signal to database (only for non-neutral signals with good quality)
-        if direction != 'NEUTRAL' and trade_quality in ['A+', 'A', 'B']:
+        # Save signal to database for accuracy tracking
+        # v9.2.4: Save ALL non-neutral signals (A+ through D) for comprehensive evaluation
+        if direction != 'NEUTRAL':
             signal_id = save_signal_to_db(signal_data)
             if signal_id:
                 logger.debug(f"📊 Signal saved to DB: {pair} {direction} Grade:{trade_quality} ID:{signal_id}")
@@ -10008,6 +10009,15 @@ def get_signals():
         with cache_lock:
             cache['signals']['data'] = result
             cache['signals']['timestamp'] = datetime.now()
+
+        # v9.2.4: Auto-evaluate historical signals in background
+        # This ensures accuracy data builds up without manual clicks
+        try:
+            from threading import Thread
+            eval_thread = Thread(target=evaluate_historical_signals, daemon=True)
+            eval_thread.start()
+        except Exception as eval_err:
+            logger.debug(f"Background eval start failed: {eval_err}")
 
         return jsonify(result)
 
