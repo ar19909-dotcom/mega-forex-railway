@@ -2230,7 +2230,21 @@
             // Commodities (6) - v9.3.0
             'XAU/USD', 'XAG/USD', 'XPT/USD', 'WTI/USD', 'BRENT/USD', 'XCU/USD'
         ];
-        
+
+        // v9.3.0: TradingView symbol mapping for commodities
+        // TradingView uses different symbols for oil/copper
+        function getTradingViewSymbol(pair) {
+            const tvSymbols = {
+                'XAU/USD': 'XAUUSD',      // Gold - works as-is
+                'XAG/USD': 'XAGUSD',      // Silver - works as-is
+                'XPT/USD': 'XPTUSD',      // Platinum - works as-is
+                'WTI/USD': 'USOIL',       // WTI Oil - TradingView uses USOIL
+                'BRENT/USD': 'UKOIL',     // Brent Oil - TradingView uses UKOIL
+                'XCU/USD': 'XCUUSD'       // Copper - works as XCUUSD
+            };
+            return tvSymbols[pair] || pair.replace('/', '');
+        }
+
         // Tab Navigation
         document.querySelectorAll('.nav-tab').forEach(tab => {
             tab.addEventListener('click', () => {
@@ -2909,8 +2923,8 @@
                         <!-- TradingView Chart -->
                         <h4 style="margin: 1.5rem 0 0.5rem;">Price Chart</h4>
                         <div style="height: 400px; background: var(--bg-secondary); border-radius: 0.5rem; overflow: hidden;">
-                            <iframe 
-                                src="https://s.tradingview.com/widgetembed/?frameElementId=tradingview&symbol=${signal.pair.replace('/', '')}&interval=60&theme=dark&style=1&locale=en&toolbar_bg=%231a1f2e&enable_publishing=false&hide_top_toolbar=false&hide_legend=false&save_image=false&container_id=tradingview_chart"
+                            <iframe
+                                src="https://s.tradingview.com/widgetembed/?frameElementId=tradingview&symbol=${getTradingViewSymbol(signal.pair)}&interval=60&theme=dark&style=1&locale=en&toolbar_bg=%231a1f2e&enable_publishing=false&hide_top_toolbar=false&hide_legend=false&save_image=false&container_id=tradingview_chart"
                                 style="width: 100%; height: 100%; border: none;">
                             </iframe>
                         </div>
