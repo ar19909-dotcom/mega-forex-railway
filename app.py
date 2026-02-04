@@ -1,19 +1,19 @@
 """
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║                   MEGA FOREX v9.3.0 PRO - AI-ENHANCED SYSTEM                 ║
-║                    Build: February 4, 2026 - Production Ready                ║
+║                    Build: February 5, 2026 - COMMODITIES COMPLETE            ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
 ║  ✓ 45 Forex Pairs + 6 Commodities (51 Instruments)                           ║
 ║  ✓ 8-Group Gated Scoring + 8-Gate Quality Filter (v9.3.0)                    ║
 ║  ✓ Separate Scoring Weights: Forex vs Commodities                            ║
-║  ✓ Percentage Scoring: 0-100% for LONG and SHORT independently               ║
-║  ✓ Entry Window: 0-8 hours based on signal strength                          ║
+║  ✓ EIA Live Oil Prices (WTI/Brent) + GoldAPI (XAU/XAG/XPT)                   ║
+║  ✓ Supply & Demand Factor (replaces Currency Strength for commodities)       ║
 ║  ✓ 16 Candlestick Pattern Recognition                                        ║
 ║  ✓ SQLite Trade Journal & Signal History                                     ║
 ║  ✓ Smart Dynamic SL/TP (Variable ATR + Liquidity Zones)                      ║
 ║  ✓ REAL IG Client Sentiment + Institutional COT Data                         ║
 ║  ✓ Complete Backtesting Module                                               ║
-║  ✓ DATA QUALITY INDICATORS (v9.3.0 - AI + REAL DATA)                         ║
+║  ✓ TradingView Charts (USOIL/UKOIL for oil commodities)                      ║
 ║  ✓ Smart Money Concepts: Order Blocks, Liquidity Zones, Session Timing       ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
 ║  FOREX SCORING (45 pairs) - 8-Group Gated AI-Enhanced (v9.3.0)               ║
@@ -36,6 +36,7 @@
 ║  - Supply & Demand (8%): EIA inventory, USD correlation, warehouse stocks   ║
 ║  - Calendar Risk (8%): OPEC, EIA, FOMC, PMI events                          ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
+║  17 APIs: Polygon, TwelveData, TraderMade, GoldAPI, EIA, API Ninjas + more   ║
 ║  8-Gate Filter: G3 Trend, G5 Calendar, G8 Data are MANDATORY                 ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 """
