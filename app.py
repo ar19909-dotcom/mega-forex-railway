@@ -1,6 +1,6 @@
 """
 ╔══════════════════════════════════════════════════════════════════════════════╗
-║                   MEGA FOREX v9.2.4 PRO - AI-ENHANCED SYSTEM                 ║
+║                   MEGA FOREX v9.3.0 PRO - AI-ENHANCED SYSTEM                 ║
 ║                    Build: January 31, 2026 - Production Ready                ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
 ║  ✓ 45 Forex Pairs with guaranteed data coverage                              ║
@@ -199,11 +199,50 @@ FOREX_PAIRS = [
     # CROSSES - CHF (2)
     'NZD/CHF', 'CAD/CHF',
     # EXOTICS - USD (9)
-    'USD/SGD', 'USD/HKD', 'USD/MXN', 'USD/ZAR', 'USD/TRY', 
+    'USD/SGD', 'USD/HKD', 'USD/MXN', 'USD/ZAR', 'USD/TRY',
     'USD/NOK', 'USD/SEK', 'USD/DKK', 'USD/PLN',
     # EXOTICS - EUR (6)
     'EUR/TRY', 'EUR/PLN', 'EUR/NOK', 'EUR/SEK', 'EUR/HUF', 'EUR/CZK'
 ]
+
+# v9.3.0: COMMODITY PAIRS (6 instruments)
+# ═══════════════════════════════════════════════════════════════════════════════
+COMMODITY_PAIRS = [
+    'XAU/USD',    # Gold
+    'XAG/USD',    # Silver
+    'XPT/USD',    # Platinum
+    'WTI/USD',    # WTI Crude Oil
+    'BRENT/USD',  # Brent Crude Oil
+    'XCU/USD',    # Copper
+]
+
+# Combined list of all tradeable instruments (51 total)
+ALL_INSTRUMENTS = FOREX_PAIRS + COMMODITY_PAIRS
+
+# v9.3.0: Commodity pip sizes and decimal places
+COMMODITY_PIP_SIZES = {
+    'XAU/USD': 0.10,     # Gold: $0.10 per pip
+    'XAG/USD': 0.010,    # Silver: $0.01 per pip
+    'XPT/USD': 0.10,     # Platinum: $0.10 per pip
+    'WTI/USD': 0.01,     # WTI Oil: $0.01 per pip
+    'BRENT/USD': 0.01,   # Brent Oil: $0.01 per pip
+    'XCU/USD': 0.001,    # Copper: $0.001 per pip
+}
+
+COMMODITY_DECIMAL_PLACES = {
+    'XAU/USD': 2, 'XAG/USD': 3, 'XPT/USD': 2,
+    'WTI/USD': 2, 'BRENT/USD': 2, 'XCU/USD': 4,
+}
+
+def get_pip_size(pair):
+    """v9.3.0: Centralized pip size for all instruments"""
+    if pair in COMMODITY_PIP_SIZES:
+        return COMMODITY_PIP_SIZES[pair]
+    return 0.01 if 'JPY' in pair else 0.0001
+
+def is_commodity(pair):
+    """v9.3.0: Check if pair is a commodity"""
+    return pair in COMMODITY_PAIRS
 
 PAIR_CATEGORIES = {
     'MAJOR': ['EUR/USD', 'GBP/USD', 'USD/JPY', 'USD/CHF', 'AUD/USD', 'USD/CAD', 'NZD/USD'],
@@ -213,7 +252,8 @@ PAIR_CATEGORIES = {
               'AUD/NZD', 'AUD/CAD', 'AUD/CHF', 'NZD/CAD', 'NZD/CHF', 'CAD/CHF'],
     'EXOTIC': ['USD/SGD', 'USD/HKD', 'USD/MXN', 'USD/ZAR', 'USD/TRY',
                'USD/NOK', 'USD/SEK', 'USD/DKK', 'USD/PLN',
-               'EUR/TRY', 'EUR/PLN', 'EUR/NOK', 'EUR/SEK', 'EUR/HUF', 'EUR/CZK']
+               'EUR/TRY', 'EUR/PLN', 'EUR/NOK', 'EUR/SEK', 'EUR/HUF', 'EUR/CZK'],
+    'COMMODITY': ['XAU/USD', 'XAG/USD', 'XPT/USD', 'WTI/USD', 'BRENT/USD', 'XCU/USD']
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -439,6 +479,15 @@ def get_currency_strength_score(pair, rates_dict=None):
     - Score 42-58: Similar strength (neutral)
     """
     try:
+        # v9.3.0: Commodities don't have currency strength - return neutral
+        if is_commodity(pair):
+            return {
+                'score': 50, 'signal': 'NEUTRAL',
+                'base_strength': 50, 'quote_strength': 50,
+                'differential': 0,
+                'details': 'N/A for commodities'
+            }
+
         if rates_dict is None:
             rates_dict = get_all_rates()
 
@@ -661,6 +710,19 @@ REGIME_WEIGHTS = {
     }
 }
 
+# v9.3.0: Commodity-specific factor weights (currency_strength N/A)
+COMMODITY_FACTOR_WEIGHTS = {
+    'trend_momentum': 25,     # Commodities trend strongly
+    'fundamental': 12,        # DXY + real yields + supply/demand
+    'sentiment': 13,          # COT positioning + retail
+    'intermarket': 18,        # Cross-commodity correlations critical
+    'mean_reversion': 12,     # Commodities do revert
+    'calendar_risk': 8,       # OPEC, EIA, crop reports
+    'ai_synthesis': 12,       # AI analysis
+    'currency_strength': 0    # Not applicable for commodities
+}
+# Total: 100%
+
 # v9.0 STATISTICAL CAPS - Realistic limits (FXCM 43M trade study)
 STAT_CAPS = {
     'win_rate_max': 65.0,
@@ -734,7 +796,10 @@ STATIC_RATES = {
     'NZD/CHF': 0.5085, 'CAD/CHF': 0.6295, 'USD/SGD': 1.3445, 'USD/HKD': 7.7685,
     'USD/MXN': 20.45, 'USD/ZAR': 18.35, 'USD/TRY': 35.85, 'USD/NOK': 11.25,
     'USD/SEK': 11.05, 'USD/DKK': 7.15, 'USD/PLN': 4.05, 'EUR/TRY': 38.90,
-    'EUR/PLN': 4.39, 'EUR/NOK': 12.21, 'EUR/SEK': 11.99, 'EUR/HUF': 408.50, 'EUR/CZK': 25.25
+    'EUR/PLN': 4.39, 'EUR/NOK': 12.21, 'EUR/SEK': 11.99, 'EUR/HUF': 408.50, 'EUR/CZK': 25.25,
+    # v9.3.0: Commodities
+    'XAU/USD': 2650.00, 'XAG/USD': 30.50, 'XPT/USD': 980.00,
+    'WTI/USD': 75.00, 'BRENT/USD': 80.00, 'XCU/USD': 4.10
 }
 
 DEFAULT_ATR = {
@@ -748,7 +813,10 @@ DEFAULT_ATR = {
     'NZD/CHF': 0.0045, 'CAD/CHF': 0.0055, 'USD/SGD': 0.0075, 'USD/HKD': 0.0035,
     'USD/MXN': 0.25, 'USD/ZAR': 0.35, 'USD/TRY': 0.85, 'USD/NOK': 0.15,
     'USD/SEK': 0.15, 'USD/DKK': 0.065, 'USD/PLN': 0.055, 'EUR/TRY': 0.95,
-    'EUR/PLN': 0.065, 'EUR/NOK': 0.18, 'EUR/SEK': 0.16, 'EUR/HUF': 5.5, 'EUR/CZK': 0.35
+    'EUR/PLN': 0.065, 'EUR/NOK': 0.18, 'EUR/SEK': 0.16, 'EUR/HUF': 5.5, 'EUR/CZK': 0.35,
+    # v9.3.0: Commodities
+    'XAU/USD': 30.0, 'XAG/USD': 0.60, 'XPT/USD': 18.0,
+    'WTI/USD': 1.80, 'BRENT/USD': 1.90, 'XCU/USD': 0.08
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1116,7 +1184,7 @@ def close_trade(trade_id, exit_price, outcome, notes=''):
         entry_price = trade[7]
         
         # Calculate P&L
-        pip_size = 0.0001 if 'JPY' not in pair else 0.01
+        pip_size = get_pip_size(pair)
         
         if direction == 'LONG':
             pnl_pips = (exit_price - entry_price) / pip_size
@@ -1359,7 +1427,7 @@ def evaluate_historical_signals():
             exit_price = exit_candle.get('close', entry_price)
 
             # Calculate price change
-            pip_size = 0.01 if 'JPY' in pair else 0.0001
+            pip_size = get_pip_size(pair)
             price_change = exit_price - entry_price
             price_change_pips = round(price_change / pip_size, 1)
             price_change_pct = round((price_change / entry_price) * 100, 4) if entry_price > 0 else 0
@@ -2250,7 +2318,7 @@ def get_all_rates():
 
     rates = {}
     with ThreadPoolExecutor(max_workers=10) as executor:
-        future_to_pair = {executor.submit(get_rate, pair): pair for pair in FOREX_PAIRS}
+        future_to_pair = {executor.submit(get_rate, pair): pair for pair in ALL_INSTRUMENTS}
         for future in as_completed(future_to_pair):
             pair = future_to_pair[future]
             try:
@@ -4182,7 +4250,9 @@ def analyze_sentiment(pair):
                 'USD/CHF': 'USDCHF', 'AUD/USD': 'AUDUSD', 'USD/CAD': 'USDCAD',
                 'NZD/USD': 'NZDUSD', 'EUR/GBP': 'EURGBP', 'EUR/JPY': 'EURJPY',
                 'GBP/JPY': 'GBPJPY', 'AUD/JPY': 'AUDJPY', 'EUR/AUD': 'EURAUD',
-                'EUR/CHF': 'EURCHF', 'GBP/CHF': 'GBPCHF', 'EUR/CAD': 'EURCAD'
+                'EUR/CHF': 'EURCHF', 'GBP/CHF': 'GBPCHF', 'EUR/CAD': 'EURCAD',
+                # v9.3.0: Commodities
+                'XAU/USD': 'GOLD', 'XAG/USD': 'SILVER', 'WTI/USD': 'OIL_CRUDE'
             }
 
             market_id = ig_market_ids.get(pair)
@@ -5834,7 +5904,14 @@ def get_cot_data(currency):
         'AUD': 'AD',  # Australian Dollar
         'CAD': 'CD',  # Canadian Dollar
         'NZD': 'NE',  # New Zealand Dollar
-        'MXN': 'MP'   # Mexican Peso
+        'MXN': 'MP',  # Mexican Peso
+        # v9.3.0: Commodity COT codes
+        'XAU': 'GC',  # Gold (COMEX)
+        'XAG': 'SI',  # Silver (COMEX)
+        'XPT': 'PL',  # Platinum (NYMEX)
+        'WTI': 'CL',  # WTI Crude Oil (NYMEX)
+        'BRENT': 'BZ', # Brent Crude
+        'XCU': 'HG'   # Copper (COMEX)
     }
 
     if currency not in cftc_codes:
@@ -6013,7 +6090,7 @@ def analyze_intermarket(pair):
     # Gold Correlation (Risk Sentiment)
     # High gold = Risk-off = Bearish for risk currencies (AUD, NZD), Bullish for JPY, CHF
     # ═══════════════════════════════════════════════════════════════════════════
-    if gold:
+    if gold and pair != 'XAU/USD' and pair != 'XAG/USD' and pair != 'XPT/USD':  # v9.3.0: Skip self-reference for metals
         gold_baseline = 2000  # Recent average
         gold_sentiment = (gold - gold_baseline) / gold_baseline * 100
         
@@ -6784,75 +6861,131 @@ def calculate_factor_scores(pair):
     }
     
     # ═══════════════════════════════════════════════════════════════════════════
-    # 2. FUNDAMENTAL (17%) - Enhanced v9.2.4
-    # Now considers: Interest rates + Policy bias + GDP + Inflation + Current Account
-    # Comprehensive fundamental analysis for better trade decisions
+    # 2. FUNDAMENTAL - v9.3.0: Commodity vs Forex branching
+    # Forex: Interest rates + Policy bias + GDP + Inflation + Current Account
+    # Commodities: DXY correlation + Real yields + VIX + Supply/demand
     # ═══════════════════════════════════════════════════════════════════════════
-    rate_diff = get_interest_rate_differential(base, quote)
-    differential = rate_diff['differential']
-
-    # Base score from rate differential (±25 points from 50)
-    if differential >= 4.0:
-        fund_score = 75
-    elif differential >= 3.0:
-        fund_score = 70
-    elif differential >= 2.0:
-        fund_score = 65
-    elif differential >= 1.0:
-        fund_score = 58
-    elif differential >= 0.5:
-        fund_score = 54
-    elif differential <= -4.0:
-        fund_score = 25
-    elif differential <= -3.0:
-        fund_score = 30
-    elif differential <= -2.0:
-        fund_score = 35
-    elif differential <= -1.0:
-        fund_score = 42
-    elif differential <= -0.5:
-        fund_score = 46
-    else:
+    if is_commodity(pair):
+        # v9.3.0: Commodity fundamental analysis
+        intermarket = get_real_intermarket_data() or {}
+        dxy = intermarket.get('dxy', 104)
+        us_10y = intermarket.get('us_10y', 4.5)
+        vix = intermarket.get('vix', 18.0)
         fund_score = 50
 
-    # v9.2: Central Bank Policy Bias adjustments
-    base_policy = CENTRAL_BANK_POLICY_BIAS.get(base, {'bias': 'NEUTRAL', 'score_adj': 0})
-    quote_policy = CENTRAL_BANK_POLICY_BIAS.get(quote, {'bias': 'NEUTRAL', 'score_adj': 0})
-    policy_adjustment = base_policy['score_adj'] - quote_policy['score_adj']
-    fund_score += policy_adjustment
+        # DXY inverse: Strong USD = bearish for commodities priced in USD
+        dxy_impact = -((dxy - 100) / 100) * 30  # ±15 points
+        fund_score += max(-15, min(15, dxy_impact))
 
-    # v9.2.4: Economic Fundamentals (GDP, Inflation, Current Account)
-    econ_diff = get_economic_differential(base, quote)
-    econ_adjustment = econ_diff['score_adj']
-    fund_score += econ_adjustment
+        # Precious metals: real yield correlation
+        if pair in ['XAU/USD', 'XAG/USD', 'XPT/USD']:
+            real_yield = us_10y - 2.5  # Approximate inflation expectation
+            if real_yield > 2.0:
+                fund_score -= 10
+            elif real_yield > 1.0:
+                fund_score -= 5
+            elif real_yield < 0:
+                fund_score += 10
+            elif real_yield < 0.5:
+                fund_score += 5
+            # VIX: high fear = bullish for gold/silver
+            if pair == 'XAU/USD':
+                if vix > 25: fund_score += 8
+                elif vix > 20: fund_score += 4
+                elif vix < 14: fund_score -= 5
 
-    # Clamp to valid range
-    fund_score = max(10, min(90, fund_score))
+        # Energy: demand proxy
+        elif pair in ['WTI/USD', 'BRENT/USD']:
+            if vix > 25: fund_score -= 5
+            elif vix < 15: fund_score += 3
 
-    factors['fundamental'] = {
-        'score': round(fund_score, 1),
-        'signal': 'BULLISH' if fund_score >= 58 else 'BEARISH' if fund_score <= 42 else 'NEUTRAL',
-        'data_quality': 'REAL',
-        'details': {
-            'base_rate': rate_diff['base_rate'],
-            'quote_rate': rate_diff['quote_rate'],
-            'differential': differential,
-            'carry_direction': rate_diff['carry_direction'],
-            'base_policy': base_policy['bias'],
-            'quote_policy': quote_policy['bias'],
-            'policy_adjustment': policy_adjustment,
-            'base_outlook': base_policy.get('outlook', 'N/A'),
-            'quote_outlook': quote_policy.get('outlook', 'N/A'),
-            'gdp_differential': econ_diff['gdp_diff'],
-            'base_gdp': econ_diff['base_gdp'],
-            'quote_gdp': econ_diff['quote_gdp'],
-            'inflation_advantage': econ_diff['inflation_advantage'],
-            'base_inflation': econ_diff['base_inflation'],
-            'quote_inflation': econ_diff['quote_inflation'],
-            'current_account_diff': econ_diff['ca_diff'],
-            'economic_adjustment': econ_adjustment
+        # Copper: industrial demand proxy
+        elif pair == 'XCU/USD':
+            if vix > 25: fund_score -= 6
+            elif vix < 15: fund_score += 4
+
+        fund_score = max(10, min(90, fund_score))
+
+        factors['fundamental'] = {
+            'score': round(fund_score, 1),
+            'signal': 'BULLISH' if fund_score >= 58 else 'BEARISH' if fund_score <= 42 else 'NEUTRAL',
+            'data_quality': 'REAL' if intermarket.get('data_quality') == 'REAL' else 'ESTIMATED',
+            'details': {
+                'type': 'COMMODITY',
+                'dxy': dxy,
+                'dxy_impact': round(dxy_impact, 1),
+                'us_10y': us_10y,
+                'vix': vix,
+                'analysis': 'Supply/demand + USD correlation'
+            }
         }
-    }
+    else:
+        # Forex fundamental analysis (existing logic)
+        rate_diff = get_interest_rate_differential(base, quote)
+        differential = rate_diff['differential']
+
+        # Base score from rate differential (±25 points from 50)
+        if differential >= 4.0:
+            fund_score = 75
+        elif differential >= 3.0:
+            fund_score = 70
+        elif differential >= 2.0:
+            fund_score = 65
+        elif differential >= 1.0:
+            fund_score = 58
+        elif differential >= 0.5:
+            fund_score = 54
+        elif differential <= -4.0:
+            fund_score = 25
+        elif differential <= -3.0:
+            fund_score = 30
+        elif differential <= -2.0:
+            fund_score = 35
+        elif differential <= -1.0:
+            fund_score = 42
+        elif differential <= -0.5:
+            fund_score = 46
+        else:
+            fund_score = 50
+
+        # v9.2: Central Bank Policy Bias adjustments
+        base_policy = CENTRAL_BANK_POLICY_BIAS.get(base, {'bias': 'NEUTRAL', 'score_adj': 0})
+        quote_policy = CENTRAL_BANK_POLICY_BIAS.get(quote, {'bias': 'NEUTRAL', 'score_adj': 0})
+        policy_adjustment = base_policy['score_adj'] - quote_policy['score_adj']
+        fund_score += policy_adjustment
+
+        # v9.2.4: Economic Fundamentals (GDP, Inflation, Current Account)
+        econ_diff = get_economic_differential(base, quote)
+        econ_adjustment = econ_diff['score_adj']
+        fund_score += econ_adjustment
+
+        # Clamp to valid range
+        fund_score = max(10, min(90, fund_score))
+
+        factors['fundamental'] = {
+            'score': round(fund_score, 1),
+            'signal': 'BULLISH' if fund_score >= 58 else 'BEARISH' if fund_score <= 42 else 'NEUTRAL',
+            'data_quality': 'REAL',
+            'details': {
+                'base_rate': rate_diff['base_rate'],
+                'quote_rate': rate_diff['quote_rate'],
+                'differential': differential,
+                'carry_direction': rate_diff['carry_direction'],
+                'base_policy': base_policy['bias'],
+                'quote_policy': quote_policy['bias'],
+                'policy_adjustment': policy_adjustment,
+                'base_outlook': base_policy.get('outlook', 'N/A'),
+                'quote_outlook': quote_policy.get('outlook', 'N/A'),
+                'gdp_differential': econ_diff['gdp_diff'],
+                'base_gdp': econ_diff['base_gdp'],
+                'quote_gdp': econ_diff['quote_gdp'],
+                'inflation_advantage': econ_diff['inflation_advantage'],
+                'base_inflation': econ_diff['base_inflation'],
+                'quote_inflation': econ_diff['quote_inflation'],
+                'current_account_diff': econ_diff['ca_diff'],
+                'economic_adjustment': econ_adjustment
+            }
+        }
     
     # ═══════════════════════════════════════════════════════════════════════════
     # 3. SENTIMENT (13%) - IG Positioning + News - KEEP AS IS BUT CHECK RANGE
@@ -7510,8 +7643,11 @@ def generate_signal(pair):
         current_price_raw = rate['mid']
         regime = detect_market_regime(adx_raw, atr_raw, current_price_raw)
 
-        # Select regime-specific weights
-        regime_weights = REGIME_WEIGHTS.get(regime, FACTOR_GROUP_WEIGHTS)
+        # Select regime-specific weights (v9.3.0: commodity-specific weights)
+        if is_commodity(pair):
+            regime_weights = COMMODITY_FACTOR_WEIGHTS
+        else:
+            regime_weights = REGIME_WEIGHTS.get(regime, FACTOR_GROUP_WEIGHTS)
 
         # Calculate weighted composite from 7 groups
         composite_score = 0
@@ -7618,7 +7754,7 @@ def generate_signal(pair):
 
         # Pre-compute R:R for gate G4 (need SL/TP estimates)
         atr_gate = tech.get('atr') or DEFAULT_ATR.get(pair, 0.005)
-        pip_size_gate = 0.0001 if 'JPY' not in pair else 0.01
+        pip_size_gate = get_pip_size(pair)
         est_sl_pips = (atr_gate * 1.8) / pip_size_gate
         est_tp1_pips = (atr_gate * 2.5) / pip_size_gate
         est_rr = est_tp1_pips / est_sl_pips if est_sl_pips > 0 else 1.0
@@ -7951,7 +8087,7 @@ def generate_signal(pair):
         # 6. SMART ATR-BASED SL/TP CALCULATION (v9.2.1)
         # Uses ATR as primary guide - not too close (avoid noise), not too wide
         # ─────────────────────────────────────────────────────────────────────────
-        pip_size = 0.0001 if 'JPY' not in pair else 0.01
+        pip_size = get_pip_size(pair)
         entry = current_price
 
         # ─────────────────────────────────────────────────────────────────────────
@@ -8041,19 +8177,21 @@ def generate_signal(pair):
         # SL: minimum 1.5x ATR (avoid noise), maximum 2.5x ATR (not too wide)
         # TP: minimum 2x ATR (achievable), scaled by trend strength
         ATR_MULTIPLIERS = {
-            'MAJOR':  {'sl_min_mult': 1.3, 'sl_max_mult': 2.0, 'tp1_mult': 2.0, 'tp2_mult': 3.5},
-            'MINOR':  {'sl_min_mult': 1.4, 'sl_max_mult': 2.2, 'tp1_mult': 2.2, 'tp2_mult': 3.8},
-            'CROSS':  {'sl_min_mult': 1.5, 'sl_max_mult': 2.5, 'tp1_mult': 2.5, 'tp2_mult': 4.0},
-            'EXOTIC': {'sl_min_mult': 1.6, 'sl_max_mult': 3.0, 'tp1_mult': 3.0, 'tp2_mult': 5.0}
+            'MAJOR':     {'sl_min_mult': 1.3, 'sl_max_mult': 2.0, 'tp1_mult': 2.0, 'tp2_mult': 3.5},
+            'MINOR':     {'sl_min_mult': 1.4, 'sl_max_mult': 2.2, 'tp1_mult': 2.2, 'tp2_mult': 3.8},
+            'CROSS':     {'sl_min_mult': 1.5, 'sl_max_mult': 2.5, 'tp1_mult': 2.5, 'tp2_mult': 4.0},
+            'EXOTIC':    {'sl_min_mult': 1.6, 'sl_max_mult': 3.0, 'tp1_mult': 3.0, 'tp2_mult': 5.0},
+            'COMMODITY': {'sl_min_mult': 1.5, 'sl_max_mult': 2.5, 'tp1_mult': 2.5, 'tp2_mult': 4.5}
         }
         atr_mult = ATR_MULTIPLIERS.get(pair_category, ATR_MULTIPLIERS['CROSS'])
 
         # Hard pip limits as safety net (never exceed these)
         PIP_LIMITS = {
-            'MAJOR':  {'sl_abs_min': 12, 'sl_abs_max': 60,  'tp1_abs_max': 100, 'tp2_abs_max': 180},
-            'MINOR':  {'sl_abs_min': 15, 'sl_abs_max': 80,  'tp1_abs_max': 140, 'tp2_abs_max': 240},
-            'CROSS':  {'sl_abs_min': 18, 'sl_abs_max': 100, 'tp1_abs_max': 180, 'tp2_abs_max': 300},
-            'EXOTIC': {'sl_abs_min': 25, 'sl_abs_max': 150, 'tp1_abs_max': 250, 'tp2_abs_max': 400}
+            'MAJOR':     {'sl_abs_min': 12,  'sl_abs_max': 60,   'tp1_abs_max': 100,  'tp2_abs_max': 180},
+            'MINOR':     {'sl_abs_min': 15,  'sl_abs_max': 80,   'tp1_abs_max': 140,  'tp2_abs_max': 240},
+            'CROSS':     {'sl_abs_min': 18,  'sl_abs_max': 100,  'tp1_abs_max': 180,  'tp2_abs_max': 300},
+            'EXOTIC':    {'sl_abs_min': 25,  'sl_abs_max': 150,  'tp1_abs_max': 250,  'tp2_abs_max': 400},
+            'COMMODITY': {'sl_abs_min': 50,  'sl_abs_max': 500,  'tp1_abs_max': 800,  'tp2_abs_max': 1500}
         }
         limits = PIP_LIMITS.get(pair_category, PIP_LIMITS['CROSS'])
 
@@ -8438,7 +8576,7 @@ def run_backtest(pair, days=30, min_score=60, min_stars=3):
         losses = 0
         
         atr = DEFAULT_ATR.get(pair, 0.005)
-        pip_size = 0.0001 if 'JPY' not in pair else 0.01
+        pip_size = get_pip_size(pair)
         
         for i in range(50, len(candles) - 5):
             # Simulate signal generation
@@ -9210,8 +9348,8 @@ def run_system_audit():
     rates = get_all_rates()
     audit['data_quality'] = {
         'pairs_with_rates': len(rates),
-        'total_pairs': len(FOREX_PAIRS),
-        'coverage': round(len(rates) / len(FOREX_PAIRS) * 100, 1),
+        'total_pairs': len(ALL_INSTRUMENTS),
+        'coverage': round(len(rates) / len(ALL_INSTRUMENTS) * 100, 1),
         'sources': defaultdict(int)
     }
     
@@ -9258,7 +9396,7 @@ def run_system_audit():
     # SYSTEM INFO
     # ═══════════════════════════════════════════════════════════════════════════
     audit['system_info'] = {
-        'total_pairs': len(FOREX_PAIRS),
+        'total_pairs': len(ALL_INSTRUMENTS),
         'pair_categories': {
             'majors': len(PAIR_CATEGORIES['MAJOR']),
             'crosses': len(PAIR_CATEGORIES['CROSS']),
@@ -9693,7 +9831,7 @@ def run_ai_system_health_check(use_ai=True):
     data_check = {'name': 'Data Quality', 'status': 'PASS', 'details': {}}
 
     rates = get_all_rates()
-    coverage = len(rates) / len(FOREX_PAIRS) * 100
+    coverage = len(rates) / len(ALL_INSTRUMENTS) * 100
 
     data_check['details']['pairs_with_rates'] = len(rates)
     data_check['details']['total_pairs'] = len(FOREX_PAIRS)
@@ -9925,10 +10063,10 @@ def run_startup_health_check():
 @app.route('/api-info')
 def api_info():
     return jsonify({
-        'name': 'MEGA FOREX v9.2.4 PRO - AI Enhanced',
+        'name': 'MEGA FOREX v9.3.0 PRO - AI Enhanced',
         'version': '9.2.3',
         'status': 'operational',
-        'pairs': len(FOREX_PAIRS),
+        'pairs': len(ALL_INSTRUMENTS),
         'factor_groups': len(FACTOR_GROUP_WEIGHTS),
         'features': [
             '45 Forex Pairs',
@@ -9975,7 +10113,7 @@ def get_signals():
         signals = []
 
         with ThreadPoolExecutor(max_workers=20) as executor:
-            future_to_pair = {executor.submit(generate_signal, pair): pair for pair in FOREX_PAIRS}
+            future_to_pair = {executor.submit(generate_signal, pair): pair for pair in ALL_INSTRUMENTS}
 
             for future in as_completed(future_to_pair):
                 try:
@@ -10086,7 +10224,7 @@ def get_subscription_signals():
         signals = []
 
         with ThreadPoolExecutor(max_workers=15) as executor:
-            future_to_pair = {executor.submit(generate_signal, pair): pair for pair in FOREX_PAIRS}
+            future_to_pair = {executor.submit(generate_signal, pair): pair for pair in ALL_INSTRUMENTS}
 
             for future in as_completed(future_to_pair):
                 try:
@@ -11679,13 +11817,13 @@ def run_background_health_check():
     thread.start()
 
 run_background_health_check()
-logger.info("🚀 MEGA FOREX v9.2.4 PRO - AI ENHANCED initialized")
+logger.info("🚀 MEGA FOREX v9.3.0 PRO - AI ENHANCED initialized")
 
 if __name__ == '__main__':
     print("=" * 70)
-    print("      MEGA FOREX v9.2.4 PRO - AI ENHANCED SYSTEM")
+    print("      MEGA FOREX v9.3.0 PRO - AI ENHANCED SYSTEM")
     print("=" * 70)
-    print(f"  Pairs:           {len(FOREX_PAIRS)}")
+    print(f"  Instruments:     {len(ALL_INSTRUMENTS)} ({len(FOREX_PAIRS)} Forex + {len(COMMODITY_PAIRS)} Commodities)")
     print(f"  Factor Groups:   8 (merged from 12 individual factors)")
     print(f"  Quality Gates:   8 (G3/G5/G8 mandatory)")
     print(f"  Database:        {DATABASE_PATH}")
@@ -11700,14 +11838,14 @@ if __name__ == '__main__':
     print(f"  CurrencyLayer:   {'✓ (100/month)' if CURRENCYLAYER_KEY else '✗'}")
     print(f"  ExchangeRate:    ✓ (Free, no key needed)")
     print("=" * 70)
-    print("  v9.2.4 PRO FEATURES:")
+    print("  v9.3.0 PRO FEATURES:")
+    print(f"    ✨ {len(ALL_INSTRUMENTS)} Instruments ({len(FOREX_PAIRS)} Forex + {len(COMMODITY_PAIRS)} Commodities)")
     print("    ✨ 8-Group Scoring (11 factors incl. Currency Strength)")
     print("    ✨ 8-Gate Quality Filter (G3 Trend, G5 Calendar, G8 Data = MANDATORY)")
-    print("    ✨ Conviction Metric (breadth x strength, separate from score)")
+    print("    ✨ Commodity-adapted factor weights + DXY/yield fundamentals")
     print("    ✨ Dynamic Regime Weights (trending/ranging/volatile/quiet)")
-    print("    ✨ Realistic Stat Caps (65% win rate max, 2.5 PF max)")
     print("    ✨ 90-Day Signal Evaluation & Historical Accuracy Tracking")
-    print("    ✨ Smart Dynamic SL/TP (Variable ATR)")
+    print("    ✨ Smart Dynamic SL/TP (Variable ATR, commodity-calibrated)")
     print("    ✨ REAL IG Client Sentiment + Institutional COT Data")
     print("    ✨ Complete Backtesting Module")
     print("=" * 70)

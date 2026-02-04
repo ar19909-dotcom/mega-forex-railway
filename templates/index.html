@@ -33,7 +33,7 @@
     <!-- iOS Splash Screens -->
     <link rel="apple-touch-startup-image" href="/static/icon-512.png">
 
-    <title>MEGA FOREX v9.2.4 PRO - AI Enhanced Trading Dashboard</title>
+    <title>MEGA FOREX v9.3.0 PRO - AI Enhanced Trading Dashboard</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
@@ -301,6 +301,7 @@
         .category-badge.major { background: var(--accent-blue); }
         .category-badge.cross { background: var(--accent-purple); }
         .category-badge.exotic { background: var(--accent-yellow); color: #000; }
+        .category-badge.commodity { background: #f59e0b; color: #000; font-weight: 700; }
         
         .composite-score {
             text-align: right;
@@ -1926,11 +1927,11 @@
 
     <!-- Header -->
     <header class="header">
-        <div class="logo">MEGA<span>FOREX</span> v9.2.4 <span style="color: var(--accent-green); font-size: 0.7em;">PRO</span></div>
+        <div class="logo">MEGA<span>FOREX</span> v9.3.0 <span style="color: var(--accent-green); font-size: 0.7em;">PRO</span></div>
         <div class="header-stats">
             <div class="stat-item">
-                <div class="stat-value" id="total-pairs">45</div>
-                <div class="stat-label">Pairs</div>
+                <div class="stat-value" id="total-pairs">51</div>
+                <div class="stat-label">Instruments</div>
             </div>
             <div class="stat-item">
                 <div class="stat-value" id="total-signals">-</div>
@@ -1984,6 +1985,7 @@
                         <option value="major">Major</option>
                         <option value="cross">Cross</option>
                         <option value="exotic">Exotic</option>
+                        <option value="commodity">Commodity</option>
                     </select>
                 </div>
                 <div class="filter-group">
@@ -2324,8 +2326,19 @@
             container.innerHTML = filtered.map(s => createSignalCard(s)).join('');
         }
         
+        // v9.3.0: Dynamic price decimal places for commodities vs forex
+        function priceDecimals(pair) {
+            const commodityDecimals = {
+                'XAU/USD': 2, 'XAG/USD': 3, 'XPT/USD': 2,
+                'WTI/USD': 2, 'BRENT/USD': 2, 'XCU/USD': 4
+            };
+            if (commodityDecimals[pair]) return commodityDecimals[pair];
+            return (pair || '').includes('JPY') ? 3 : 5;
+        }
+
         // Create Signal Card
         function createSignalCard(signal) {
+            const pd = priceDecimals(signal.pair);  // v9.3.0: Dynamic decimals
             const winRate = (signal.statistics?.win_rate || 50);
             const scoreClass = winRate >= 60 ? 'bullish' : winRate <= 45 ? 'bearish' : 'neutral';
             const dirClass = signal.direction.toLowerCase();
@@ -2409,18 +2422,18 @@
                                     ` : ''}
                                 </div>
                                 ${signal.trade_setup?.entry_min && signal.trade_setup?.entry_max && signal.direction !== 'NEUTRAL' ? `
-                                <div class="value" style="font-size: 0.7rem;">${signal.trade_setup.entry_min.toFixed(5)}</div>
+                                <div class="value" style="font-size: 0.7rem;">${signal.trade_setup.entry_min.toFixed(pd)}</div>
                                 <div style="font-size: 0.45rem; color: var(--text-muted);">to</div>
-                                <div class="value" style="font-size: 0.7rem;">${signal.trade_setup.entry_max.toFixed(5)}</div>
-                                ` : `<div class="value">${signal.trade_setup?.entry?.toFixed(5) || 'N/A'}</div>`}
+                                <div class="value" style="font-size: 0.7rem;">${signal.trade_setup.entry_max.toFixed(pd)}</div>
+                                ` : `<div class="value">${signal.trade_setup?.entry?.toFixed(pd) || 'N/A'}</div>`}
                             </div>
                             <div class="setup-item sl">
                                 <div class="label">SL (${signal.trade_setup?.sl_pips?.toFixed(0) || 0}p)</div>
-                                <div class="value">${signal.trade_setup?.sl?.toFixed(5) || 'N/A'}</div>
+                                <div class="value">${signal.trade_setup?.sl?.toFixed(pd) || 'N/A'}</div>
                             </div>
                             <div class="setup-item tp">
                                 <div class="label">TP1 (${signal.trade_setup?.tp1_pips?.toFixed(0) || 0}p)</div>
-                                <div class="value">${signal.trade_setup?.tp1?.toFixed(5) || 'N/A'}</div>
+                                <div class="value">${signal.trade_setup?.tp1?.toFixed(pd) || 'N/A'}</div>
                             </div>
                             <div class="setup-item tp">
                                 <div class="label">R:R</div>
