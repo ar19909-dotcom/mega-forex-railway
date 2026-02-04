@@ -3336,16 +3336,16 @@
                     const weights = data.weights;
 
                     // v9.3.0: Commodity weights (read-only, Supply & Demand replaces Currency Strength)
-                    // Ordered to match Forex weights display order
+                    // Ordered alphabetically to match Forex weights display order
                     const commodityWeights = [
-                        ['trend_momentum', 22],
+                        ['ai_synthesis', 10],
+                        ['calendar_risk', 8],
+                        ['supply_demand', 8],  // Replaces currency_strength for commodities
                         ['fundamental', 12],
-                        ['sentiment', 13],
                         ['intermarket', 15],
                         ['mean_reversion', 12],
-                        ['calendar_risk', 8],
-                        ['ai_synthesis', 10],
-                        ['supply_demand', 8]  // Replaces currency_strength for commodities
+                        ['sentiment', 13],
+                        ['trend_momentum', 22]
                     ];
 
                     const groupLabels = {
