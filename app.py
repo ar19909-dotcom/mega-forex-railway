@@ -2471,6 +2471,42 @@ def get_api_ninjas_commodity(pair):
         logger.debug(f"API Ninjas commodity fetch failed for {pair}: {e}")
     return None
 
+def get_alphavantage_commodity(pair):
+    """v9.3.0: Fetch commodity prices from Alpha Vantage (500 calls/day free)"""
+    if not ALPHA_VANTAGE_KEY:
+        return None
+    # Alpha Vantage commodity symbols
+    av_commodities = {
+        'WTI/USD': 'WTI',
+        'BRENT/USD': 'BRENT',
+        'XCU/USD': 'COPPER',
+    }
+    symbol = av_commodities.get(pair)
+    if not symbol:
+        return None
+    try:
+        url = "https://www.alphavantage.co/query"
+        params = {
+            'function': 'GLOBAL_QUOTE',
+            'symbol': symbol,
+            'apikey': ALPHA_VANTAGE_KEY
+        }
+        resp = req_lib.get(url, params=params, timeout=8)
+        if resp.status_code == 200:
+            data = resp.json()
+            quote = data.get('Global Quote', {})
+            if quote and '05. price' in quote:
+                price = float(quote['05. price'])
+                return {
+                    'bid': price * 0.9998,
+                    'ask': price * 1.0002,
+                    'mid': price,
+                    'source': 'alphavantage'
+                }
+    except Exception as e:
+        logger.debug(f"Alpha Vantage commodity fetch failed for {pair}: {e}")
+    return None
+
 def get_eia_oil_spot_price(pair):
     """v9.3.0: Fetch WTI/Brent spot prices from EIA (free US govt API)"""
     if not EIA_API_KEY:
@@ -2572,8 +2608,14 @@ def get_rate(pair):
         if rate:
             return rate
 
-    # Tier 4.6: API Ninjas (copper - needs premium for oil)
-    if pair == 'XCU/USD':
+    # Tier 4.6: Alpha Vantage (oil/copper - 500 calls/day free)
+    if pair in ['WTI/USD', 'BRENT/USD', 'XCU/USD']:
+        rate = get_alphavantage_commodity(pair)
+        if rate:
+            return rate
+
+    # Tier 4.7: API Ninjas (all commodities - try for oil/copper)
+    if pair in ['WTI/USD', 'BRENT/USD', 'XCU/USD']:
         rate = get_api_ninjas_commodity(pair)
         if rate:
             return rate

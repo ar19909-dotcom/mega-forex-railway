@@ -2527,7 +2527,7 @@
                         const pd = priceDecimals(pair);
                         const pipSize = isCommodity ? ({'XAU/USD':0.10,'XAG/USD':0.01,'XPT/USD':0.10,'WTI/USD':0.01,'BRENT/USD':0.01,'XCU/USD':0.001}[pair] || 0.01) : (pair.includes('JPY') ? 0.01 : 0.0001);
                         const spreadPips = ((rate.ask - rate.bid) / pipSize).toFixed(1);
-                        const liveClass = rate.source === 'static' ? 'error' : (rate.source === 'polygon' || rate.source === 'goldapi' || rate.source === 'twelvedata' || rate.source === 'tradermade' || rate.source === 'api_ninjas' || rate.source === 'eia') ? 'ok' : 'limited';
+                        const liveClass = rate.source === 'static' ? 'error' : ['polygon','goldapi','twelvedata','tradermade','api_ninjas','eia','alphavantage','exchangerate','currencylayer'].includes(rate.source) ? 'ok' : 'limited';
                         return `
                         <tr style="${isCommodity ? 'border-left: 3px solid #f59e0b;' : ''}">
                             <td style="font-weight: 600;">${pair}${isCommodity ? ' <span style="font-size:0.55rem;background:#f59e0b;color:#000;padding:0 3px;border-radius:2px;">CMD</span>' : ''}</td>
