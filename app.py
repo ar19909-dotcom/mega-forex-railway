@@ -8601,15 +8601,26 @@ def generate_signal(pair):
         entry_min = min(entry_min, current_price)
         entry_max = max(entry_max, current_price)
 
-        # v9.3.0: Cap entry spread for commodities (prevent absurdly wide ranges)
+        # v9.3.0: Cap entry spread and ensure it's centered around current price
         # Commodities have large ATR values that create unrealistic entry windows
-        max_entry_spread_pct = 0.001 if is_commodity(pair) else 0.01  # 0.1% for commodities, 1% for forex
+        # Scandinavian/Exotic pairs need tighter % spread due to high values
+        scandinavian_check = 'NOK' in pair or 'SEK' in pair or 'DKK' in pair
+        if is_commodity(pair):
+            max_entry_spread_pct = 0.001  # 0.1% for commodities
+        elif scandinavian_check or pair_category == 'EXOTIC':
+            max_entry_spread_pct = 0.003  # 0.3% for exotics/Scandinavian
+        else:
+            max_entry_spread_pct = 0.005  # 0.5% for normal forex
+
         max_spread = current_price * max_entry_spread_pct
         actual_spread = entry_max - entry_min
-        if actual_spread > max_spread:
-            midpoint = (entry_min + entry_max) / 2
-            entry_min = midpoint - max_spread / 2
-            entry_max = midpoint + max_spread / 2
+
+        # If spread is too wide OR entry range doesn't contain current price, recenter
+        if actual_spread > max_spread or entry_min > current_price or entry_max < current_price:
+            # Center around current price
+            half_spread = max_spread / 2
+            entry_min = current_price - half_spread
+            entry_max = current_price + half_spread
 
         # Convert ATR to pips for this pair
         atr_pips = atr / pip_size
@@ -8634,14 +8645,24 @@ def generate_signal(pair):
         atr_mult = ATR_MULTIPLIERS.get(pair_category, ATR_MULTIPLIERS['CROSS'])
 
         # Hard pip limits as safety net (never exceed these)
+        # v9.3.0: Scandinavian pairs (NOK, SEK, DKK) need wider limits due to high volatility
+        scandinavian_pairs = ['USD/NOK', 'USD/SEK', 'USD/DKK', 'EUR/NOK', 'EUR/SEK', 'EUR/DKK',
+                              'GBP/NOK', 'GBP/SEK', 'NOK/SEK', 'NOK/JPY', 'SEK/JPY']
+        is_scandinavian = pair in scandinavian_pairs or 'NOK' in pair or 'SEK' in pair or 'DKK' in pair
+
         PIP_LIMITS = {
             'MAJOR':     {'sl_abs_min': 12,  'sl_abs_max': 60,   'tp1_abs_max': 100,  'tp2_abs_max': 180},
             'MINOR':     {'sl_abs_min': 15,  'sl_abs_max': 80,   'tp1_abs_max': 140,  'tp2_abs_max': 240},
             'CROSS':     {'sl_abs_min': 18,  'sl_abs_max': 100,  'tp1_abs_max': 180,  'tp2_abs_max': 300},
             'EXOTIC':    {'sl_abs_min': 25,  'sl_abs_max': 150,  'tp1_abs_max': 250,  'tp2_abs_max': 400},
+            'SCANDINAVIAN': {'sl_abs_min': 80, 'sl_abs_max': 400, 'tp1_abs_max': 600, 'tp2_abs_max': 1000},
             'COMMODITY': {'sl_abs_min': 50,  'sl_abs_max': 500,  'tp1_abs_max': 800,  'tp2_abs_max': 1500}
         }
-        limits = PIP_LIMITS.get(pair_category, PIP_LIMITS['CROSS'])
+        # Use SCANDINAVIAN limits for NOK/SEK/DKK pairs
+        if is_scandinavian:
+            limits = PIP_LIMITS['SCANDINAVIAN']
+        else:
+            limits = PIP_LIMITS.get(pair_category, PIP_LIMITS['CROSS'])
 
         # Calculate ATR-based SL (the smart part)
         # SL should be between min and max ATR multipliers, adjusted by volatility
