@@ -9968,10 +9968,10 @@ def run_system_audit():
             'mean_reversion': {'weight': 11, 'sources': 'Quantitative (Z-Score/Bollinger) 55% + Structure (S/R) 45%'},
             'calendar_risk': {'weight': 8, 'sources': 'Economic events + Seasonality'},
             'ai_synthesis': {'weight': 10, 'sources': 'GPT enhanced analysis — activates when 2+ groups agree'},
-            'currency_strength': {'weight': 10, 'sources': 'v9.3.0: 50-instrument analysis — base vs quote currency strength (0% for commodities)'}
+            'currency_strength': {'weight': 9, 'sources': 'v9.4.0: 50-instrument analysis — base vs quote currency strength (0% for commodities)'}
         },
         'commodity_weights': {
-            'description': 'v9.3.0: Separate weight profile for 5 commodities (XAU, XAG, XPT, WTI, BRENT)',
+            'description': 'v9.4.0: Separate weight profile for 5 commodities (XAU, XAG, XPT, WTI, BRENT)',
             'trend_momentum': 22, 'fundamental': 12, 'sentiment': 13,
             'intermarket': 15, 'mean_reversion': 12, 'calendar_risk': 8,
             'ai_synthesis': 10, 'supply_demand': 8,
@@ -10100,7 +10100,7 @@ def run_system_audit():
         'ai': {
             'weight': 10,
             'weight_percent': '100% of AI Synthesis (10%)',
-            'description': 'GPT-4o-mini AI-powered market analysis (v9.3.0)',
+            'description': 'GPT-4o-mini AI-powered market analysis (v9.4.0)',
             'data_sources': ['OpenAI API (GPT-4o-mini model)'],
             'score_range': '15-85',
             'components': {
@@ -10754,7 +10754,7 @@ def run_system_audit():
         'quality_checks': quality_checks,
         'signal_status': signal_status,
         'data_verification': {
-            'rates': 'v9.3.0 6-Tier: Polygon → Twelve Data → TraderMade → ExchangeRate → CurrencyLayer → Static',
+            'rates': 'v9.4.0 6-Tier: Polygon → Twelve Data → TraderMade → ExchangeRate → CurrencyLayer → Static',
             'technical': 'RSI, MACD, ADX calculated from real-time candle data',
             'fundamental': 'Interest rate differentials from central bank rates + FRED API',
             'sentiment': 'IG positioning + Finnhub news + RSS feeds + COT institutional data',
