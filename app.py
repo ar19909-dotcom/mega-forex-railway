@@ -9570,7 +9570,7 @@ def generate_signal(pair):
                 category = cat
                 break
         
-        # v9.0: Factor grid for display — 7 independent groups
+        # v9.4.0: Factor grid for display — 10 independent groups
         factor_grid = {
             'TREND': factor_groups.get('trend_momentum', {}).get('signal', 'NEUTRAL').lower(),
             'FUND': factor_groups.get('fundamental', {}).get('signal', 'NEUTRAL').lower(),
@@ -9578,7 +9578,10 @@ def generate_signal(pair):
             'INTER': factor_groups.get('intermarket', {}).get('signal', 'NEUTRAL').lower(),
             'M.REV': factor_groups.get('mean_reversion', {}).get('signal', 'NEUTRAL').lower(),
             'CAL': factor_groups.get('calendar_risk', {}).get('signal', 'NEUTRAL').lower(),
-            'AI': factor_groups.get('ai_synthesis', {}).get('signal', 'NEUTRAL').lower()
+            'AI': factor_groups.get('ai_synthesis', {}).get('signal', 'NEUTRAL').lower(),
+            'C.STR': factor_groups.get('currency_strength', {}).get('signal', 'NEUTRAL').lower(),
+            'GEO': factor_groups.get('geopolitical_risk', {}).get('signal', 'NEUTRAL').lower(),
+            'DEPTH': factor_groups.get('market_depth', {}).get('signal', 'NEUTRAL').lower()
         }
         
         # Calculate statistics
