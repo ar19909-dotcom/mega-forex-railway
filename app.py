@@ -12513,6 +12513,7 @@ logger.info("🚀 MEGA FOREX v9.3.0 PRO - AI ENHANCED initialized")
 if __name__ == '__main__':
     print("=" * 70)
     print("      MEGA FOREX v9.3.0 PRO - AI ENHANCED SYSTEM")
+
     print("=" * 70)
     print(f"  Instruments:     {len(ALL_INSTRUMENTS)} ({len(FOREX_PAIRS)} Forex + {len(COMMODITY_PAIRS)} Commodities)")
     print(f"  Factor Groups:   8 (merged from 12 individual factors)")

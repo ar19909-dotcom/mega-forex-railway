@@ -1930,7 +1930,7 @@
         <div class="logo">MEGA<span>FOREX</span> v9.3.0 <span style="color: var(--accent-green); font-size: 0.7em;">PRO</span></div>
         <div class="header-stats">
             <div class="stat-item">
-                <div class="stat-value" id="total-pairs">51</div>
+                <div class="stat-value" id="total-pairs">50</div>
                 <div class="stat-label">Instruments</div>
             </div>
             <div class="stat-item">
@@ -2024,11 +2024,11 @@
                 <div class="filter-group">
                     <span class="filter-label">Category:</span>
                     <select id="rates-category">
-                        <option value="all">All (51)</option>
+                        <option value="all">All (50)</option>
                         <option value="major">Major (7)</option>
                         <option value="cross">Cross (23)</option>
                         <option value="exotic">Exotic (15)</option>
-                        <option value="commodity">Commodity (6)</option>
+                        <option value="commodity">Commodity (5)</option>
                     </select>
                 </div>
             </div>
@@ -2212,7 +2212,7 @@
         let refreshInterval;
         let countdown = 120;  // 2 minutes auto-refresh
         
-        // All 51 Instruments (45 Forex + 6 Commodities) for Pair Analyzer
+        // All 50 Instruments (45 Forex + 5 Commodities) for Pair Analyzer
         const ALL_PAIRS = [
             // Majors (7)
             'EUR/USD', 'GBP/USD', 'USD/JPY', 'USD/CHF', 'AUD/USD', 'USD/CAD', 'NZD/USD',
@@ -2934,7 +2934,7 @@
             }
         }
         
-        // Load Technical - Show all 51 instruments
+        // Load Technical - Show all 50 instruments
         async function loadTechnical() {
             try {
                 const tbody = document.getElementById('technical-body');
@@ -3471,7 +3471,7 @@
                             <h3>📊 System Info - v${data.version || '8.3'}</h3>
                             <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1rem;">
                                 <div class="result-card">
-                                    <div class="value">${data.system_info?.total_pairs || 51}</div>
+                                    <div class="value">${data.system_info?.total_pairs || 50}</div>
                                     <div class="label">Instruments</div>
                                 </div>
                                 <div class="result-card">
@@ -3720,8 +3720,8 @@
                         <div class="audit-section">
                             <h3>📖 Complete Scoring Methodology - v9.3.0 PRO (8-Gate Protected)</h3>
                             <p style="color: var(--text-secondary); margin-bottom: 1rem;">
-                                This system merges 11 individual factors into <strong>8 independent groups</strong> (incl. Currency Strength from 51-instrument analysis) with <strong>regime-dynamic weights</strong>, an <strong>8-gate quality filter</strong> (incl. AI alignment + data quality), and a separate <strong>conviction metric</strong> (breadth x strength).
-                                <strong>51 instruments</strong> (45 Forex + 6 Commodities) with <strong>separate weight profiles</strong>.
+                                This system merges 11 individual factors into <strong>8 independent groups</strong> (incl. Currency Strength from 50-instrument analysis) with <strong>regime-dynamic weights</strong>, an <strong>8-gate quality filter</strong> (incl. AI alignment + data quality), and a separate <strong>conviction metric</strong> (breadth x strength).
+                                <strong>50 instruments</strong> (45 Forex + 5 Commodities) with <strong>separate weight profiles</strong>.
                                 All calculations use <strong>100% REAL market data + AI analysis</strong>. <strong style="color: #ef4444;">3 gates are MANDATORY (G3 Trend, G5 Calendar, G8 Data)</strong>.
                             </p>
                         </div>
@@ -3738,7 +3738,7 @@
                                     <tr><td><strong>Mean Reversion</strong></td><td style="font-weight: 600;">11%</td><td>Quantitative (Z-Score/Bollinger) 55% + Structure (S/R) 45%</td></tr>
                                     <tr><td><strong>Calendar Risk</strong></td><td style="font-weight: 600;">8%</td><td>Economic events + Seasonality</td></tr>
                                     <tr><td><strong>AI Synthesis</strong></td><td style="font-weight: 600;">10%</td><td>GPT enhanced analysis — activates when 2+ groups agree</td></tr>
-                                    <tr><td><strong>Currency Strength</strong></td><td style="font-weight: 600; color: #a78bfa;">10%</td><td>51-instrument analysis — base vs quote currency relative strength</td></tr>
+                                    <tr><td><strong>Currency Strength</strong></td><td style="font-weight: 600; color: #a78bfa;">10%</td><td>50-instrument analysis — base vs quote currency relative strength</td></tr>
                                 </tbody>
                             </table>
 
@@ -4636,7 +4636,7 @@
                         <div class="audit-section">
                             <h3>📊 Currency & Commodity Correlation Analysis (v9.3.0)</h3>
                             <p style="color: var(--text-secondary); margin-bottom: 1rem;">
-                                Real-time currency strength analysis using all 51 instruments. Higher scores = stronger currency.
+                                Real-time currency strength analysis using all 50 instruments. Higher scores = stronger currency.
                             </p>
                         </div>
 
