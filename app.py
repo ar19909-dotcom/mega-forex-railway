@@ -994,7 +994,7 @@ cache = {
 cache_lock = threading.Lock()
 
 CACHE_TTL = {
-    'rates': 30,      # 30 seconds
+    'rates': 120,     # v9.4.0: 120 seconds (was 30s - too short, expired before signal generation finished)
     'candles': 300,   # 5 minutes
     'news': 600,      # 10 minutes
     'calendar': 1800, # 30 minutes - increased for stability
@@ -2742,7 +2742,7 @@ def get_all_rates():
         for future in as_completed(future_to_pair):
             pair = future_to_pair[future]
             try:
-                result = future.result(timeout=15)
+                result = future.result(timeout=10)
                 if result:
                     rates[pair] = result
             except Exception as e:
@@ -11461,35 +11461,65 @@ def get_signals():
             logger.info("📊 Signals: Force refresh requested - regenerating all signals")
 
         # ═══════════════════════════════════════════════════════════════════════════
-        # v9.3.0 FIX: Pre-fetch all rates BEFORE parallel signal generation
-        # This prevents 50 workers from hitting API rate limits simultaneously
+        # v9.4.0: PARALLEL PRE-FETCH — rates, candles, and shared data simultaneously
+        # This prevents 50 workers from hitting API rate limits and cuts load time in half
         # ═══════════════════════════════════════════════════════════════════════════
-        logger.info("📊 Signals: Pre-fetching rates for all instruments...")
-        prefetched_rates = get_all_rates()
-        logger.info(f"📊 Signals: Pre-fetched {len(prefetched_rates)} rates")
+        import time as _time
+        prefetch_start = _time.time()
+        logger.info("📊 Signals: Starting parallel pre-fetch (rates + candles + shared data)...")
 
-        # Also pre-fetch shared data (fundamental, calendar, intermarket)
-        try:
-            get_fundamental_data()  # Cache fundamental data
-            get_intermarket_data()  # Cache intermarket data
-            get_calendar_data()     # Cache calendar data
-        except Exception as e:
-            logger.debug(f"Pre-fetch shared data warning: {e}")
-
-        # v9.3.0 FIX: Pre-fetch candles with rate limiting (5 workers to respect API limits)
-        logger.info("📊 Signals: Pre-fetching candle data...")
+        # Launch ALL pre-fetches in parallel using a shared thread pool
+        prefetched_rates = {}
         candle_count = 0
-        with ThreadPoolExecutor(max_workers=5) as executor:
-            candle_futures = {executor.submit(get_polygon_candles, pair, 'day', 100): pair for pair in ALL_INSTRUMENTS}
-            for future in as_completed(candle_futures):
-                cpair = candle_futures.get(future, 'UNKNOWN')
-                try:
-                    result = future.result(timeout=15)
-                    if result:
-                        candle_count += 1
-                except Exception as candle_err:
-                    logger.debug(f"Candle pre-fetch failed for {cpair}: {candle_err}")
-        logger.info(f"📊 Signals: Pre-fetched candles for {candle_count}/{len(ALL_INSTRUMENTS)} pairs")
+
+        def _prefetch_shared_data():
+            """Pre-fetch fundamental, intermarket, calendar data"""
+            try:
+                get_fundamental_data()
+                get_intermarket_data()
+                get_calendar_data()
+            except Exception as e:
+                logger.debug(f"Pre-fetch shared data warning: {e}")
+
+        def _prefetch_candles():
+            """Pre-fetch candle data for all instruments"""
+            count = 0
+            with ThreadPoolExecutor(max_workers=10) as candle_executor:
+                candle_futures = {candle_executor.submit(get_polygon_candles, pair, 'day', 100): pair for pair in ALL_INSTRUMENTS}
+                for future in as_completed(candle_futures):
+                    cpair = candle_futures.get(future, 'UNKNOWN')
+                    try:
+                        result = future.result(timeout=10)
+                        if result:
+                            count += 1
+                    except Exception as candle_err:
+                        logger.debug(f"Candle pre-fetch failed for {cpair}: {candle_err}")
+            return count
+
+        # Run rates, candles, and shared data ALL at the same time
+        with ThreadPoolExecutor(max_workers=3) as prefetch_executor:
+            rates_future = prefetch_executor.submit(get_all_rates)
+            candles_future = prefetch_executor.submit(_prefetch_candles)
+            shared_future = prefetch_executor.submit(_prefetch_shared_data)
+
+            try:
+                prefetched_rates = rates_future.result(timeout=25)
+            except Exception as e:
+                logger.warning(f"Rate pre-fetch error: {e}")
+                prefetched_rates = {}
+
+            try:
+                candle_count = candles_future.result(timeout=25)
+            except Exception as e:
+                logger.warning(f"Candle pre-fetch error: {e}")
+
+            try:
+                shared_future.result(timeout=15)
+            except Exception:
+                pass
+
+        prefetch_time = round(_time.time() - prefetch_start, 1)
+        logger.info(f"📊 Signals: Pre-fetch done in {prefetch_time}s — {len(prefetched_rates)} rates, {candle_count} candles")
 
         # Generate fresh signals (v9.3.0: reduced workers to avoid rate limits)
         signals = []
@@ -11502,7 +11532,7 @@ def get_signals():
             for future in as_completed(future_to_pair):
                 pair = future_to_pair.get(future, 'UNKNOWN')
                 try:
-                    signal = future.result(timeout=30)  # 30 second timeout per signal
+                    signal = future.result(timeout=20)  # v9.4.0: 20s timeout (was 30s) - fail-fast
                     if signal:
                         signals.append(signal)
                     else:
@@ -11621,7 +11651,7 @@ def get_subscription_signals():
 
             for future in as_completed(future_to_pair):
                 try:
-                    signal = future.result(timeout=30)
+                    signal = future.result(timeout=20)
                     if signal:
                         signals.append(signal)
                 except Exception as e:
