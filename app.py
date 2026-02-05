@@ -2494,6 +2494,38 @@ def get_alphavantage_commodity(pair):
         logger.debug(f"Alpha Vantage commodity fetch failed for {pair}: {e}")
     return None
 
+def get_yahoo_oil_price(pair):
+    """v9.3.0: Fetch oil prices from Yahoo Finance (FREE, no API key needed)"""
+    # Yahoo Finance symbols for oil futures
+    yahoo_symbols = {
+        'WTI/USD': 'CL=F',    # WTI Crude Oil Futures
+        'BRENT/USD': 'BZ=F',  # Brent Crude Oil Futures
+    }
+    symbol = yahoo_symbols.get(pair)
+    if not symbol:
+        return None
+    try:
+        # Yahoo Finance query1 API (free, no key required)
+        url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1d&range=1d"
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        resp = req_lib.get(url, headers=headers, timeout=8)
+        if resp.status_code == 200:
+            data = resp.json()
+            result = data.get('chart', {}).get('result', [])
+            if result and len(result) > 0:
+                meta = result[0].get('meta', {})
+                price = meta.get('regularMarketPrice', 0)
+                if price and price > 0:
+                    return {
+                        'bid': price * 0.9995,
+                        'ask': price * 1.0005,
+                        'mid': price,
+                        'source': 'yahoo'
+                    }
+    except Exception as e:
+        logger.debug(f"Yahoo Finance oil fetch failed for {pair}: {e}")
+    return None
+
 def get_eia_oil_spot_price(pair):
     """v9.3.0: Fetch WTI/Brent spot prices from EIA (free US govt API)"""
     if not EIA_API_KEY:
@@ -2576,8 +2608,12 @@ def get_eia_oil_data():
 
 def get_rate(pair):
     """Get rate with multi-tier fallback (v9.3.0: 7+ data sources)"""
-    # Tier 0: EIA FIRST for oil (most reliable free govt API)
+    # Tier 0: Yahoo Finance FIRST for oil (FREE, no API key needed!)
     if pair in ['WTI/USD', 'BRENT/USD']:
+        rate = get_yahoo_oil_price(pair)
+        if rate:
+            return rate
+        # Tier 0.5: EIA as backup for oil
         rate = get_eia_oil_spot_price(pair)
         if rate:
             return rate
