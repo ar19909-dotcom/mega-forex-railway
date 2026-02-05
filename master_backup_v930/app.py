@@ -1,42 +1,41 @@
 """
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║                   MEGA FOREX v9.3.0 PRO - AI-ENHANCED SYSTEM                 ║
-║                    Build: February 6, 2026 - GEOPOLITICAL RISK ADDED         ║
+║                    Build: February 4, 2026 - Production Ready                ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
-║  ✓ 45 Forex Pairs + 5 Commodities (50 Instruments)                           ║
-║  ✓ 9-Group Gated Scoring + 8-Gate Quality Filter (v9.3.0)                    ║
-║  ✓ Smart AI Weight Adjustment (Dynamic, Anti-Overfit)                        ║
-║  ✓ NEW: Geopolitical Risk Factor (War, Sanctions, Trade Tensions)            ║
+║  ✓ 45 Forex Pairs + 6 Commodities (51 Instruments)                           ║
+║  ✓ 8-Group Gated Scoring + 8-Gate Quality Filter (v9.3.0)                    ║
 ║  ✓ Separate Scoring Weights: Forex vs Commodities                            ║
-║  ✓ Yahoo Finance Live Oil + GoldAPI (XAU/XAG/XPT)                            ║
-║  ✓ Supply & Demand Factor (replaces Currency Strength for commodities)       ║
-║  ✓ Multi-Source News: Bloomberg, Reuters, Yahoo Finance, Finnhub             ║
+║  ✓ Percentage Scoring: 0-100% for LONG and SHORT independently               ║
+║  ✓ Entry Window: 0-8 hours based on signal strength                          ║
 ║  ✓ 16 Candlestick Pattern Recognition                                        ║
+║  ✓ SQLite Trade Journal & Signal History                                     ║
+║  ✓ Smart Dynamic SL/TP (Variable ATR + Liquidity Zones)                      ║
+║  ✓ REAL IG Client Sentiment + Institutional COT Data                         ║
+║  ✓ Complete Backtesting Module                                               ║
+║  ✓ DATA QUALITY INDICATORS (v9.3.0 - AI + REAL DATA)                         ║
 ║  ✓ Smart Money Concepts: Order Blocks, Liquidity Zones, Session Timing       ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
-║  FOREX SCORING (45 pairs) - 9-Group Gated AI-Enhanced (v9.3.0)               ║
-║  - Trend & Momentum (20%): RSI, MACD, ADX + MTF alignment                    ║
-║  - Fundamental (14%): Interest rate differentials + FRED macro               ║
-║  - Sentiment (12%): IG positioning + enhanced news analysis                  ║
-║  - Intermarket (11%): DXY, Gold, Yields, Oil correlations                    ║
+║  FOREX SCORING (45 pairs) - 8-Group Gated AI-Enhanced (v9.3.0)               ║
+║  - Trend & Momentum (21%): RSI, MACD, ADX + MTF alignment                    ║
+║  - Fundamental (15%): Interest rate differentials + FRED macro               ║
+║  - Sentiment (13%): IG positioning + enhanced news analysis                  ║
+║  - Intermarket (12%): DXY, Gold, Yields, Oil correlations                    ║
 ║  - Mean Reversion (11%): Z-Score, Bollinger %B + S/R structure               ║
 ║  - AI Synthesis (10%): GPT-4o-mini market analysis                           ║
-║  - Currency Strength (10%): 50-instrument cross-currency analysis            ║
-║  - Calendar Risk (7%): Economic event risk + seasonality                     ║
-║  - Geopolitical Risk (5%): War, sanctions, trade tensions, elections         ║
+║  - Currency Strength (10%): 51-instrument cross-currency analysis            ║
+║  - Calendar Risk (8%): Economic event risk + seasonality                     ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
-║  COMMODITY SCORING (5 instruments) - Commodity-Specific Weights (v9.3.0)     ║
-║  - Trend & Momentum (21%): RSI, MACD, ADX + MTF alignment                    ║
-║  - Intermarket (14%): Cross-commodity, DXY, VIX, Yields, Equities           ║
-║  - Sentiment (12%): IG + COT institutional + commodity news                  ║
+║  COMMODITY SCORING (6 instruments) - Commodity-Specific Weights (v9.3.0)     ║
+║  - Trend & Momentum (22%): RSI, MACD, ADX + MTF alignment                    ║
+║  - Intermarket (15%): Cross-commodity, DXY, VIX, Yields, Equities           ║
+║  - Sentiment (13%): IG + COT institutional + commodity news                  ║
+║  - Fundamental (12%): DXY inverse, Real yields, VIX safe-haven              ║
 ║  - Mean Reversion (12%): Z-Score, Bollinger %B + S/R structure               ║
-║  - Fundamental (11%): DXY inverse, Real yields, VIX safe-haven              ║
-║  - AI Synthesis (9%): GPT-4o-mini commodity analysis                         ║
+║  - AI Synthesis (10%): GPT-4o-mini commodity analysis                        ║
 ║  - Supply & Demand (8%): EIA inventory, USD correlation, warehouse stocks   ║
-║  - Calendar Risk (7%): OPEC, EIA, FOMC, PMI events                          ║
-║  - Geopolitical Risk (6%): War, sanctions, OPEC politics, trade tensions    ║
+║  - Calendar Risk (8%): OPEC, EIA, FOMC, PMI events                          ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
-║  17 APIs: Polygon, TwelveData, TraderMade, GoldAPI, Yahoo, Finnhub + more    ║
 ║  8-Gate Filter: G3 Trend, G5 Calendar, G8 Data are MANDATORY                 ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 """
@@ -159,10 +158,6 @@ EIA_API_URL = "https://api.eia.gov/v2"
 GOLDAPI_KEY = os.getenv('GOLDAPI_KEY', '')
 GOLDAPI_URL = "https://www.goldapi.io/api"
 
-# v9.3.0: API Ninjas (free commodity prices - oil, copper, etc.)
-API_NINJAS_KEY = os.getenv('API_NINJAS_KEY', '')
-API_NINJAS_URL = "https://api.api-ninjas.com/v1/commodityprice"
-
 # IG Markets API (for REAL client sentiment)
 IG_API_KEY = os.getenv('IG_API_KEY', '')
 IG_USERNAME = os.getenv('IG_USERNAME', '')
@@ -238,6 +233,7 @@ COMMODITY_PAIRS = [
     'XPT/USD',    # Platinum
     'WTI/USD',    # WTI Crude Oil
     'BRENT/USD',  # Brent Crude Oil
+    'XCU/USD',    # Copper
 ]
 
 # Combined list of all tradeable instruments (51 total)
@@ -250,11 +246,12 @@ COMMODITY_PIP_SIZES = {
     'XPT/USD': 0.10,     # Platinum: $0.10 per pip
     'WTI/USD': 0.01,     # WTI Oil: $0.01 per pip
     'BRENT/USD': 0.01,   # Brent Oil: $0.01 per pip
+    'XCU/USD': 0.001,    # Copper: $0.001 per pip
 }
 
 COMMODITY_DECIMAL_PLACES = {
     'XAU/USD': 2, 'XAG/USD': 3, 'XPT/USD': 2,
-    'WTI/USD': 2, 'BRENT/USD': 2,
+    'WTI/USD': 2, 'BRENT/USD': 2, 'XCU/USD': 4,
 }
 
 def get_pip_size(pair):
@@ -276,7 +273,7 @@ PAIR_CATEGORIES = {
     'EXOTIC': ['USD/SGD', 'USD/HKD', 'USD/MXN', 'USD/ZAR', 'USD/TRY',
                'USD/NOK', 'USD/SEK', 'USD/DKK', 'USD/PLN',
                'EUR/TRY', 'EUR/PLN', 'EUR/NOK', 'EUR/SEK', 'EUR/HUF', 'EUR/CZK'],
-    'COMMODITY': ['XAU/USD', 'XAG/USD', 'XPT/USD', 'WTI/USD', 'BRENT/USD']
+    'COMMODITY': ['XAU/USD', 'XAG/USD', 'XPT/USD', 'WTI/USD', 'BRENT/USD', 'XCU/USD']
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -438,6 +435,9 @@ PAIR_CORRELATIONS = {
     ('WTI/USD', 'BRENT/USD'): 0.96,     # WTI-Brent: near-perfect positive
     ('WTI/USD', 'USD/CAD'): -0.70,      # Oil-USDCAD: Oil up = CAD up = USDCAD down
     ('XAU/USD', 'WTI/USD'): 0.35,       # Gold-Oil: weak positive (inflation hedge)
+    ('XCU/USD', 'AUD/USD'): 0.72,       # Copper-AUD: Australia = mining economy
+    ('XCU/USD', 'NZD/USD'): 0.55,       # Copper-NZD: commodity currency
+    ('XAG/USD', 'XCU/USD'): 0.60,       # Silver-Copper: industrial metals
     ('XPT/USD', 'XAU/USD'): 0.75,       # Platinum-Gold: precious metals
 }
 
@@ -563,6 +563,10 @@ def get_currency_strength_score(pair, rates_dict=None):
                         details_parts.append(f'VIX={vix_val:.0f} (risk-on)')
                 except Exception:
                     pass
+
+            # 4. Industrial demand for copper
+            if pair == 'XCU/USD':
+                details_parts.append('Industrial demand proxy')
 
             score = max(15, min(85, score))
             signal = 'BULLISH' if score > 55 else 'BEARISH' if score < 45 else 'NEUTRAL'
@@ -764,15 +768,14 @@ FACTOR_WEIGHTS = {
 # Research: 3-4 non-correlated factors is the sweet spot (CME Group 2019)
 # ═══════════════════════════════════════════════════════════════════════════════
 FACTOR_GROUP_WEIGHTS = {
-    'trend_momentum': 20,     # Technical (RSI, MACD, ADX) + MTF (H1/H4/D1) merged
-    'fundamental': 14,        # Interest rate diffs + FRED data (independent)
-    'sentiment': 12,          # IG positioning + News + Options merged (contrarian)
-    'intermarket': 11,        # DXY, Gold, Yields, Oil (independent)
+    'trend_momentum': 21,     # Technical (RSI, MACD, ADX) + MTF (H1/H4/D1) merged
+    'fundamental': 15,        # Interest rate diffs + FRED data (independent)
+    'sentiment': 13,          # IG positioning + News + Options merged (contrarian)
+    'intermarket': 12,        # DXY, Gold, Yields, Oil (independent)
     'mean_reversion': 11,     # Z-Score + Bollinger %B + S/R merged
-    'calendar_risk': 7,       # Economic events + Seasonality (independent)
+    'calendar_risk': 8,       # Economic events + Seasonality (independent)
     'ai_synthesis': 10,       # GPT enhanced analysis (activates when 2+ groups agree)
-    'currency_strength': 10,  # v9.3.0: 50-instrument currency strength analysis (0% for commodities)
-    'geopolitical_risk': 5    # v9.3.0: War, sanctions, trade tensions, elections (loose/anti-overfit)
+    'currency_strength': 10   # v9.3.0: 51-instrument currency strength analysis (0% for commodities)
 }
 # Total: 100%
 
@@ -781,35 +784,34 @@ FACTOR_GROUP_WEIGHTS = {
 # Now includes currency_strength (10%) from 51-instrument analysis
 REGIME_WEIGHTS = {
     'trending': {
-        'trend_momentum': 24, 'fundamental': 13, 'sentiment': 7,
-        'intermarket': 11, 'mean_reversion': 6, 'calendar_risk': 5, 'ai_synthesis': 13, 'currency_strength': 13, 'geopolitical_risk': 8
+        'trend_momentum': 26, 'fundamental': 14, 'sentiment': 8,
+        'intermarket': 12, 'mean_reversion': 6, 'calendar_risk': 6, 'ai_synthesis': 14, 'currency_strength': 14
     },
     'ranging': {
-        'trend_momentum': 10, 'fundamental': 11, 'sentiment': 11,
-        'intermarket': 9, 'mean_reversion': 20, 'calendar_risk': 5, 'ai_synthesis': 13, 'currency_strength': 13, 'geopolitical_risk': 8
+        'trend_momentum': 11, 'fundamental': 12, 'sentiment': 12,
+        'intermarket': 10, 'mean_reversion': 21, 'calendar_risk': 6, 'ai_synthesis': 14, 'currency_strength': 14
     },
     'volatile': {
-        'trend_momentum': 14, 'fundamental': 10, 'sentiment': 14,
-        'intermarket': 10, 'mean_reversion': 7, 'calendar_risk': 8, 'ai_synthesis': 11, 'currency_strength': 12, 'geopolitical_risk': 14
+        'trend_momentum': 16, 'fundamental': 12, 'sentiment': 16,
+        'intermarket': 12, 'mean_reversion': 8, 'calendar_risk': 10, 'ai_synthesis': 12, 'currency_strength': 14
     },
     'quiet': {
-        'trend_momentum': 20, 'fundamental': 15, 'sentiment': 7,
-        'intermarket': 12, 'mean_reversion': 11, 'calendar_risk': 4, 'ai_synthesis': 11, 'currency_strength': 13, 'geopolitical_risk': 7
+        'trend_momentum': 21, 'fundamental': 16, 'sentiment': 8,
+        'intermarket': 13, 'mean_reversion': 12, 'calendar_risk': 4, 'ai_synthesis': 12, 'currency_strength': 14
     }
 }
 
 # v9.3.0: Commodity-specific factor weights
 # Currency Strength replaced by Supply & Demand (EIA inventory, DXY inverse, warehouse stocks)
 COMMODITY_FACTOR_WEIGHTS = {
-    'trend_momentum': 21,     # Commodities trend strongly
-    'fundamental': 11,        # DXY + real yields + supply/demand
-    'sentiment': 12,          # COT positioning + retail
-    'intermarket': 14,        # Cross-commodity correlations critical
+    'trend_momentum': 22,     # Commodities trend strongly
+    'fundamental': 12,        # DXY + real yields + supply/demand
+    'sentiment': 13,          # COT positioning + retail
+    'intermarket': 15,        # Cross-commodity correlations critical
     'mean_reversion': 12,     # Commodities do revert
-    'calendar_risk': 7,       # OPEC, EIA, crop reports
-    'ai_synthesis': 9,        # AI analysis
-    'currency_strength': 8,   # → Becomes "Supply & Demand" for commodities (EIA, DXY, warehouse)
-    'geopolitical_risk': 6    # v9.3.0: Wars, sanctions, OPEC politics (higher weight for commodities)
+    'calendar_risk': 8,       # OPEC, EIA, crop reports
+    'ai_synthesis': 10,       # AI analysis
+    'currency_strength': 8    # → Becomes "Supply & Demand" for commodities (EIA, DXY, warehouse)
 }
 # Total: 100%
 
@@ -889,7 +891,7 @@ STATIC_RATES = {
     'EUR/PLN': 4.39, 'EUR/NOK': 12.21, 'EUR/SEK': 11.99, 'EUR/HUF': 408.50, 'EUR/CZK': 25.25,
     # v9.3.0: Commodities
     'XAU/USD': 2650.00, 'XAG/USD': 30.50, 'XPT/USD': 980.00,
-    'WTI/USD': 75.00, 'BRENT/USD': 80.00
+    'WTI/USD': 75.00, 'BRENT/USD': 80.00, 'XCU/USD': 4.10
 }
 
 DEFAULT_ATR = {
@@ -906,7 +908,7 @@ DEFAULT_ATR = {
     'EUR/PLN': 0.065, 'EUR/NOK': 0.18, 'EUR/SEK': 0.16, 'EUR/HUF': 5.5, 'EUR/CZK': 0.35,
     # v9.3.0: Commodities
     'XAU/USD': 30.0, 'XAG/USD': 0.60, 'XPT/USD': 18.0,
-    'WTI/USD': 1.80, 'BRENT/USD': 1.90
+    'WTI/USD': 1.80, 'BRENT/USD': 1.90, 'XCU/USD': 0.08
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -2229,18 +2231,18 @@ def get_polygon_rate(pair):
         return None
     try:
         # v9.3.0: Commodity ticker mapping for Polygon
-        # Note: Polygon forex API only supports precious metals, NOT oil futures
         polygon_commodity_tickers = {
-            'XAU/USD': 'C:XAUUSD',   # Gold - supported
-            'XAG/USD': 'C:XAGUSD',   # Silver - supported
-            'XPT/USD': 'C:XPTUSD',   # Platinum - supported
-            # WTI, BRENT are NOT supported via Polygon forex API
-            # They will fallback to TwelveData/TraderMade/EIA
+            'XAU/USD': 'C:XAUUSD',
+            'XAG/USD': 'C:XAGUSD',
+            'XPT/USD': 'C:XPTUSD',
+            'WTI/USD': 'C:WTIUSD',    # Polygon forex-style WTI
+            'BRENT/USD': 'C:BRENTUSD', # Polygon forex-style Brent
+            'XCU/USD': 'C:XCUUSD',    # Polygon forex-style Copper
         }
         ticker = polygon_commodity_tickers.get(pair, f"C:{pair.replace('/', '')}")
         url = f"https://api.polygon.io/v2/aggs/ticker/{ticker}/prev"
         params = {'apiKey': POLYGON_API_KEY}
-        resp = req_lib.get(url, params=params, timeout=2)
+        resp = req_lib.get(url, params=params, timeout=5)
         if resp.status_code == 200:
             data = resp.json()
             if data.get('results') and len(data['results']) > 0:
@@ -2282,13 +2284,13 @@ def get_twelvedata_rate(pair):
         return None
     try:
         # v9.3.0: Commodity symbol mapping for TwelveData
-        # https://twelvedata.com/commodities - verified symbols:
         twelvedata_symbols = {
-            'XAU/USD': 'XAU/USD',    # Gold - natively supported
-            'XAG/USD': 'XAG/USD',    # Silver - natively supported
-            'XPT/USD': 'XPT/USD',    # Platinum - natively supported
-            'WTI/USD': 'WTI/USD',    # WTI Oil - TwelveData commodity
-            'BRENT/USD': 'XBR/USD',  # Brent Oil - TwelveData uses XBR symbol
+            'XAU/USD': 'XAU/USD',    # Natively supported
+            'XAG/USD': 'XAG/USD',    # Natively supported
+            'XPT/USD': 'XPT/USD',    # Natively supported
+            'WTI/USD': 'WTI/USD',    # TwelveData: native WTI/USD format
+            'BRENT/USD': 'BRENT/USD', # TwelveData: native BRENT/USD format
+            'XCU/USD': 'XCU/USD',    # TwelveData: native XCU/USD format
         }
         symbol = twelvedata_symbols.get(pair, pair)
         url = f"{TWELVE_DATA_URL}/price"
@@ -2296,7 +2298,7 @@ def get_twelvedata_rate(pair):
             'symbol': symbol,
             'apikey': TWELVE_DATA_KEY
         }
-        resp = req_lib.get(url, params=params, timeout=2)
+        resp = req_lib.get(url, params=params, timeout=5)
         if resp.status_code == 200:
             data = resp.json()
             if 'price' in data:
@@ -2323,6 +2325,7 @@ def get_tradermade_rate(pair):
             'XPT/USD': 'XPTUSD',
             'WTI/USD': 'OILUSD',     # TraderMade uses OILUSD for WTI
             'BRENT/USD': 'UKOUSD',   # TraderMade uses UKOUSD for Brent
+            'XCU/USD': 'XCUUSD',     # Copper
         }
         symbol = tradermade_symbols.get(pair, pair.replace('/', ''))
         url = f"{TRADERMADE_URL}/live"
@@ -2330,7 +2333,7 @@ def get_tradermade_rate(pair):
             'currency': symbol,
             'api_key': TRADERMADE_KEY
         }
-        resp = req_lib.get(url, params=params, timeout=2)
+        resp = req_lib.get(url, params=params, timeout=5)
         if resp.status_code == 200:
             data = resp.json()
             if 'quotes' in data and len(data['quotes']) > 0:
@@ -2360,7 +2363,7 @@ def get_currencylayer_rate(pair):
             'source': 'USD',
             'format': 1
         }
-        resp = req_lib.get(url, params=params, timeout=2)
+        resp = req_lib.get(url, params=params, timeout=5)
         if resp.status_code == 200:
             data = resp.json()
             if data.get('success') and 'quotes' in data:
@@ -2385,7 +2388,7 @@ def get_exchangerate_rate(pair):
     try:
         base, quote = pair.split('/')
         url = f"https://api.exchangerate-api.com/v4/latest/{base}"
-        resp = req_lib.get(url, timeout=2)
+        resp = req_lib.get(url, timeout=5)
         if resp.status_code == 200:
             data = resp.json()
             if quote in data.get('rates', {}):
@@ -2413,7 +2416,7 @@ def get_goldapi_rate(pair):
     try:
         url = f"{GOLDAPI_URL}/{symbol}/USD"
         headers = {'x-access-token': GOLDAPI_KEY, 'Content-Type': 'application/json'}
-        resp = req_lib.get(url, headers=headers, timeout=2)
+        resp = req_lib.get(url, headers=headers, timeout=5)
         if resp.status_code == 200:
             data = resp.json()
             if 'price' in data:
@@ -2429,147 +2432,6 @@ def get_goldapi_rate(pair):
                 }
     except Exception as e:
         logger.debug(f"GoldAPI fetch failed for {pair}: {e}")
-    return None
-
-def get_api_ninjas_commodity(pair):
-    """v9.3.0: Fetch oil/copper prices from API Ninjas (free tier available)"""
-    if not API_NINJAS_KEY:
-        return None
-    # API Ninjas commodity names
-    ninjas_commodities = {
-        'WTI/USD': 'crude_oil_wti',
-        'BRENT/USD': 'crude_oil_brent',
-    }
-    commodity = ninjas_commodities.get(pair)
-    if not commodity:
-        return None
-    try:
-        url = f"{API_NINJAS_URL}?name={commodity}"
-        headers = {'X-Api-Key': API_NINJAS_KEY}
-        resp = req_lib.get(url, headers=headers, timeout=2)
-        if resp.status_code == 200:
-            data = resp.json()
-            if data and 'price' in data:
-                price = float(data['price'])
-                return {
-                    'bid': price * 0.9998,
-                    'ask': price * 1.0002,
-                    'mid': price,
-                    'source': 'api_ninjas'
-                }
-    except Exception as e:
-        logger.debug(f"API Ninjas commodity fetch failed for {pair}: {e}")
-    return None
-
-def get_alphavantage_commodity(pair):
-    """v9.3.0: Fetch commodity prices from Alpha Vantage (500 calls/day free)"""
-    if not ALPHA_VANTAGE_KEY:
-        return None
-    # Alpha Vantage commodity symbols
-    av_commodities = {
-        'WTI/USD': 'WTI',
-        'BRENT/USD': 'BRENT',
-    }
-    symbol = av_commodities.get(pair)
-    if not symbol:
-        return None
-    try:
-        url = "https://www.alphavantage.co/query"
-        params = {
-            'function': 'GLOBAL_QUOTE',
-            'symbol': symbol,
-            'apikey': ALPHA_VANTAGE_KEY
-        }
-        resp = req_lib.get(url, params=params, timeout=2)
-        if resp.status_code == 200:
-            data = resp.json()
-            quote = data.get('Global Quote', {})
-            if quote and '05. price' in quote:
-                price = float(quote['05. price'])
-                return {
-                    'bid': price * 0.9998,
-                    'ask': price * 1.0002,
-                    'mid': price,
-                    'source': 'alphavantage'
-                }
-    except Exception as e:
-        logger.debug(f"Alpha Vantage commodity fetch failed for {pair}: {e}")
-    return None
-
-def get_yahoo_oil_price(pair):
-    """v9.3.0: Fetch oil prices from Yahoo Finance (FREE, no API key needed)"""
-    # Yahoo Finance symbols for oil futures
-    yahoo_symbols = {
-        'WTI/USD': 'CL=F',    # WTI Crude Oil Futures
-        'BRENT/USD': 'BZ=F',  # Brent Crude Oil Futures
-    }
-    symbol = yahoo_symbols.get(pair)
-    if not symbol:
-        return None
-    try:
-        # Yahoo Finance query1 API (free, no key required)
-        url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1d&range=1d"
-        headers = {'User-Agent': 'Mozilla/5.0'}
-        resp = req_lib.get(url, headers=headers, timeout=2)
-        if resp.status_code == 200:
-            data = resp.json()
-            result = data.get('chart', {}).get('result', [])
-            if result and len(result) > 0:
-                meta = result[0].get('meta', {})
-                price = meta.get('regularMarketPrice', 0)
-                if price and price > 0:
-                    return {
-                        'bid': price * 0.9995,
-                        'ask': price * 1.0005,
-                        'mid': price,
-                        'source': 'yahoo'
-                    }
-    except Exception as e:
-        logger.debug(f"Yahoo Finance oil fetch failed for {pair}: {e}")
-    return None
-
-def get_eia_oil_spot_price(pair):
-    """v9.3.0: Fetch WTI/Brent spot prices from EIA (free US govt API)"""
-    if not EIA_API_KEY:
-        return None
-    # EIA API v2 product codes for spot prices
-    eia_products = {
-        'WTI/USD': 'RWTC',    # WTI Cushing spot price
-        'BRENT/USD': 'RBRTE',  # Brent Europe spot price
-    }
-    product = eia_products.get(pair)
-    if not product:
-        return None
-    try:
-        # EIA API v2: Build URL manually to avoid encoding issues
-        # Format: https://api.eia.gov/v2/petroleum/pri/spt/data/?api_key=KEY&frequency=daily&data[0]=value&facets[product][]=RWTC&sort[0][column]=period&sort[0][direction]=desc&length=1
-        url = (
-            f"{EIA_API_URL}/petroleum/pri/spt/data/"
-            f"?api_key={EIA_API_KEY}"
-            f"&frequency=daily"
-            f"&data[0]=value"
-            f"&facets[product][]={product}"
-            f"&sort[0][column]=period"
-            f"&sort[0][direction]=desc"
-            f"&length=1"
-        )
-        resp = req_lib.get(url, timeout=2)
-        if resp.status_code == 200:
-            data = resp.json()
-            records = data.get('response', {}).get('data', [])
-            if records and len(records) > 0:
-                price = float(records[0].get('value', 0))
-                if price > 0:
-                    return {
-                        'bid': price * 0.9995,
-                        'ask': price * 1.0005,
-                        'mid': price,
-                        'source': 'eia'
-                    }
-        else:
-            logger.debug(f"EIA API returned status {resp.status_code} for {pair}")
-    except Exception as e:
-        logger.debug(f"EIA spot price fetch failed for {pair}: {e}")
     return None
 
 def get_eia_oil_data():
@@ -2609,42 +2471,40 @@ def get_eia_oil_data():
     return None
 
 def get_rate(pair):
-    """Get rate with FAST multi-tier fallback (v9.3.0: optimized for speed)"""
-
-    # OIL COMMODITIES: Yahoo → Static (fastest path)
-    if pair in ['WTI/USD', 'BRENT/USD']:
-        rate = get_yahoo_oil_price(pair)
-        if rate:
-            return rate
-        # Skip to static - other APIs are too slow
-        if pair in STATIC_RATES:
-            mid = STATIC_RATES[pair]
-            return {'bid': mid * 0.9995, 'ask': mid * 1.0005, 'mid': mid, 'source': 'static'}
-        return None
-
-    # PRECIOUS METALS: Polygon → GoldAPI → Static
-    if pair in ['XAU/USD', 'XAG/USD', 'XPT/USD']:
-        rate = get_polygon_rate(pair)
-        if rate:
-            return rate
-        rate = get_goldapi_rate(pair)
-        if rate:
-            return rate
-        if pair in STATIC_RATES:
-            mid = STATIC_RATES[pair]
-            return {'bid': mid * 0.9998, 'ask': mid * 1.0002, 'mid': mid, 'source': 'static'}
-        return None
-
-    # FOREX: Polygon → ExchangeRate → Static (fast path)
+    """Get rate with multi-tier fallback (v9.3.0: 7+ data sources)"""
+    # Tier 1: Polygon (premium)
     rate = get_polygon_rate(pair)
     if rate:
         return rate
 
-    rate = get_exchangerate_rate(pair)
+    # Tier 2: Twelve Data (800 calls/day free)
+    rate = get_twelvedata_rate(pair)
     if rate:
         return rate
 
-    # Static fallback for forex
+    # Tier 3: TraderMade (1000 calls/month free)
+    rate = get_tradermade_rate(pair)
+    if rate:
+        return rate
+
+    # Tier 4: GoldAPI.io (precious metals only - 500 free req/month)
+    if is_commodity(pair) and pair in ['XAU/USD', 'XAG/USD', 'XPT/USD']:
+        rate = get_goldapi_rate(pair)
+        if rate:
+            return rate
+
+    # Tier 5: ExchangeRate-API (unlimited free - forex only)
+    if not is_commodity(pair):
+        rate = get_exchangerate_rate(pair)
+        if rate:
+            return rate
+
+    # Tier 6: CurrencyLayer (100 calls/month free - low priority)
+    rate = get_currencylayer_rate(pair)
+    if rate:
+        return rate
+
+    # Tier 7: Static fallback
     if pair in STATIC_RATES:
         mid = STATIC_RATES[pair]
         return {
@@ -2664,7 +2524,7 @@ def get_all_rates():
                 return cache['rates']['data']
 
     rates = {}
-    with ThreadPoolExecutor(max_workers=50) as executor:
+    with ThreadPoolExecutor(max_workers=15) as executor:
         future_to_pair = {executor.submit(get_rate, pair): pair for pair in ALL_INSTRUMENTS}
         for future in as_completed(future_to_pair):
             pair = future_to_pair[future]
@@ -2691,7 +2551,7 @@ def get_polygon_candles(pair, timeframe='day', limit=100):
         # v9.3.0: Use same commodity ticker mapping as rate fetch
         polygon_commodity_tickers = {
             'XAU/USD': 'C:XAUUSD', 'XAG/USD': 'C:XAGUSD', 'XPT/USD': 'C:XPTUSD',
-            'WTI/USD': 'C:USDWTI', 'BRENT/USD': 'C:USDBRENT',
+            'WTI/USD': 'C:USDWTI', 'BRENT/USD': 'C:USDBRENT', 'XCU/USD': 'C:XCUUSD',
         }
         ticker = polygon_commodity_tickers.get(pair, f"C:{pair.replace('/', '')}")
         multiplier = 1
@@ -4433,81 +4293,22 @@ def get_technical_indicators(pair):
     }
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# NEWS & SENTIMENT - Multi-Source (Finnhub + RSS Feeds + Yahoo Finance)
+# NEWS & SENTIMENT - Multi-Source (Finnhub + RSS Feeds)
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def get_yahoo_finance_news():
-    """v9.3.0: Fetch forex/commodity news from Yahoo Finance (FREE, no API key)"""
-    articles = []
-
-    # Yahoo Finance news tickers for forex/commodities
-    tickers = ['EURUSD=X', 'GC=F', 'CL=F', '^DXY']  # EUR/USD, Gold, Oil, DXY
-
-    for ticker in tickers:
-        try:
-            url = f"https://query1.finance.yahoo.com/v1/finance/search?q={ticker}&newsCount=5"
-            headers = {'User-Agent': 'Mozilla/5.0'}
-            resp = req_lib.get(url, headers=headers, timeout=2)
-
-            if resp.status_code == 200:
-                data = resp.json()
-                news = data.get('news', [])
-
-                for item in news[:5]:
-                    headline = item.get('title', '')
-                    if headline:
-                        articles.append({
-                            'headline': headline,
-                            'summary': item.get('publisher', 'Yahoo Finance'),
-                            'source': 'Yahoo Finance',
-                            'url': item.get('link', ''),
-                            'datetime': item.get('providerPublishTime', int(datetime.now().timestamp()))
-                        })
-        except Exception as e:
-            logger.debug(f"Yahoo Finance news error for {ticker}: {e}")
-            continue
-
-    return articles
-
-def get_yahoo_market_movers():
-    """v9.3.0: Get market sentiment from Yahoo Finance trending/movers"""
-    try:
-        # Get trending tickers for sentiment
-        url = "https://query1.finance.yahoo.com/v1/finance/trending/US"
-        headers = {'User-Agent': 'Mozilla/5.0'}
-        resp = req_lib.get(url, headers=headers, timeout=2)
-
-        if resp.status_code == 200:
-            data = resp.json()
-            quotes = data.get('finance', {}).get('result', [{}])[0].get('quotes', [])
-            return {
-                'trending_count': len(quotes),
-                'trending_symbols': [q.get('symbol', '') for q in quotes[:10]],
-                'source': 'yahoo'
-            }
-    except Exception as e:
-        logger.debug(f"Yahoo market movers error: {e}")
-    return None
-
 def get_rss_forex_news():
-    """Fetch news from FREE RSS feeds - ForexLive, FXStreet, Investing.com, Bloomberg, Reuters"""
+    """Fetch news from FREE RSS feeds - ForexLive, FXStreet, Investing.com"""
     articles = []
-
+    
     rss_feeds = [
-        # Forex-specific feeds
         ('https://www.forexlive.com/feed/', 'ForexLive'),
         ('https://www.fxstreet.com/rss/news', 'FXStreet'),
         ('https://www.investing.com/rss/news_14.rss', 'Investing.com'),
-        # Bloomberg & Reuters - Markets/Commodities
-        ('https://feeds.bloomberg.com/markets/news.rss', 'Bloomberg'),
-        ('https://news.google.com/rss/search?q=forex+currency+trading&hl=en-US&gl=US&ceid=US:en', 'Google News Forex'),
-        ('https://www.reuters.com/rssfeed/businessNews', 'Reuters Business'),
-        ('https://www.reuters.com/rssfeed/marketsNews', 'Reuters Markets'),
     ]
     
     for feed_url, source_name in rss_feeds:
         try:
-            resp = req_lib.get(feed_url, timeout=2, headers={
+            resp = req_lib.get(feed_url, timeout=5, headers={
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
             })
             
@@ -4569,7 +4370,7 @@ def get_finnhub_news():
         try:
             url = "https://finnhub.io/api/v1/news"
             params = {'category': 'forex', 'token': FINNHUB_API_KEY}
-            resp = req_lib.get(url, params=params, timeout=2)
+            resp = req_lib.get(url, params=params, timeout=8)
             
             if resp.status_code == 200:
                 data = resp.json()[:20]
@@ -4594,15 +4395,7 @@ def get_finnhub_news():
         sources_status['rss'] = {'status': 'OK', 'count': len(rss_articles)}
     except Exception as e:
         sources_status['rss'] = {'status': 'ERROR', 'error': str(e)}
-
-    # Source 3: Yahoo Finance News (FREE, no API key needed) - v9.3.0
-    try:
-        yahoo_articles = get_yahoo_finance_news()
-        all_articles.extend(yahoo_articles)
-        sources_status['yahoo'] = {'status': 'OK', 'count': len(yahoo_articles)}
-    except Exception as e:
-        sources_status['yahoo'] = {'status': 'ERROR', 'error': str(e)}
-
+    
     # Deduplicate by headline hash
     seen = set()
     unique_articles = []
@@ -4626,190 +4419,6 @@ def get_finnhub_news():
         cache['news']['data'] = result
         cache['news']['timestamp'] = datetime.now()
     return result
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# v9.3.0: GEOPOLITICAL RISK FACTOR
-# Balanced approach - not loose, not overfitting
-# Uses news headlines to detect geopolitical tensions affecting markets
-# ═══════════════════════════════════════════════════════════════════════════════
-
-# Region-currency mapping for geopolitical relevance
-GEOPOLITICAL_REGIONS = {
-    # European currencies affected by EU/Russia/Ukraine events
-    'EUR': ['europe', 'eu', 'eurozone', 'russia', 'ukraine', 'germany', 'france', 'italy', 'ecb'],
-    'GBP': ['uk', 'britain', 'brexit', 'england', 'scotland', 'boe'],
-    'CHF': ['switzerland', 'swiss', 'snb', 'europe'],
-
-    # Asia-Pacific currencies
-    'JPY': ['japan', 'china', 'asia', 'taiwan', 'korea', 'boj', 'pacific'],
-    'AUD': ['australia', 'china', 'pacific', 'asia', 'rba'],
-    'NZD': ['new zealand', 'china', 'pacific', 'asia', 'rbnz'],
-    'CNH': ['china', 'taiwan', 'asia', 'pboc', 'hong kong'],
-
-    # Americas
-    'USD': ['us', 'america', 'fed', 'washington', 'china', 'russia', 'global'],
-    'CAD': ['canada', 'us', 'america', 'nafta', 'usmca', 'boc'],
-    'MXN': ['mexico', 'us', 'america', 'nafta', 'usmca', 'latin'],
-
-    # Scandinavian
-    'SEK': ['sweden', 'scandinavia', 'nordic', 'europe', 'riksbank'],
-    'NOK': ['norway', 'scandinavia', 'nordic', 'oil', 'norges'],
-    'DKK': ['denmark', 'scandinavia', 'nordic', 'europe'],
-
-    # Commodities - highly sensitive to geopolitics
-    'XAU': ['gold', 'safe haven', 'us', 'china', 'global', 'central bank', 'reserve'],
-    'XAG': ['silver', 'precious', 'industrial', 'china', 'us'],
-    'XPT': ['platinum', 'south africa', 'auto', 'industrial'],
-    'WTI': ['oil', 'opec', 'middle east', 'iran', 'saudi', 'russia', 'us', 'venezuela', 'eia'],
-    'BRENT': ['oil', 'opec', 'middle east', 'iran', 'saudi', 'russia', 'europe', 'north sea'],
-}
-
-# Geopolitical keywords with impact weights (balanced - not extreme)
-GEOPOLITICAL_KEYWORDS = {
-    # High impact (weight 3) - clear market movers
-    'war': 3, 'invasion': 3, 'military strike': 3, 'nuclear': 3,
-    'sanctions': 3, 'embargo': 3, 'trade war': 3,
-
-    # Medium-high impact (weight 2) - significant tensions
-    'conflict': 2, 'tension': 2, 'escalation': 2, 'retaliation': 2,
-    'tariff': 2, 'trade dispute': 2, 'trade tension': 2,
-    'election': 2, 'referendum': 2, 'political crisis': 2,
-    'coup': 2, 'protest': 2, 'unrest': 2,
-
-    # Medium impact (weight 1.5) - moderate concerns
-    'diplomatic': 1.5, 'negotiation': 1.5, 'summit': 1.5,
-    'geopolitical': 1.5, 'political risk': 1.5,
-    'supply disruption': 1.5, 'pipeline': 1.5,
-
-    # Lower impact (weight 1) - general uncertainty
-    'uncertainty': 1, 'instability': 1, 'crisis': 1,
-    'policy change': 1, 'government': 1
-}
-
-# Sentiment modifiers - positive resolution reduces risk
-RESOLUTION_KEYWORDS = ['peace', 'ceasefire', 'agreement', 'deal', 'resolved', 'easing', 'de-escalation']
-
-def calculate_geopolitical_risk(pair):
-    """
-    v9.3.0: Calculate geopolitical risk score for a pair
-
-    Balanced approach:
-    - Score range: 35-65 (moderate, avoids extreme swings)
-    - Higher score = more bullish (less risk / positive resolution)
-    - Lower score = more bearish (more risk / negative tensions)
-    - 50 = neutral (no significant geopolitical news)
-
-    Returns: dict with score, signal, details
-    """
-    try:
-        # Get cached news
-        news_data = get_finnhub_news()
-        articles = news_data.get('articles', []) if news_data else []
-
-        if not articles:
-            return {'score': 50, 'signal': 'NEUTRAL', 'risk_level': 'LOW', 'details': 'No news data'}
-
-        base, quote = pair.split('/') if '/' in pair else (pair[:3], pair[3:])
-
-        # Get relevant regions for this pair
-        base_regions = GEOPOLITICAL_REGIONS.get(base, [base.lower()])
-        quote_regions = GEOPOLITICAL_REGIONS.get(quote, [quote.lower()])
-        all_regions = set(base_regions + quote_regions)
-
-        # Analyze articles for geopolitical content
-        risk_score = 0
-        resolution_score = 0
-        relevant_articles = 0
-        risk_details = []
-
-        current_time = datetime.now().timestamp()
-
-        for article in articles[:30]:  # Check recent 30 articles
-            headline = article.get('headline', '').lower()
-            summary = article.get('summary', '').lower()
-            text = f"{headline} {summary}"
-
-            # Check if article is relevant to this pair's regions
-            is_relevant = any(region in text for region in all_regions)
-
-            # Also check if it mentions the currency/commodity directly
-            if base.lower() in text or quote.lower() in text:
-                is_relevant = True
-
-            if not is_relevant:
-                continue
-
-            relevant_articles += 1
-
-            # Time decay: newer news has more weight
-            article_time = article.get('datetime', current_time)
-            hours_old = max(0, (current_time - article_time) / 3600) if article_time else 0
-            time_decay = max(0.3, 1.0 - (hours_old / 48))  # 48-hour decay
-
-            # Check for geopolitical keywords
-            article_risk = 0
-            for keyword, weight in GEOPOLITICAL_KEYWORDS.items():
-                if keyword in text:
-                    article_risk += weight
-                    if keyword in headline:  # Headlines are more important
-                        article_risk += weight * 0.5
-
-            # Check for resolution/positive keywords
-            article_resolution = 0
-            for res_keyword in RESOLUTION_KEYWORDS:
-                if res_keyword in text:
-                    article_resolution += 1.5
-                    if res_keyword in headline:
-                        article_resolution += 1.0
-
-            # Apply time decay
-            risk_score += article_risk * time_decay
-            resolution_score += article_resolution * time_decay
-
-            if article_risk > 2:
-                risk_details.append(headline[:60])
-
-        # Calculate final score
-        # Net risk = risk - resolution (can go negative if good news)
-        net_risk = risk_score - resolution_score
-
-        # Normalize to 35-65 range (balanced, not extreme)
-        # 0 net_risk = 50 (neutral)
-        # High positive net_risk = lower score (more bearish due to risk)
-        # High negative net_risk = higher score (bullish, risk resolved)
-
-        if net_risk > 0:
-            # More risk -> lower score (capped at 35)
-            normalized_score = 50 - min(15, net_risk * 1.5)
-        elif net_risk < 0:
-            # Resolution -> higher score (capped at 65)
-            normalized_score = 50 + min(15, abs(net_risk) * 1.5)
-        else:
-            normalized_score = 50
-
-        # Determine risk level
-        if normalized_score < 42:
-            risk_level = 'HIGH'
-            signal = 'BEARISH'
-        elif normalized_score > 58:
-            risk_level = 'LOW'
-            signal = 'BULLISH'
-        else:
-            risk_level = 'MODERATE'
-            signal = 'NEUTRAL'
-
-        return {
-            'score': round(normalized_score, 1),
-            'signal': signal,
-            'risk_level': risk_level,
-            'net_risk': round(net_risk, 2),
-            'relevant_articles': relevant_articles,
-            'details': risk_details[:3] if risk_details else ['No significant geopolitical news']
-        }
-
-    except Exception as e:
-        logger.debug(f"Geopolitical risk calculation error: {e}")
-        return {'score': 50, 'signal': 'NEUTRAL', 'risk_level': 'LOW', 'details': 'Error in calculation'}
 
 def analyze_sentiment(pair):
     """
@@ -4982,6 +4591,7 @@ def analyze_sentiment(pair):
         'XPT': ['platinum', 'xpt', 'platinum price', 'pgm', 'platinum futures'],
         'WTI': ['oil', 'wti', 'crude', 'crude oil', 'oil price', 'petroleum', 'opec', 'eia', 'nymex crude', 'oil futures'],
         'BRENT': ['brent', 'brent crude', 'oil', 'crude oil', 'opec', 'petroleum', 'ice brent', 'oil futures'],
+        'XCU': ['copper', 'xcu', 'copper price', 'industrial metal', 'lme copper', 'copper futures', 'dr copper'],
     }
 
     # Get keywords for this pair's currencies
@@ -5042,22 +4652,6 @@ def analyze_sentiment(pair):
                 time_decay = 0.5  # Default if can't parse time
 
         # ─────────────────────────────────────────────────────────────────────
-        # SOURCE QUALITY: Premium sources get more weight (v9.3.0)
-        # ─────────────────────────────────────────────────────────────────────
-        source = article.get('source', '').lower()
-        source_quality = 1.0
-        if 'bloomberg' in source:
-            source_quality = 1.8  # Bloomberg: highest credibility
-        elif 'reuters' in source:
-            source_quality = 1.7  # Reuters: very high credibility
-        elif 'yahoo' in source:
-            source_quality = 1.3  # Yahoo Finance: good credibility
-        elif 'finnhub' in source:
-            source_quality = 1.2  # Finnhub: aggregated news
-        elif 'fxstreet' in source or 'forexlive' in source:
-            source_quality = 1.1  # Forex-specific sources
-
-        # ─────────────────────────────────────────────────────────────────────
         # SENTIMENT SCORING with impact weighting
         # ─────────────────────────────────────────────────────────────────────
         article_bull_score = 0
@@ -5105,8 +4699,8 @@ def analyze_sentiment(pair):
             # Both or neither - use direct sentiment
             net_score = article_bull_score - article_bear_score
 
-        # Apply time decay, source quality, and add to weighted average
-        article_weight = (1.5 if is_high_impact else 1.0) * time_decay * source_quality
+        # Apply time decay and add to weighted average
+        article_weight = (1.5 if is_high_impact else 1.0) * time_decay
         if is_high_impact:
             high_impact_count += 1
 
@@ -5131,8 +4725,7 @@ def analyze_sentiment(pair):
         'score': round(news_sentiment, 1),
         'articles_analyzed': len(relevant_articles),
         'high_impact_articles': high_impact_count,
-        'source': 'MULTI_SOURCE_NEWS',  # v9.3.0: Finnhub + Yahoo + Bloomberg + Reuters
-        'sources_used': ['Finnhub', 'Yahoo Finance', 'Bloomberg', 'Reuters', 'RSS Feeds'],
+        'source': 'FINNHUB_NEWS_ENHANCED',
         'quality': 'HIGH' if high_impact_count >= 2 else 'MEDIUM' if len(relevant_articles) >= 3 else 'LOW'
     }
     
@@ -5181,25 +4774,8 @@ def analyze_sentiment(pair):
         sentiment_score = news_sentiment
         data_quality = 'MEDIUM'
 
-    # v9.3.0: Yahoo Market Movers boost - if market is trending, boost confidence
-    try:
-        yahoo_movers = get_yahoo_market_movers()
-        if yahoo_movers and yahoo_movers.get('trending_count', 0) > 5:
-            # High market activity = higher confidence in sentiment readings
-            sentiment_sources['yahoo_market_movers'] = {
-                'trending_count': yahoo_movers['trending_count'],
-                'status': 'ACTIVE'
-            }
-            # Slight boost to confidence when markets are active
-            if sentiment_score > 55:
-                sentiment_score = min(100, sentiment_score + 2)  # Boost bullish
-            elif sentiment_score < 45:
-                sentiment_score = max(0, sentiment_score - 2)  # Boost bearish
-    except:
-        pass
-
     sentiment_score = max(0, min(100, sentiment_score))
-
+    
     return {
         'score': round(sentiment_score, 1),
         'signal': 'BULLISH' if sentiment_score > 55 else 'BEARISH' if sentiment_score < 45 else 'NEUTRAL',
@@ -5220,7 +4796,7 @@ def get_investing_calendar():
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
             'Accept': 'application/rss+xml, application/xml, text/xml'
         }
-        resp = req_lib.get(url, headers=headers, timeout=2)
+        resp = req_lib.get(url, headers=headers, timeout=8)
 
         if resp.status_code == 200 and ('<item>' in resp.text or '<entry>' in resp.text):
             events = []
@@ -5312,7 +4888,7 @@ def get_fxstreet_calendar():
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
             'Accept': 'application/rss+xml, application/xml, text/xml'
         }
-        resp = req_lib.get(url, headers=headers, timeout=2)
+        resp = req_lib.get(url, headers=headers, timeout=8)
 
         if resp.status_code == 200 and '<item>' in resp.text:
             events = []
@@ -5586,7 +5162,7 @@ def get_dailyfx_calendar():
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         }
-        resp = req_lib.get(url, headers=headers, timeout=2)
+        resp = req_lib.get(url, headers=headers, timeout=8)
         
         if resp.status_code == 200:
             events = []
@@ -6216,6 +5792,7 @@ def get_calendar_risk(pair):
         'XPT': ['US', 'USA', 'United States'],  # Platinum
         'WTI': ['US', 'USA', 'United States'],  # WTI = US oil
         'BRENT': ['US', 'USA', 'United States'],  # Brent also reacts to US data
+        'XCU': ['US', 'USA', 'United States', 'CN', 'China'],  # Copper: US + China demand
     }
 
     # v9.3.0: Commodity-specific high-impact event keywords
@@ -6225,6 +5802,7 @@ def get_calendar_risk(pair):
         'XPT': ['fomc', 'interest rate', 'inflation', 'platinum', 'auto sales'],
         'WTI': ['crude', 'oil', 'opec', 'eia', 'petroleum', 'inventory', 'drilling'],
         'BRENT': ['crude', 'oil', 'opec', 'eia', 'petroleum', 'inventory'],
+        'XCU': ['pmi', 'manufacturing', 'copper', 'industrial', 'china gdp', 'china pmi'],
     }
 
     base_countries = currency_map.get(base, [base])
@@ -6431,7 +6009,7 @@ def get_real_intermarket_data():
                 'symbol': 'VIX',
                 'apikey': ALPHA_VANTAGE_KEY
             }
-            resp = req_lib.get(url, params=params, timeout=2)
+            resp = req_lib.get(url, params=params, timeout=5)
             if resp.status_code == 200:
                 data = resp.json()
                 if 'Global Quote' in data and '05. price' in data['Global Quote']:
@@ -6591,6 +6169,7 @@ def get_cot_data(currency):
         'XPT': 'PL',  # Platinum (NYMEX)
         'WTI': 'CL',  # WTI Crude Oil (NYMEX)
         'BRENT': 'BZ', # Brent Crude
+        'XCU': 'HG'   # Copper (COMEX)
     }
 
     if currency not in cftc_codes:
@@ -6961,6 +6540,22 @@ def analyze_intermarket(pair):
             if pair == 'BRENT/USD' and gold:
                 pass  # Future: Brent premium tracking
 
+        # Copper: industrial bellwether, equity-correlated
+        elif pair == 'XCU/USD':
+            if spx_change > 0.8:
+                score += min(10, spx_change * 4)  # Strong equity = industrial demand
+                signals.append(f"Equities +{spx_change:.1f}%: Industrial demand bullish")
+            elif spx_change < -0.8:
+                score -= min(10, abs(spx_change) * 4)
+                signals.append(f"Equities {spx_change:.1f}%: Industrial demand bearish")
+
+            if vix > 25:
+                score -= 6
+                signals.append(f"VIX {vix:.0f}: Risk-off, copper bearish")
+            elif vix < 14:
+                score += 4
+                signals.append(f"VIX {vix:.0f}: Risk-on, copper bullish")
+
     # Clamp score
     score = max(0, min(100, score))
 
@@ -7246,7 +6841,7 @@ Respond in EXACT JSON format:
                         'flags': flags[:5] if flags else [],  # Limit to 5 flags
                         'recommended_direction': recommended_dir.upper() if isinstance(recommended_dir, str) else 'NEUTRAL',
                         'factors_checked': 11,  # All 11 individual factors (Tech, Fund, Sent, Inter, Quant, MTF, Struct, Cal, Candle, CurrStr, Options)
-                        'groups_checked': 9,  # 9 factor groups in scoring system (including geopolitical_risk)
+                        'groups_checked': 8,  # 8 factor groups in scoring system
                         'factor_analysis': {
                             'strongest_bullish': factor_analysis.get('strongest_bullish', ''),
                             'strongest_bearish': factor_analysis.get('strongest_bearish', ''),
@@ -7330,9 +6925,7 @@ def detect_market_regime(adx, atr, current_price):
 
 def build_factor_groups(factors):
     """
-    v9.3.0: Merge 11 individual factors into 9 independent groups.
-    Groups: Trend/Momentum, Fundamental, Sentiment, Intermarket, Mean Reversion,
-            Calendar Risk, AI Synthesis, Currency Strength, Geopolitical Risk
+    v9.0: Merge 11 individual factors into 7 independent groups.
     Eliminates correlation between Technical/MTF/Quantitative/Structure.
     """
     factor_groups = {}
@@ -7655,6 +7248,11 @@ def calculate_factor_scores(pair):
                 elif weekly_change > 2:
                     fund_score -= 5
                     eia_note = f"EIA build +{weekly_change:.1f}M bbl: mild bearish"
+
+        # Copper: industrial demand proxy
+        elif pair == 'XCU/USD':
+            if vix > 25: fund_score -= 6
+            elif vix < 15: fund_score += 4
 
         fund_score = max(10, min(90, fund_score))
 
@@ -8370,19 +7968,6 @@ def generate_signal(pair):
             'quote_strength': currency_strength_data.get('quote_strength', 50)
         }
 
-        # v9.3.0: Add Geopolitical Risk as 9th factor group (5% forex, 6% commodities)
-        # Analyzes news for war, sanctions, trade tensions, elections
-        geo_risk_data = calculate_geopolitical_risk(pair)
-        geo_weight = COMMODITY_FACTOR_WEIGHTS.get('geopolitical_risk', 6) if is_commodity(pair) else FACTOR_GROUP_WEIGHTS.get('geopolitical_risk', 5)
-        factor_groups['geopolitical_risk'] = {
-            'score': geo_risk_data['score'],
-            'signal': geo_risk_data['signal'],
-            'weight': geo_weight,
-            'risk_level': geo_risk_data.get('risk_level', 'MODERATE'),
-            'relevant_articles': geo_risk_data.get('relevant_articles', 0),
-            'details': geo_risk_data.get('details', [])
-        }
-
         # ═══════════════════════════════════════════════════════════════════════════
         # v9.2.4: SMART MONEY CONCEPTS (SMC) ANALYSIS
         # Order Blocks, Liquidity Zones, Session Timing
@@ -8411,61 +7996,11 @@ def generate_signal(pair):
 
         # Select regime-specific weights (v9.3.0: commodity-specific weights)
         if is_commodity(pair):
-            regime_weights = COMMODITY_FACTOR_WEIGHTS.copy()
+            regime_weights = COMMODITY_FACTOR_WEIGHTS
         else:
-            regime_weights = REGIME_WEIGHTS.get(regime, FACTOR_GROUP_WEIGHTS).copy()
+            regime_weights = REGIME_WEIGHTS.get(regime, FACTOR_GROUP_WEIGHTS)
 
-        # ═══════════════════════════════════════════════════════════════════════════
-        # v9.3.0: SMART AI WEIGHT ADJUSTMENT (Automatic & Balanced)
-        # Dynamically adjusts weights based on factor confidence and market conditions
-        # Not overfit: uses simple rules, keeps adjustments small (±3%)
-        # ═══════════════════════════════════════════════════════════════════════════
-
-        # Count directional signals for consensus detection
-        bullish_factors = [g for g in factor_groups.values() if g['signal'] == 'BULLISH']
-        bearish_factors = [g for g in factor_groups.values() if g['signal'] == 'BEARISH']
-        neutral_factors = [g for g in factor_groups.values() if g['signal'] == 'NEUTRAL']
-
-        consensus_strength = abs(len(bullish_factors) - len(bearish_factors))
-        dominant_direction = 'BULLISH' if len(bullish_factors) > len(bearish_factors) else 'BEARISH'
-
-        # Rule 1: High consensus (6+ factors agree) - boost agreeing factors slightly
-        if consensus_strength >= 4:
-            for group_name, group_data in factor_groups.items():
-                if group_data['signal'] == dominant_direction:
-                    base_weight = regime_weights.get(group_name, 10)
-                    regime_weights[group_name] = min(base_weight + 2, 30)  # Max +2%, cap at 30%
-                elif group_data['signal'] != 'NEUTRAL':
-                    # Slightly reduce conflicting factors
-                    base_weight = regime_weights.get(group_name, 10)
-                    regime_weights[group_name] = max(base_weight - 1, 3)  # Max -1%, floor at 3%
-
-        # Rule 2: Volatile regime - boost geopolitical and sentiment
-        if regime == 'volatile':
-            if 'geopolitical_risk' in regime_weights:
-                regime_weights['geopolitical_risk'] = min(regime_weights.get('geopolitical_risk', 5) + 3, 15)
-            if 'sentiment' in regime_weights:
-                regime_weights['sentiment'] = min(regime_weights.get('sentiment', 12) + 2, 18)
-
-        # Rule 3: Strong directional factors (score >65 or <35) get small boost
-        for group_name, group_data in factor_groups.items():
-            factor_score = group_data['score']
-            if factor_score >= 68 or factor_score <= 32:  # Strong conviction factor
-                base_weight = regime_weights.get(group_name, 10)
-                regime_weights[group_name] = min(base_weight + 1, 25)  # Max +1%
-
-        # Rule 4: AI synthesis activation bonus when confirmed by other factors
-        ai_data = factor_groups.get('ai_synthesis', {})
-        if ai_data.get('activated', False) and ai_data.get('signal') == dominant_direction:
-            regime_weights['ai_synthesis'] = min(regime_weights.get('ai_synthesis', 10) + 2, 18)
-
-        # Normalize weights to sum to 100 (prevent drift)
-        total_weight = sum(regime_weights.values())
-        if total_weight != 100 and total_weight > 0:
-            scale_factor = 100 / total_weight
-            regime_weights = {k: round(v * scale_factor, 1) for k, v in regime_weights.items()}
-
-        # Calculate weighted composite from 9 groups
+        # Calculate weighted composite from 7 groups
         composite_score = 0
         available_weight = 0
 
@@ -8981,26 +8516,15 @@ def generate_signal(pair):
         entry_min = min(entry_min, current_price)
         entry_max = max(entry_max, current_price)
 
-        # v9.3.0: Cap entry spread and ensure it's centered around current price
+        # v9.3.0: Cap entry spread for commodities (prevent absurdly wide ranges)
         # Commodities have large ATR values that create unrealistic entry windows
-        # Scandinavian/Exotic pairs need tighter % spread due to high values
-        scandinavian_check = 'NOK' in pair or 'SEK' in pair or 'DKK' in pair
-        if is_commodity(pair):
-            max_entry_spread_pct = 0.001  # 0.1% for commodities
-        elif scandinavian_check or pair_category == 'EXOTIC':
-            max_entry_spread_pct = 0.003  # 0.3% for exotics/Scandinavian
-        else:
-            max_entry_spread_pct = 0.005  # 0.5% for normal forex
-
+        max_entry_spread_pct = 0.001 if is_commodity(pair) else 0.01  # 0.1% for commodities, 1% for forex
         max_spread = current_price * max_entry_spread_pct
         actual_spread = entry_max - entry_min
-
-        # If spread is too wide OR entry range doesn't contain current price, recenter
-        if actual_spread > max_spread or entry_min > current_price or entry_max < current_price:
-            # Center around current price
-            half_spread = max_spread / 2
-            entry_min = current_price - half_spread
-            entry_max = current_price + half_spread
+        if actual_spread > max_spread:
+            midpoint = (entry_min + entry_max) / 2
+            entry_min = midpoint - max_spread / 2
+            entry_max = midpoint + max_spread / 2
 
         # Convert ATR to pips for this pair
         atr_pips = atr / pip_size
@@ -9025,24 +8549,14 @@ def generate_signal(pair):
         atr_mult = ATR_MULTIPLIERS.get(pair_category, ATR_MULTIPLIERS['CROSS'])
 
         # Hard pip limits as safety net (never exceed these)
-        # v9.3.0: Scandinavian pairs (NOK, SEK, DKK) need wider limits due to high volatility
-        scandinavian_pairs = ['USD/NOK', 'USD/SEK', 'USD/DKK', 'EUR/NOK', 'EUR/SEK', 'EUR/DKK',
-                              'GBP/NOK', 'GBP/SEK', 'NOK/SEK', 'NOK/JPY', 'SEK/JPY']
-        is_scandinavian = pair in scandinavian_pairs or 'NOK' in pair or 'SEK' in pair or 'DKK' in pair
-
         PIP_LIMITS = {
             'MAJOR':     {'sl_abs_min': 12,  'sl_abs_max': 60,   'tp1_abs_max': 100,  'tp2_abs_max': 180},
             'MINOR':     {'sl_abs_min': 15,  'sl_abs_max': 80,   'tp1_abs_max': 140,  'tp2_abs_max': 240},
             'CROSS':     {'sl_abs_min': 18,  'sl_abs_max': 100,  'tp1_abs_max': 180,  'tp2_abs_max': 300},
             'EXOTIC':    {'sl_abs_min': 25,  'sl_abs_max': 150,  'tp1_abs_max': 250,  'tp2_abs_max': 400},
-            'SCANDINAVIAN': {'sl_abs_min': 80, 'sl_abs_max': 400, 'tp1_abs_max': 600, 'tp2_abs_max': 1000},
             'COMMODITY': {'sl_abs_min': 50,  'sl_abs_max': 500,  'tp1_abs_max': 800,  'tp2_abs_max': 1500}
         }
-        # Use SCANDINAVIAN limits for NOK/SEK/DKK pairs
-        if is_scandinavian:
-            limits = PIP_LIMITS['SCANDINAVIAN']
-        else:
-            limits = PIP_LIMITS.get(pair_category, PIP_LIMITS['CROSS'])
+        limits = PIP_LIMITS.get(pair_category, PIP_LIMITS['CROSS'])
 
         # Calculate ATR-based SL (the smart part)
         # SL should be between min and max ATR multipliers, adjusted by volatility
@@ -9606,7 +9120,7 @@ def run_system_audit():
             'currency_strength': {'weight': 10, 'sources': 'v9.3.0: 51-instrument analysis — base vs quote currency strength (0% for commodities)'}
         },
         'commodity_weights': {
-            'description': 'v9.3.0: Separate weight profile for 5 commodities (XAU, XAG, XPT, WTI, BRENT)',
+            'description': 'v9.3.0: Separate weight profile for 6 commodities (XAU, XAG, XPT, WTI, BRENT, XCU)',
             'trend_momentum': 22, 'fundamental': 12, 'sentiment': 13,
             'intermarket': 15, 'mean_reversion': 12, 'calendar_risk': 8,
             'ai_synthesis': 10, 'supply_demand': 8,
@@ -10134,7 +9648,7 @@ def run_system_audit():
             test_response = req_lib.get(
                 'https://api.openai.com/v1/models',
                 headers=headers,
-                timeout=2
+                timeout=5
             )
             if test_response.status_code == 200:
                 audit['api_status']['openai'] = {
@@ -10210,13 +9724,6 @@ def run_system_audit():
         'status': 'OK' if EIA_API_KEY else 'NOT_CONFIGURED',
         'purpose': 'US petroleum inventory data (free govt API)',
         'coverage': 'WTI/Brent crude oil supply'
-    }
-
-    # v9.3.0: API Ninjas (oil/copper commodity prices)
-    audit['api_status']['api_ninjas'] = {
-        'status': 'OK' if API_NINJAS_KEY else 'NOT_CONFIGURED',
-        'purpose': 'Live oil & copper prices (free tier)',
-        'coverage': 'WTI, Brent, Copper'
     }
 
     # ═══════════════════════════════════════════════════════════════════════════
@@ -10312,8 +9819,8 @@ def run_system_audit():
     # SCORING QUALITY VALIDATION - Verify real data & proper calibration
     # ═══════════════════════════════════════════════════════════════════════════
     
-    # Test multiple pairs to verify scoring distribution (v9.3.0: includes commodities)
-    test_pairs = ['EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'XAU/USD', 'WTI/USD']
+    # Test multiple pairs to verify scoring distribution
+    test_pairs = ['EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'EUR/GBP', 'USD/CHF']
     pair_scores = []
     factor_distributions = {f: [] for f in FACTOR_WEIGHTS.keys()}
     
@@ -10545,7 +10052,7 @@ def run_ai_system_health_check(use_ai=True):
     if OPENAI_API_KEY:
         try:
             headers = {'Authorization': f'Bearer {OPENAI_API_KEY}'}
-            resp = req_lib.get('https://api.openai.com/v1/models', headers=headers, timeout=2)
+            resp = req_lib.get('https://api.openai.com/v1/models', headers=headers, timeout=5)
             api_check['details']['openai'] = 'OK' if resp.status_code == 200 else f'ERROR: {resp.status_code}'
             if resp.status_code != 200:
                 health['warnings'].append({
@@ -10615,34 +10122,6 @@ def run_ai_system_health_check(use_ai=True):
     except Exception as e:
         api_check['details']['cot'] = f'ERROR: {str(e)[:50]}'
 
-    # v9.3.0: Test GoldAPI (precious metals)
-    if GOLDAPI_KEY:
-        api_check['details']['goldapi'] = 'OK (500/month)'
-    else:
-        api_check['details']['goldapi'] = 'NOT_CONFIGURED'
-
-    # v9.3.0: Test API Ninjas (oil/copper prices)
-    if API_NINJAS_KEY:
-        try:
-            rate = get_api_ninjas_commodity('WTI/USD')
-            api_check['details']['api_ninjas'] = 'OK' if rate else 'LIMITED'
-        except Exception as e:
-            api_check['details']['api_ninjas'] = f'ERROR: {str(e)[:50]}'
-    else:
-        api_check['details']['api_ninjas'] = 'NOT_CONFIGURED'
-        # If no API Ninjas and commodities are showing static, add warning
-        health['warnings'].append({
-            'type': 'COMMODITY_API_MISSING',
-            'message': 'API Ninjas not configured - WTI/BRENT may use static rates',
-            'severity': 'MEDIUM'
-        })
-
-    # v9.3.0: Test EIA (US oil inventory data)
-    if EIA_API_KEY:
-        api_check['details']['eia'] = 'OK (free govt API)'
-    else:
-        api_check['details']['eia'] = 'NOT_CONFIGURED'
-
     health['checks']['apis'] = api_check
 
     # ═══════════════════════════════════════════════════════════════════════════
@@ -10650,8 +10129,8 @@ def run_ai_system_health_check(use_ai=True):
     # ═══════════════════════════════════════════════════════════════════════════
     scoring_check = {'name': 'Scoring System', 'status': 'PASS', 'details': {}}
 
-    # Test signal generation for multiple pairs (v9.3.0: includes commodities)
-    test_pairs = ['EUR/USD', 'GBP/USD', 'XAU/USD', 'WTI/USD']
+    # Test signal generation for multiple pairs
+    test_pairs = ['EUR/USD', 'GBP/USD', 'USD/JPY']
     signals_generated = 0
     scoring_issues = []
 
@@ -10907,18 +10386,9 @@ def run_ai_system_health_check(use_ai=True):
     if health['overall_score'] < 0:
         health['overall_score'] = 0
 
-    # v9.3.0: Each warning deducts 2 points if not already accounted for
-    # This ensures health score reflects warning count
-    warning_count = len(health['warnings'])
-    if warning_count > 0:
-        # Ensure score is capped based on warning severity
-        max_with_warnings = 98 - (warning_count * 2)
-        if health['overall_score'] > max_with_warnings:
-            health['overall_score'] = max(50, max_with_warnings)
-
     if health['errors']:
         health['overall_status'] = 'CRITICAL'
-    elif health['warnings'] or health['overall_score'] < 70:
+    elif health['overall_score'] < 70:
         health['overall_status'] = 'WARNING'
     elif health['overall_score'] < 90:
         health['overall_status'] = 'GOOD'
@@ -11092,7 +10562,7 @@ def get_signals():
         # Generate fresh signals (v9.0: increased workers for faster loading)
         signals = []
 
-        with ThreadPoolExecutor(max_workers=50) as executor:
+        with ThreadPoolExecutor(max_workers=20) as executor:
             future_to_pair = {executor.submit(generate_signal, pair): pair for pair in ALL_INSTRUMENTS}
 
             for future in as_completed(future_to_pair):
@@ -11817,6 +11287,7 @@ def get_all_ig_sentiment():
         'WTI/USD': 'OIL_CRUDE',
         'BRENT/USD': 'OIL_BRENT',
         'XPT/USD': 'PLATINUM',
+        'XCU/USD': 'COPPER'
     }
     
     results = []
@@ -12159,7 +11630,7 @@ def get_combined_retail_sentiment(pair):
             'EUR/CHF': 'EURCHF', 'GBP/CHF': 'GBPCHF', 'EUR/CAD': 'EURCAD',
             # v9.3.0: Commodity IG market IDs
             'XAU/USD': 'GOLD', 'XAG/USD': 'SILVER', 'WTI/USD': 'OIL_CRUDE',
-            'BRENT/USD': 'OIL_BRENT', 'XPT/USD': 'PLATINUM',
+            'BRENT/USD': 'OIL_BRENT', 'XPT/USD': 'PLATINUM', 'XCU/USD': 'COPPER'
         }
         if pair in ig_market_ids:
             ig_data = get_ig_client_sentiment(ig_market_ids[pair])
@@ -12486,13 +11957,6 @@ def api_status():
             'status': 'OK' if EIA_API_KEY else 'NOT_CONFIGURED',
             'purpose': 'US petroleum inventory data (free govt API)',
             'coverage': 'WTI/Brent crude oil supply data'
-        },
-        'api_ninjas': {
-            'configured': bool(API_NINJAS_KEY),
-            'status': 'OK' if API_NINJAS_KEY else 'NOT_CONFIGURED',
-            'purpose': 'Live oil & copper prices (free tier)',
-            'tier': 4.5,
-            'coverage': 'WTI, Brent, Copper'
         }
     }
 
@@ -12845,8 +12309,7 @@ logger.info("🚀 MEGA FOREX v9.3.0 PRO - AI ENHANCED initialized")
 if __name__ == '__main__':
     print("=" * 70)
     print("      MEGA FOREX v9.3.0 PRO - AI ENHANCED SYSTEM")
-
- ows  with"=" * 70)
+    print("=" * 70)
     print(f"  Instruments:     {len(ALL_INSTRUMENTS)} ({len(FOREX_PAIRS)} Forex + {len(COMMODITY_PAIRS)} Commodities)")
     print(f"  Factor Groups:   8 (merged from 12 individual factors)")
     print(f"  Quality Gates:   8 (G3/G5/G8 mandatory)")
@@ -12862,7 +12325,6 @@ if __name__ == '__main__':
     print(f"  CurrencyLayer:   {'✓ (100/month)' if CURRENCYLAYER_KEY else '✗'}")
     print(f"  ExchangeRate:    ✓ (Free, no key needed)")
     print(f"  GoldAPI.io:      {'✓ (Precious metals)' if GOLDAPI_KEY else '✗ (Optional)'}")
-    print(f"  API Ninjas:      {'✓ (Oil/Copper prices)' if API_NINJAS_KEY else '✗ (Optional)'}")
     print(f"  EIA Open Data:   {'✓ (Oil inventory/supply)' if EIA_API_KEY else '✗ (Optional)'}")
     print("=" * 70)
     print("  v9.3.0 PRO FEATURES:")

@@ -1,0 +1,77 @@
+MEGA FOREX v9.3.0 PRO - GEOPOLITICAL RISK UPDATE
+================================================
+
+Version: 9.3.0
+Date: February 6, 2026
+Status: PRODUCTION
+
+LATEST FILES:
+- app_v930_geopolitical.py - 9 Factor Groups with Geopolitical Risk
+- index_v930_geopolitical.html - All frontend changes
+
+CHANGES IN THIS UPDATE:
+-----------------------
+1. NEW FACTOR: Geopolitical Risk (5% Forex, 6% Commodities)
+   - War, sanctions, trade tensions, elections detection
+   - Region-specific analysis (EUR->Russia/Ukraine, WTI->Middle East/OPEC)
+   - Red flag warning display when HIGH risk detected
+   - News sentiment integration with Bloomberg, Reuters, Yahoo, Finnhub
+
+2. SMART AI WEIGHT ADJUSTMENT (Automatic)
+   - Dynamic weight adjustment based on factor consensus
+   - Regime-specific boosting (volatile = +geopolitical, +sentiment)
+   - High conviction factors get small weight boost
+   - AI synthesis activation bonus when confirmed
+   - Normalized to 100% total (anti-drift)
+
+3. UPDATED FACTOR WEIGHTS:
+   FOREX (9 Groups = 100%):
+   - Trend & Momentum: 20% (was 21%)
+   - Fundamental: 14% (was 15%)
+   - Sentiment: 12% (was 13%)
+   - Intermarket: 11% (was 12%)
+   - Mean Reversion: 11% (same)
+   - AI Synthesis: 10% (same)
+   - Currency Strength: 10% (same)
+   - Calendar Risk: 7% (was 8%)
+   - Geopolitical Risk: 5% (NEW)
+
+   COMMODITIES (9 Groups = 100%):
+   - Trend & Momentum: 21% (was 22%)
+   - Intermarket: 14% (was 15%)
+   - Sentiment: 12% (was 13%)
+   - Mean Reversion: 12% (same)
+   - Fundamental: 11% (was 12%)
+   - AI Synthesis: 9% (was 10%)
+   - Supply & Demand: 8% (same)
+   - Calendar Risk: 7% (was 8%)
+   - Geopolitical Risk: 6% (NEW - higher for commodities)
+
+4. FRONTEND UPDATES:
+   - Red "GEO RISK" badge on signal cards when HIGH risk
+   - Factor groups table now shows Risk Level column
+   - Methodology section updated with 9 Factor Groups
+   - Commodity weights display updated
+
+5. NEWS INTEGRATION:
+   - Yahoo Finance (FREE, query1.finance.yahoo.com)
+   - Bloomberg RSS feeds
+   - Reuters RSS feeds
+   - Finnhub API
+   - Source quality weighting (Bloomberg=1.8x, Reuters=1.7x)
+
+TOTAL INSTRUMENTS: 50
+- 45 Forex pairs
+- 5 Commodities (XAU, XAG, XPT, WTI, BRENT)
+
+GEOPOLITICAL REGIONS:
+- EUR: Europe, EU, Russia, Ukraine
+- GBP: UK, Brexit
+- JPY: Japan, China, Taiwan, Korea
+- USD: US, Fed, Global
+- XAU/XAG: Safe haven, Central banks
+- WTI/BRENT: OPEC, Middle East, Iran, Saudi, Russia, Venezuela
+
+COMMITS:
+--------
+- [pending] v9.3.0: Add Geopolitical Risk Factor + Smart AI Weight Adjustment

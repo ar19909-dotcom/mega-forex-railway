@@ -1,42 +1,42 @@
 """
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║                   MEGA FOREX v9.3.0 PRO - AI-ENHANCED SYSTEM                 ║
-║                    Build: February 6, 2026 - GEOPOLITICAL RISK ADDED         ║
+║                    Build: February 5, 2026 - COMMODITIES COMPLETE            ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
 ║  ✓ 45 Forex Pairs + 5 Commodities (50 Instruments)                           ║
-║  ✓ 9-Group Gated Scoring + 8-Gate Quality Filter (v9.3.0)                    ║
-║  ✓ Smart AI Weight Adjustment (Dynamic, Anti-Overfit)                        ║
-║  ✓ NEW: Geopolitical Risk Factor (War, Sanctions, Trade Tensions)            ║
+║  ✓ 8-Group Gated Scoring + 8-Gate Quality Filter (v9.3.0)                    ║
 ║  ✓ Separate Scoring Weights: Forex vs Commodities                            ║
-║  ✓ Yahoo Finance Live Oil + GoldAPI (XAU/XAG/XPT)                            ║
+║  ✓ EIA Live Oil Prices (WTI/Brent) + GoldAPI (XAU/XAG/XPT)                   ║
 ║  ✓ Supply & Demand Factor (replaces Currency Strength for commodities)       ║
-║  ✓ Multi-Source News: Bloomberg, Reuters, Yahoo Finance, Finnhub             ║
 ║  ✓ 16 Candlestick Pattern Recognition                                        ║
+║  ✓ SQLite Trade Journal & Signal History                                     ║
+║  ✓ Smart Dynamic SL/TP (Variable ATR + Liquidity Zones)                      ║
+║  ✓ REAL IG Client Sentiment + Institutional COT Data                         ║
+║  ✓ Complete Backtesting Module                                               ║
+║  ✓ TradingView Charts (USOIL/UKOIL for oil commodities)                      ║
 ║  ✓ Smart Money Concepts: Order Blocks, Liquidity Zones, Session Timing       ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
-║  FOREX SCORING (45 pairs) - 9-Group Gated AI-Enhanced (v9.3.0)               ║
-║  - Trend & Momentum (20%): RSI, MACD, ADX + MTF alignment                    ║
-║  - Fundamental (14%): Interest rate differentials + FRED macro               ║
-║  - Sentiment (12%): IG positioning + enhanced news analysis                  ║
-║  - Intermarket (11%): DXY, Gold, Yields, Oil correlations                    ║
+║  FOREX SCORING (45 pairs) - 8-Group Gated AI-Enhanced (v9.3.0)               ║
+║  - Trend & Momentum (21%): RSI, MACD, ADX + MTF alignment                    ║
+║  - Fundamental (15%): Interest rate differentials + FRED macro               ║
+║  - Sentiment (13%): IG positioning + enhanced news analysis                  ║
+║  - Intermarket (12%): DXY, Gold, Yields, Oil correlations                    ║
 ║  - Mean Reversion (11%): Z-Score, Bollinger %B + S/R structure               ║
 ║  - AI Synthesis (10%): GPT-4o-mini market analysis                           ║
 ║  - Currency Strength (10%): 50-instrument cross-currency analysis            ║
-║  - Calendar Risk (7%): Economic event risk + seasonality                     ║
-║  - Geopolitical Risk (5%): War, sanctions, trade tensions, elections         ║
+║  - Calendar Risk (8%): Economic event risk + seasonality                     ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
 ║  COMMODITY SCORING (5 instruments) - Commodity-Specific Weights (v9.3.0)     ║
-║  - Trend & Momentum (21%): RSI, MACD, ADX + MTF alignment                    ║
-║  - Intermarket (14%): Cross-commodity, DXY, VIX, Yields, Equities           ║
-║  - Sentiment (12%): IG + COT institutional + commodity news                  ║
+║  - Trend & Momentum (22%): RSI, MACD, ADX + MTF alignment                    ║
+║  - Intermarket (15%): Cross-commodity, DXY, VIX, Yields, Equities           ║
+║  - Sentiment (13%): IG + COT institutional + commodity news                  ║
+║  - Fundamental (12%): DXY inverse, Real yields, VIX safe-haven              ║
 ║  - Mean Reversion (12%): Z-Score, Bollinger %B + S/R structure               ║
-║  - Fundamental (11%): DXY inverse, Real yields, VIX safe-haven              ║
-║  - AI Synthesis (9%): GPT-4o-mini commodity analysis                         ║
+║  - AI Synthesis (10%): GPT-4o-mini commodity analysis                        ║
 ║  - Supply & Demand (8%): EIA inventory, USD correlation, warehouse stocks   ║
-║  - Calendar Risk (7%): OPEC, EIA, FOMC, PMI events                          ║
-║  - Geopolitical Risk (6%): War, sanctions, OPEC politics, trade tensions    ║
+║  - Calendar Risk (8%): OPEC, EIA, FOMC, PMI events                          ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
-║  17 APIs: Polygon, TwelveData, TraderMade, GoldAPI, Yahoo, Finnhub + more    ║
+║  17 APIs: Polygon, TwelveData, TraderMade, GoldAPI, EIA, API Ninjas + more   ║
 ║  8-Gate Filter: G3 Trend, G5 Calendar, G8 Data are MANDATORY                 ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 """
@@ -764,15 +764,14 @@ FACTOR_WEIGHTS = {
 # Research: 3-4 non-correlated factors is the sweet spot (CME Group 2019)
 # ═══════════════════════════════════════════════════════════════════════════════
 FACTOR_GROUP_WEIGHTS = {
-    'trend_momentum': 20,     # Technical (RSI, MACD, ADX) + MTF (H1/H4/D1) merged
-    'fundamental': 14,        # Interest rate diffs + FRED data (independent)
-    'sentiment': 12,          # IG positioning + News + Options merged (contrarian)
-    'intermarket': 11,        # DXY, Gold, Yields, Oil (independent)
+    'trend_momentum': 21,     # Technical (RSI, MACD, ADX) + MTF (H1/H4/D1) merged
+    'fundamental': 15,        # Interest rate diffs + FRED data (independent)
+    'sentiment': 13,          # IG positioning + News + Options merged (contrarian)
+    'intermarket': 12,        # DXY, Gold, Yields, Oil (independent)
     'mean_reversion': 11,     # Z-Score + Bollinger %B + S/R merged
-    'calendar_risk': 7,       # Economic events + Seasonality (independent)
+    'calendar_risk': 8,       # Economic events + Seasonality (independent)
     'ai_synthesis': 10,       # GPT enhanced analysis (activates when 2+ groups agree)
-    'currency_strength': 10,  # v9.3.0: 50-instrument currency strength analysis (0% for commodities)
-    'geopolitical_risk': 5    # v9.3.0: War, sanctions, trade tensions, elections (loose/anti-overfit)
+    'currency_strength': 10   # v9.3.0: 51-instrument currency strength analysis (0% for commodities)
 }
 # Total: 100%
 
@@ -781,35 +780,34 @@ FACTOR_GROUP_WEIGHTS = {
 # Now includes currency_strength (10%) from 51-instrument analysis
 REGIME_WEIGHTS = {
     'trending': {
-        'trend_momentum': 24, 'fundamental': 13, 'sentiment': 7,
-        'intermarket': 11, 'mean_reversion': 6, 'calendar_risk': 5, 'ai_synthesis': 13, 'currency_strength': 13, 'geopolitical_risk': 8
+        'trend_momentum': 26, 'fundamental': 14, 'sentiment': 8,
+        'intermarket': 12, 'mean_reversion': 6, 'calendar_risk': 6, 'ai_synthesis': 14, 'currency_strength': 14
     },
     'ranging': {
-        'trend_momentum': 10, 'fundamental': 11, 'sentiment': 11,
-        'intermarket': 9, 'mean_reversion': 20, 'calendar_risk': 5, 'ai_synthesis': 13, 'currency_strength': 13, 'geopolitical_risk': 8
+        'trend_momentum': 11, 'fundamental': 12, 'sentiment': 12,
+        'intermarket': 10, 'mean_reversion': 21, 'calendar_risk': 6, 'ai_synthesis': 14, 'currency_strength': 14
     },
     'volatile': {
-        'trend_momentum': 14, 'fundamental': 10, 'sentiment': 14,
-        'intermarket': 10, 'mean_reversion': 7, 'calendar_risk': 8, 'ai_synthesis': 11, 'currency_strength': 12, 'geopolitical_risk': 14
+        'trend_momentum': 16, 'fundamental': 12, 'sentiment': 16,
+        'intermarket': 12, 'mean_reversion': 8, 'calendar_risk': 10, 'ai_synthesis': 12, 'currency_strength': 14
     },
     'quiet': {
-        'trend_momentum': 20, 'fundamental': 15, 'sentiment': 7,
-        'intermarket': 12, 'mean_reversion': 11, 'calendar_risk': 4, 'ai_synthesis': 11, 'currency_strength': 13, 'geopolitical_risk': 7
+        'trend_momentum': 21, 'fundamental': 16, 'sentiment': 8,
+        'intermarket': 13, 'mean_reversion': 12, 'calendar_risk': 4, 'ai_synthesis': 12, 'currency_strength': 14
     }
 }
 
 # v9.3.0: Commodity-specific factor weights
 # Currency Strength replaced by Supply & Demand (EIA inventory, DXY inverse, warehouse stocks)
 COMMODITY_FACTOR_WEIGHTS = {
-    'trend_momentum': 21,     # Commodities trend strongly
-    'fundamental': 11,        # DXY + real yields + supply/demand
-    'sentiment': 12,          # COT positioning + retail
-    'intermarket': 14,        # Cross-commodity correlations critical
+    'trend_momentum': 22,     # Commodities trend strongly
+    'fundamental': 12,        # DXY + real yields + supply/demand
+    'sentiment': 13,          # COT positioning + retail
+    'intermarket': 15,        # Cross-commodity correlations critical
     'mean_reversion': 12,     # Commodities do revert
-    'calendar_risk': 7,       # OPEC, EIA, crop reports
-    'ai_synthesis': 9,        # AI analysis
-    'currency_strength': 8,   # → Becomes "Supply & Demand" for commodities (EIA, DXY, warehouse)
-    'geopolitical_risk': 6    # v9.3.0: Wars, sanctions, OPEC politics (higher weight for commodities)
+    'calendar_risk': 8,       # OPEC, EIA, crop reports
+    'ai_synthesis': 10,       # AI analysis
+    'currency_strength': 8    # → Becomes "Supply & Demand" for commodities (EIA, DXY, warehouse)
 }
 # Total: 100%
 
@@ -4627,190 +4625,6 @@ def get_finnhub_news():
         cache['news']['timestamp'] = datetime.now()
     return result
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# v9.3.0: GEOPOLITICAL RISK FACTOR
-# Balanced approach - not loose, not overfitting
-# Uses news headlines to detect geopolitical tensions affecting markets
-# ═══════════════════════════════════════════════════════════════════════════════
-
-# Region-currency mapping for geopolitical relevance
-GEOPOLITICAL_REGIONS = {
-    # European currencies affected by EU/Russia/Ukraine events
-    'EUR': ['europe', 'eu', 'eurozone', 'russia', 'ukraine', 'germany', 'france', 'italy', 'ecb'],
-    'GBP': ['uk', 'britain', 'brexit', 'england', 'scotland', 'boe'],
-    'CHF': ['switzerland', 'swiss', 'snb', 'europe'],
-
-    # Asia-Pacific currencies
-    'JPY': ['japan', 'china', 'asia', 'taiwan', 'korea', 'boj', 'pacific'],
-    'AUD': ['australia', 'china', 'pacific', 'asia', 'rba'],
-    'NZD': ['new zealand', 'china', 'pacific', 'asia', 'rbnz'],
-    'CNH': ['china', 'taiwan', 'asia', 'pboc', 'hong kong'],
-
-    # Americas
-    'USD': ['us', 'america', 'fed', 'washington', 'china', 'russia', 'global'],
-    'CAD': ['canada', 'us', 'america', 'nafta', 'usmca', 'boc'],
-    'MXN': ['mexico', 'us', 'america', 'nafta', 'usmca', 'latin'],
-
-    # Scandinavian
-    'SEK': ['sweden', 'scandinavia', 'nordic', 'europe', 'riksbank'],
-    'NOK': ['norway', 'scandinavia', 'nordic', 'oil', 'norges'],
-    'DKK': ['denmark', 'scandinavia', 'nordic', 'europe'],
-
-    # Commodities - highly sensitive to geopolitics
-    'XAU': ['gold', 'safe haven', 'us', 'china', 'global', 'central bank', 'reserve'],
-    'XAG': ['silver', 'precious', 'industrial', 'china', 'us'],
-    'XPT': ['platinum', 'south africa', 'auto', 'industrial'],
-    'WTI': ['oil', 'opec', 'middle east', 'iran', 'saudi', 'russia', 'us', 'venezuela', 'eia'],
-    'BRENT': ['oil', 'opec', 'middle east', 'iran', 'saudi', 'russia', 'europe', 'north sea'],
-}
-
-# Geopolitical keywords with impact weights (balanced - not extreme)
-GEOPOLITICAL_KEYWORDS = {
-    # High impact (weight 3) - clear market movers
-    'war': 3, 'invasion': 3, 'military strike': 3, 'nuclear': 3,
-    'sanctions': 3, 'embargo': 3, 'trade war': 3,
-
-    # Medium-high impact (weight 2) - significant tensions
-    'conflict': 2, 'tension': 2, 'escalation': 2, 'retaliation': 2,
-    'tariff': 2, 'trade dispute': 2, 'trade tension': 2,
-    'election': 2, 'referendum': 2, 'political crisis': 2,
-    'coup': 2, 'protest': 2, 'unrest': 2,
-
-    # Medium impact (weight 1.5) - moderate concerns
-    'diplomatic': 1.5, 'negotiation': 1.5, 'summit': 1.5,
-    'geopolitical': 1.5, 'political risk': 1.5,
-    'supply disruption': 1.5, 'pipeline': 1.5,
-
-    # Lower impact (weight 1) - general uncertainty
-    'uncertainty': 1, 'instability': 1, 'crisis': 1,
-    'policy change': 1, 'government': 1
-}
-
-# Sentiment modifiers - positive resolution reduces risk
-RESOLUTION_KEYWORDS = ['peace', 'ceasefire', 'agreement', 'deal', 'resolved', 'easing', 'de-escalation']
-
-def calculate_geopolitical_risk(pair):
-    """
-    v9.3.0: Calculate geopolitical risk score for a pair
-
-    Balanced approach:
-    - Score range: 35-65 (moderate, avoids extreme swings)
-    - Higher score = more bullish (less risk / positive resolution)
-    - Lower score = more bearish (more risk / negative tensions)
-    - 50 = neutral (no significant geopolitical news)
-
-    Returns: dict with score, signal, details
-    """
-    try:
-        # Get cached news
-        news_data = get_finnhub_news()
-        articles = news_data.get('articles', []) if news_data else []
-
-        if not articles:
-            return {'score': 50, 'signal': 'NEUTRAL', 'risk_level': 'LOW', 'details': 'No news data'}
-
-        base, quote = pair.split('/') if '/' in pair else (pair[:3], pair[3:])
-
-        # Get relevant regions for this pair
-        base_regions = GEOPOLITICAL_REGIONS.get(base, [base.lower()])
-        quote_regions = GEOPOLITICAL_REGIONS.get(quote, [quote.lower()])
-        all_regions = set(base_regions + quote_regions)
-
-        # Analyze articles for geopolitical content
-        risk_score = 0
-        resolution_score = 0
-        relevant_articles = 0
-        risk_details = []
-
-        current_time = datetime.now().timestamp()
-
-        for article in articles[:30]:  # Check recent 30 articles
-            headline = article.get('headline', '').lower()
-            summary = article.get('summary', '').lower()
-            text = f"{headline} {summary}"
-
-            # Check if article is relevant to this pair's regions
-            is_relevant = any(region in text for region in all_regions)
-
-            # Also check if it mentions the currency/commodity directly
-            if base.lower() in text or quote.lower() in text:
-                is_relevant = True
-
-            if not is_relevant:
-                continue
-
-            relevant_articles += 1
-
-            # Time decay: newer news has more weight
-            article_time = article.get('datetime', current_time)
-            hours_old = max(0, (current_time - article_time) / 3600) if article_time else 0
-            time_decay = max(0.3, 1.0 - (hours_old / 48))  # 48-hour decay
-
-            # Check for geopolitical keywords
-            article_risk = 0
-            for keyword, weight in GEOPOLITICAL_KEYWORDS.items():
-                if keyword in text:
-                    article_risk += weight
-                    if keyword in headline:  # Headlines are more important
-                        article_risk += weight * 0.5
-
-            # Check for resolution/positive keywords
-            article_resolution = 0
-            for res_keyword in RESOLUTION_KEYWORDS:
-                if res_keyword in text:
-                    article_resolution += 1.5
-                    if res_keyword in headline:
-                        article_resolution += 1.0
-
-            # Apply time decay
-            risk_score += article_risk * time_decay
-            resolution_score += article_resolution * time_decay
-
-            if article_risk > 2:
-                risk_details.append(headline[:60])
-
-        # Calculate final score
-        # Net risk = risk - resolution (can go negative if good news)
-        net_risk = risk_score - resolution_score
-
-        # Normalize to 35-65 range (balanced, not extreme)
-        # 0 net_risk = 50 (neutral)
-        # High positive net_risk = lower score (more bearish due to risk)
-        # High negative net_risk = higher score (bullish, risk resolved)
-
-        if net_risk > 0:
-            # More risk -> lower score (capped at 35)
-            normalized_score = 50 - min(15, net_risk * 1.5)
-        elif net_risk < 0:
-            # Resolution -> higher score (capped at 65)
-            normalized_score = 50 + min(15, abs(net_risk) * 1.5)
-        else:
-            normalized_score = 50
-
-        # Determine risk level
-        if normalized_score < 42:
-            risk_level = 'HIGH'
-            signal = 'BEARISH'
-        elif normalized_score > 58:
-            risk_level = 'LOW'
-            signal = 'BULLISH'
-        else:
-            risk_level = 'MODERATE'
-            signal = 'NEUTRAL'
-
-        return {
-            'score': round(normalized_score, 1),
-            'signal': signal,
-            'risk_level': risk_level,
-            'net_risk': round(net_risk, 2),
-            'relevant_articles': relevant_articles,
-            'details': risk_details[:3] if risk_details else ['No significant geopolitical news']
-        }
-
-    except Exception as e:
-        logger.debug(f"Geopolitical risk calculation error: {e}")
-        return {'score': 50, 'signal': 'NEUTRAL', 'risk_level': 'LOW', 'details': 'Error in calculation'}
-
 def analyze_sentiment(pair):
     """
     ENHANCED Sentiment Analysis combining (v9.2.2):
@@ -5042,22 +4856,6 @@ def analyze_sentiment(pair):
                 time_decay = 0.5  # Default if can't parse time
 
         # ─────────────────────────────────────────────────────────────────────
-        # SOURCE QUALITY: Premium sources get more weight (v9.3.0)
-        # ─────────────────────────────────────────────────────────────────────
-        source = article.get('source', '').lower()
-        source_quality = 1.0
-        if 'bloomberg' in source:
-            source_quality = 1.8  # Bloomberg: highest credibility
-        elif 'reuters' in source:
-            source_quality = 1.7  # Reuters: very high credibility
-        elif 'yahoo' in source:
-            source_quality = 1.3  # Yahoo Finance: good credibility
-        elif 'finnhub' in source:
-            source_quality = 1.2  # Finnhub: aggregated news
-        elif 'fxstreet' in source or 'forexlive' in source:
-            source_quality = 1.1  # Forex-specific sources
-
-        # ─────────────────────────────────────────────────────────────────────
         # SENTIMENT SCORING with impact weighting
         # ─────────────────────────────────────────────────────────────────────
         article_bull_score = 0
@@ -5105,8 +4903,8 @@ def analyze_sentiment(pair):
             # Both or neither - use direct sentiment
             net_score = article_bull_score - article_bear_score
 
-        # Apply time decay, source quality, and add to weighted average
-        article_weight = (1.5 if is_high_impact else 1.0) * time_decay * source_quality
+        # Apply time decay and add to weighted average
+        article_weight = (1.5 if is_high_impact else 1.0) * time_decay
         if is_high_impact:
             high_impact_count += 1
 
@@ -5131,8 +4929,7 @@ def analyze_sentiment(pair):
         'score': round(news_sentiment, 1),
         'articles_analyzed': len(relevant_articles),
         'high_impact_articles': high_impact_count,
-        'source': 'MULTI_SOURCE_NEWS',  # v9.3.0: Finnhub + Yahoo + Bloomberg + Reuters
-        'sources_used': ['Finnhub', 'Yahoo Finance', 'Bloomberg', 'Reuters', 'RSS Feeds'],
+        'source': 'FINNHUB_NEWS_ENHANCED',
         'quality': 'HIGH' if high_impact_count >= 2 else 'MEDIUM' if len(relevant_articles) >= 3 else 'LOW'
     }
     
@@ -5181,25 +4978,8 @@ def analyze_sentiment(pair):
         sentiment_score = news_sentiment
         data_quality = 'MEDIUM'
 
-    # v9.3.0: Yahoo Market Movers boost - if market is trending, boost confidence
-    try:
-        yahoo_movers = get_yahoo_market_movers()
-        if yahoo_movers and yahoo_movers.get('trending_count', 0) > 5:
-            # High market activity = higher confidence in sentiment readings
-            sentiment_sources['yahoo_market_movers'] = {
-                'trending_count': yahoo_movers['trending_count'],
-                'status': 'ACTIVE'
-            }
-            # Slight boost to confidence when markets are active
-            if sentiment_score > 55:
-                sentiment_score = min(100, sentiment_score + 2)  # Boost bullish
-            elif sentiment_score < 45:
-                sentiment_score = max(0, sentiment_score - 2)  # Boost bearish
-    except:
-        pass
-
     sentiment_score = max(0, min(100, sentiment_score))
-
+    
     return {
         'score': round(sentiment_score, 1),
         'signal': 'BULLISH' if sentiment_score > 55 else 'BEARISH' if sentiment_score < 45 else 'NEUTRAL',
@@ -7246,7 +7026,7 @@ Respond in EXACT JSON format:
                         'flags': flags[:5] if flags else [],  # Limit to 5 flags
                         'recommended_direction': recommended_dir.upper() if isinstance(recommended_dir, str) else 'NEUTRAL',
                         'factors_checked': 11,  # All 11 individual factors (Tech, Fund, Sent, Inter, Quant, MTF, Struct, Cal, Candle, CurrStr, Options)
-                        'groups_checked': 9,  # 9 factor groups in scoring system (including geopolitical_risk)
+                        'groups_checked': 8,  # 8 factor groups in scoring system
                         'factor_analysis': {
                             'strongest_bullish': factor_analysis.get('strongest_bullish', ''),
                             'strongest_bearish': factor_analysis.get('strongest_bearish', ''),
@@ -7330,9 +7110,7 @@ def detect_market_regime(adx, atr, current_price):
 
 def build_factor_groups(factors):
     """
-    v9.3.0: Merge 11 individual factors into 9 independent groups.
-    Groups: Trend/Momentum, Fundamental, Sentiment, Intermarket, Mean Reversion,
-            Calendar Risk, AI Synthesis, Currency Strength, Geopolitical Risk
+    v9.0: Merge 11 individual factors into 7 independent groups.
     Eliminates correlation between Technical/MTF/Quantitative/Structure.
     """
     factor_groups = {}
@@ -8370,19 +8148,6 @@ def generate_signal(pair):
             'quote_strength': currency_strength_data.get('quote_strength', 50)
         }
 
-        # v9.3.0: Add Geopolitical Risk as 9th factor group (5% forex, 6% commodities)
-        # Analyzes news for war, sanctions, trade tensions, elections
-        geo_risk_data = calculate_geopolitical_risk(pair)
-        geo_weight = COMMODITY_FACTOR_WEIGHTS.get('geopolitical_risk', 6) if is_commodity(pair) else FACTOR_GROUP_WEIGHTS.get('geopolitical_risk', 5)
-        factor_groups['geopolitical_risk'] = {
-            'score': geo_risk_data['score'],
-            'signal': geo_risk_data['signal'],
-            'weight': geo_weight,
-            'risk_level': geo_risk_data.get('risk_level', 'MODERATE'),
-            'relevant_articles': geo_risk_data.get('relevant_articles', 0),
-            'details': geo_risk_data.get('details', [])
-        }
-
         # ═══════════════════════════════════════════════════════════════════════════
         # v9.2.4: SMART MONEY CONCEPTS (SMC) ANALYSIS
         # Order Blocks, Liquidity Zones, Session Timing
@@ -8411,61 +8176,11 @@ def generate_signal(pair):
 
         # Select regime-specific weights (v9.3.0: commodity-specific weights)
         if is_commodity(pair):
-            regime_weights = COMMODITY_FACTOR_WEIGHTS.copy()
+            regime_weights = COMMODITY_FACTOR_WEIGHTS
         else:
-            regime_weights = REGIME_WEIGHTS.get(regime, FACTOR_GROUP_WEIGHTS).copy()
+            regime_weights = REGIME_WEIGHTS.get(regime, FACTOR_GROUP_WEIGHTS)
 
-        # ═══════════════════════════════════════════════════════════════════════════
-        # v9.3.0: SMART AI WEIGHT ADJUSTMENT (Automatic & Balanced)
-        # Dynamically adjusts weights based on factor confidence and market conditions
-        # Not overfit: uses simple rules, keeps adjustments small (±3%)
-        # ═══════════════════════════════════════════════════════════════════════════
-
-        # Count directional signals for consensus detection
-        bullish_factors = [g for g in factor_groups.values() if g['signal'] == 'BULLISH']
-        bearish_factors = [g for g in factor_groups.values() if g['signal'] == 'BEARISH']
-        neutral_factors = [g for g in factor_groups.values() if g['signal'] == 'NEUTRAL']
-
-        consensus_strength = abs(len(bullish_factors) - len(bearish_factors))
-        dominant_direction = 'BULLISH' if len(bullish_factors) > len(bearish_factors) else 'BEARISH'
-
-        # Rule 1: High consensus (6+ factors agree) - boost agreeing factors slightly
-        if consensus_strength >= 4:
-            for group_name, group_data in factor_groups.items():
-                if group_data['signal'] == dominant_direction:
-                    base_weight = regime_weights.get(group_name, 10)
-                    regime_weights[group_name] = min(base_weight + 2, 30)  # Max +2%, cap at 30%
-                elif group_data['signal'] != 'NEUTRAL':
-                    # Slightly reduce conflicting factors
-                    base_weight = regime_weights.get(group_name, 10)
-                    regime_weights[group_name] = max(base_weight - 1, 3)  # Max -1%, floor at 3%
-
-        # Rule 2: Volatile regime - boost geopolitical and sentiment
-        if regime == 'volatile':
-            if 'geopolitical_risk' in regime_weights:
-                regime_weights['geopolitical_risk'] = min(regime_weights.get('geopolitical_risk', 5) + 3, 15)
-            if 'sentiment' in regime_weights:
-                regime_weights['sentiment'] = min(regime_weights.get('sentiment', 12) + 2, 18)
-
-        # Rule 3: Strong directional factors (score >65 or <35) get small boost
-        for group_name, group_data in factor_groups.items():
-            factor_score = group_data['score']
-            if factor_score >= 68 or factor_score <= 32:  # Strong conviction factor
-                base_weight = regime_weights.get(group_name, 10)
-                regime_weights[group_name] = min(base_weight + 1, 25)  # Max +1%
-
-        # Rule 4: AI synthesis activation bonus when confirmed by other factors
-        ai_data = factor_groups.get('ai_synthesis', {})
-        if ai_data.get('activated', False) and ai_data.get('signal') == dominant_direction:
-            regime_weights['ai_synthesis'] = min(regime_weights.get('ai_synthesis', 10) + 2, 18)
-
-        # Normalize weights to sum to 100 (prevent drift)
-        total_weight = sum(regime_weights.values())
-        if total_weight != 100 and total_weight > 0:
-            scale_factor = 100 / total_weight
-            regime_weights = {k: round(v * scale_factor, 1) for k, v in regime_weights.items()}
-
-        # Calculate weighted composite from 9 groups
+        # Calculate weighted composite from 7 groups
         composite_score = 0
         available_weight = 0
 
@@ -12846,7 +12561,7 @@ if __name__ == '__main__':
     print("=" * 70)
     print("      MEGA FOREX v9.3.0 PRO - AI ENHANCED SYSTEM")
 
- ows  with"=" * 70)
+    print("=" * 70)
     print(f"  Instruments:     {len(ALL_INSTRUMENTS)} ({len(FOREX_PAIRS)} Forex + {len(COMMODITY_PAIRS)} Commodities)")
     print(f"  Factor Groups:   8 (merged from 12 individual factors)")
     print(f"  Quality Gates:   8 (G3/G5/G8 mandatory)")
