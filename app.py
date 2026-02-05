@@ -808,15 +808,16 @@ FACTOR_WEIGHTS = {
 # Research: 3-4 non-correlated factors is the sweet spot (CME Group 2019)
 # ═══════════════════════════════════════════════════════════════════════════════
 FACTOR_GROUP_WEIGHTS = {
-    'trend_momentum': 20,     # Technical (RSI, MACD, ADX) + MTF (H1/H4/D1) merged
-    'fundamental': 14,        # Interest rate diffs + FRED data (independent)
+    'trend_momentum': 19,     # Technical (RSI, MACD, ADX) + MTF (H1/H4/D1) merged
+    'fundamental': 13,        # Interest rate diffs + FRED data (independent)
     'sentiment': 12,          # IG positioning + News + Options merged (contrarian)
     'intermarket': 11,        # DXY, Gold, Yields, Oil (independent)
     'mean_reversion': 11,     # Z-Score + Bollinger %B + S/R merged
     'calendar_risk': 7,       # Economic events + Seasonality (independent)
     'ai_synthesis': 10,       # GPT enhanced analysis (activates when 2+ groups agree)
-    'currency_strength': 10,  # v9.3.0: 50-instrument currency strength analysis (0% for commodities)
-    'geopolitical_risk': 5    # v9.3.0: War, sanctions, trade tensions, elections (loose/anti-overfit)
+    'currency_strength': 9,   # v9.3.0: 50-instrument currency strength analysis (0% for commodities)
+    'geopolitical_risk': 4,   # v9.3.0: War, sanctions, trade tensions, elections
+    'market_depth': 4          # v9.3.0: Spread, session, liquidity, volume analysis
 }
 # Total: 100%
 
@@ -825,35 +826,36 @@ FACTOR_GROUP_WEIGHTS = {
 # Now includes currency_strength (10%) from 50-instrument analysis
 REGIME_WEIGHTS = {
     'trending': {
-        'trend_momentum': 24, 'fundamental': 13, 'sentiment': 7,
-        'intermarket': 11, 'mean_reversion': 6, 'calendar_risk': 5, 'ai_synthesis': 13, 'currency_strength': 13, 'geopolitical_risk': 8
+        'trend_momentum': 23, 'fundamental': 12, 'sentiment': 7,
+        'intermarket': 10, 'mean_reversion': 6, 'calendar_risk': 5, 'ai_synthesis': 12, 'currency_strength': 12, 'geopolitical_risk': 7, 'market_depth': 6
     },
     'ranging': {
-        'trend_momentum': 10, 'fundamental': 11, 'sentiment': 11,
-        'intermarket': 9, 'mean_reversion': 20, 'calendar_risk': 5, 'ai_synthesis': 13, 'currency_strength': 13, 'geopolitical_risk': 8
+        'trend_momentum': 9, 'fundamental': 11, 'sentiment': 10,
+        'intermarket': 9, 'mean_reversion': 19, 'calendar_risk': 5, 'ai_synthesis': 12, 'currency_strength': 12, 'geopolitical_risk': 7, 'market_depth': 6
     },
     'volatile': {
-        'trend_momentum': 14, 'fundamental': 10, 'sentiment': 14,
-        'intermarket': 10, 'mean_reversion': 7, 'calendar_risk': 8, 'ai_synthesis': 11, 'currency_strength': 12, 'geopolitical_risk': 14
+        'trend_momentum': 13, 'fundamental': 9, 'sentiment': 13,
+        'intermarket': 9, 'mean_reversion': 7, 'calendar_risk': 8, 'ai_synthesis': 10, 'currency_strength': 11, 'geopolitical_risk': 13, 'market_depth': 7
     },
     'quiet': {
-        'trend_momentum': 20, 'fundamental': 15, 'sentiment': 7,
-        'intermarket': 12, 'mean_reversion': 11, 'calendar_risk': 4, 'ai_synthesis': 11, 'currency_strength': 13, 'geopolitical_risk': 7
+        'trend_momentum': 19, 'fundamental': 14, 'sentiment': 7,
+        'intermarket': 11, 'mean_reversion': 11, 'calendar_risk': 4, 'ai_synthesis': 10, 'currency_strength': 12, 'geopolitical_risk': 6, 'market_depth': 6
     }
 }
 
 # v9.3.0: Commodity-specific factor weights
 # Currency Strength replaced by Supply & Demand (EIA inventory, DXY inverse, warehouse stocks)
 COMMODITY_FACTOR_WEIGHTS = {
-    'trend_momentum': 21,     # Commodities trend strongly
-    'fundamental': 11,        # DXY + real yields + supply/demand
-    'sentiment': 12,          # COT positioning + retail
-    'intermarket': 14,        # Cross-commodity correlations critical
+    'trend_momentum': 20,     # Commodities trend strongly
+    'fundamental': 10,        # DXY + real yields + supply/demand
+    'sentiment': 11,          # COT positioning + retail
+    'intermarket': 13,        # Cross-commodity correlations critical
     'mean_reversion': 12,     # Commodities do revert
     'calendar_risk': 7,       # OPEC, EIA, crop reports
     'ai_synthesis': 9,        # AI analysis
-    'currency_strength': 8,   # → Becomes "Supply & Demand" for commodities (EIA, DXY, warehouse)
-    'geopolitical_risk': 6    # v9.3.0: Wars, sanctions, OPEC politics (higher weight for commodities)
+    'currency_strength': 7,   # → Becomes "Supply & Demand" for commodities (EIA, DXY, warehouse)
+    'geopolitical_risk': 6,   # v9.3.0: Wars, sanctions, OPEC politics (higher weight for commodities)
+    'market_depth': 5          # v9.3.0: Spread, session, liquidity analysis (higher for commodities)
 }
 # Total: 100%
 
@@ -4954,6 +4956,156 @@ def calculate_geopolitical_risk(pair):
         logger.debug(f"Geopolitical risk calculation error: {e}")
         return {'score': 50, 'signal': 'NEUTRAL', 'risk_level': 'LOW', 'details': 'Error in calculation'}
 
+def calculate_market_depth(pair, rate_data=None, tech_data=None):
+    """
+    v9.3.0: Market Depth Factor (10th factor group)
+    Estimates liquidity and order book depth from:
+    1. Bid-ask spread tightness (35% of score)
+    2. Trading session activity via killzones (35% of score)
+    3. Pair liquidity classification (20% of score)
+    4. ATR activity level (10% of score)
+
+    Returns: dict with score (0-100), signal, details, trading_time
+    """
+    score = 50.0  # Start neutral
+    details = []
+
+    # ── Sub-factor 1: Spread Analysis (35%) ──
+    spread_score = 50
+    if rate_data and isinstance(rate_data, dict):
+        bid = rate_data.get('bid', 0)
+        ask = rate_data.get('ask', 0)
+        mid = rate_data.get('mid', 0)
+        if bid > 0 and ask > 0 and mid > 0:
+            spread_bps = (ask - bid) / mid * 10000  # Basis points
+            if is_commodity(pair):
+                if spread_bps < 5:
+                    spread_score = 78
+                    details.append('Tight commodity spread')
+                elif spread_bps < 15:
+                    spread_score = 62
+                elif spread_bps < 30:
+                    spread_score = 45
+                    details.append('Wide commodity spread')
+                else:
+                    spread_score = 28
+                    details.append('Very wide spread')
+            else:
+                if spread_bps < 2:
+                    spread_score = 80
+                    details.append('Excellent spread depth')
+                elif spread_bps < 5:
+                    spread_score = 66
+                elif spread_bps < 15:
+                    spread_score = 50
+                elif spread_bps < 30:
+                    spread_score = 35
+                    details.append('Wide spread')
+                else:
+                    spread_score = 20
+                    details.append('Very wide spread')
+
+    score += (spread_score - 50) * 0.35
+
+    # ── Sub-factor 2: Session Activity (35%) ──
+    kz_data = get_ict_killzones(pair)
+    kz_quality = kz_data.get('quality', 0)
+    kz_name = kz_data.get('killzone', 'OFF_HOURS')
+    is_kz = kz_data.get('is_killzone', False)
+
+    if kz_quality >= 80:
+        session_score = 80
+        details.append(f'Peak session: {kz_name.replace("_", " ").title()}')
+    elif kz_quality >= 60:
+        session_score = 65
+    elif kz_quality >= 40:
+        session_score = 50
+    elif kz_quality >= 20:
+        session_score = 35
+    else:
+        session_score = 20
+        details.append('Low activity period')
+
+    score += (session_score - 50) * 0.35
+
+    # ── Sub-factor 3: Pair Liquidity Class (20%) ──
+    pair_cat = 'MAJOR'
+    for cat, pairs_list in PAIR_CATEGORIES.items():
+        if pair in pairs_list:
+            pair_cat = cat
+            break
+
+    liq_scores = {'MAJOR': 80, 'MINOR': 65, 'CROSS': 55, 'EXOTIC': 30, 'COMMODITY': 60}
+    liq_score = liq_scores.get('COMMODITY' if is_commodity(pair) else pair_cat, 50)
+    score += (liq_score - 50) * 0.20
+
+    # ── Sub-factor 4: ATR Activity (10%) ──
+    if tech_data and isinstance(tech_data, dict):
+        atr_pct = tech_data.get('atr_percentile', 50)
+        if atr_pct > 70:
+            vol_score = 68
+            details.append('High market activity')
+        elif atr_pct > 40:
+            vol_score = 55
+        else:
+            vol_score = 35
+            details.append('Low market activity')
+        score += (vol_score - 50) * 0.10
+
+    # Clamp score
+    score = max(15, min(85, score))
+
+    # Signal determination
+    if score >= 60:
+        signal = 'BULLISH'   # Good depth = favorable for trading
+    elif score <= 40:
+        signal = 'BEARISH'   # Poor depth = risky
+    else:
+        signal = 'NEUTRAL'
+
+    # ── Trading Time Recommendation ──
+    weekday = datetime.utcnow().weekday()
+    if weekday >= 5:  # Saturday/Sunday
+        trading_time = {
+            'quality': 'POOR', 'color': 'RED', 'label': 'CLOSED',
+            'reason': 'Markets closed (weekend)', 'detail': 'Weekend - no trading'
+        }
+    elif kz_quality >= 70 and is_kz:
+        trading_time = {
+            'quality': 'GOOD', 'color': 'GREEN', 'label': 'TRADE',
+            'reason': kz_name.replace('_', ' ').title(),
+            'session': kz_name.replace('_', ' ').title(),
+            'detail': f'Quality {kz_quality}% - Optimal session'
+        }
+    elif kz_quality >= 40:
+        trading_time = {
+            'quality': 'MODERATE', 'color': 'YELLOW', 'label': 'MODERATE',
+            'reason': kz_name.replace('_', ' ').title(),
+            'session': kz_name.replace('_', ' ').title(),
+            'detail': f'Quality {kz_quality}% - Acceptable session'
+        }
+    else:
+        trading_time = {
+            'quality': 'POOR', 'color': 'RED', 'label': 'AVOID',
+            'reason': kz_name.replace('_', ' ').title(),
+            'session': kz_name.replace('_', ' ').title() if kz_name != 'off_session' else 'Off Session',
+            'detail': f'Quality {kz_quality}% - Low activity'
+        }
+
+    trading_time['active_sessions'] = kz_data.get('active_sessions', [])
+    trading_time['killzone'] = kz_name
+    trading_time['time_utc'] = kz_data.get('time_utc', '')
+
+    return {
+        'score': round(score, 1),
+        'signal': signal,
+        'details': details[:3] if details else ['Normal market depth'],
+        'trading_time': trading_time,
+        'session_quality': kz_quality,
+        'killzone': kz_name
+    }
+
+
 def analyze_sentiment(pair):
     """
     ENHANCED Sentiment Analysis combining (v9.2.2):
@@ -8526,6 +8678,23 @@ def generate_signal(pair):
             'details': geo_risk_data.get('details', [])
         }
 
+        # v9.3.0: Add Market Depth as 10th factor group (4% forex, 5% commodities)
+        # Analyzes spread, session activity, pair liquidity, ATR activity
+        depth_data = calculate_market_depth(pair, rate, tech)
+        depth_weight = COMMODITY_FACTOR_WEIGHTS.get('market_depth', 5) if is_commodity(pair) else FACTOR_GROUP_WEIGHTS.get('market_depth', 4)
+        factor_groups['market_depth'] = {
+            'score': depth_data['score'],
+            'signal': depth_data['signal'],
+            'weight': depth_weight,
+            'details': depth_data.get('details', []),
+            'session_quality': depth_data.get('session_quality', 0),
+            'killzone': depth_data.get('killzone', 'UNKNOWN')
+        }
+        # Store trading_time for signal output
+        trading_time_data = depth_data.get('trading_time', {
+            'quality': 'MODERATE', 'color': 'yellow', 'label': 'MODERATE', 'reason': 'Unknown'
+        })
+
         # ═══════════════════════════════════════════════════════════════════════════
         # v9.2.4: SMART MONEY CONCEPTS (SMC) ANALYSIS
         # Order Blocks, Liquidity Zones, Session Timing
@@ -9517,6 +9686,7 @@ def generate_signal(pair):
             },
             'holding_period': calculate_holding_period(category, volatility_regime, trend_strength, composite_score, factors),
             'factors_available': factors_available,
+            'trading_time': trading_time_data,
             'timestamp': datetime.now().isoformat()
         }
 
@@ -11611,18 +11781,19 @@ def weights_endpoint():
 
 @app.route('/weights/reset')
 def reset_weights():
-    """v9.3.0: Reset to default 9 factor group weights"""
+    """v9.3.0: Reset to default 10 factor group weights"""
     global FACTOR_GROUP_WEIGHTS
     FACTOR_GROUP_WEIGHTS = {
-        'trend_momentum': 20,     # Technical (RSI/MACD/ADX) 60% + MTF 40%
-        'fundamental': 14,        # Interest rate diffs + FRED macro data
+        'trend_momentum': 19,     # Technical (RSI/MACD/ADX) 60% + MTF 40%
+        'fundamental': 13,        # Interest rate diffs + FRED macro data
         'sentiment': 12,          # IG Positioning 65% + Options 35%
         'intermarket': 11,        # DXY, Gold, Yields, Oil correlations
         'mean_reversion': 11,     # Quantitative 55% + Structure 45%
         'calendar_risk': 7,       # Economic events + Seasonality
         'ai_synthesis': 10,       # GPT analysis (activates when 2+ groups agree)
-        'currency_strength': 10,  # v9.3.0: 50-instrument currency strength analysis
-        'geopolitical_risk': 5    # v9.3.0: War, sanctions, trade tensions, elections
+        'currency_strength': 9,   # v9.3.0: 50-instrument currency strength analysis
+        'geopolitical_risk': 4,   # v9.3.0: War, sanctions, trade tensions, elections
+        'market_depth': 4         # v9.3.0: Spread, session, liquidity, ATR activity
     }
     save_group_weights(FACTOR_GROUP_WEIGHTS)
     return jsonify({'success': True, 'weights': FACTOR_GROUP_WEIGHTS})
