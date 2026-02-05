@@ -2511,20 +2511,25 @@ def get_eia_oil_spot_price(pair):
     """v9.3.0: Fetch WTI/Brent spot prices from EIA (free US govt API)"""
     if not EIA_API_KEY:
         return None
-    # EIA series IDs for spot prices
-    eia_series = {
-        'WTI/USD': 'PET.RWTC.D',      # WTI Cushing spot price daily
-        'BRENT/USD': 'PET.RBRTE.D',   # Brent Europe spot price daily
+    # EIA API v2 product codes for spot prices
+    eia_products = {
+        'WTI/USD': 'RWTC',    # WTI Cushing spot price
+        'BRENT/USD': 'RBRTE',  # Brent Europe spot price
     }
-    series_id = eia_series.get(pair)
-    if not series_id:
+    product = eia_products.get(pair)
+    if not product:
         return None
     try:
-        # EIA API v2: Get spot price using seriesid endpoint
-        url = f"{EIA_API_URL}/seriesid/{series_id}"
+        # EIA API v2: Petroleum spot prices endpoint
+        url = f"{EIA_API_URL}/petroleum/pri/spt/data/"
         params = {
             'api_key': EIA_API_KEY,
-            'length': 1  # Just latest price
+            'frequency': 'daily',
+            'data[0]': 'value',
+            'facets[product][]': product,
+            'sort[0][column]': 'period',
+            'sort[0][direction]': 'desc',
+            'length': 1
         }
         resp = req_lib.get(url, params=params, timeout=8)
         if resp.status_code == 200:
