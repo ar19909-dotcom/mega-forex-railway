@@ -1,12 +1,14 @@
 """
 ╔══════════════════════════════════════════════════════════════════════════════╗
-║                   MEGA FOREX v9.3.0 PRO - AI-ENHANCED SYSTEM                 ║
-║                    Build: February 6, 2026 - GEOPOLITICAL RISK ADDED         ║
+║                   MEGA FOREX v9.4.0 PRO - AI-ENHANCED SYSTEM                 ║
+║                    Build: February 6, 2026 - MARKET DEPTH + TRADING TIME     ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
 ║  ✓ 45 Forex Pairs + 5 Commodities (50 Instruments)                           ║
-║  ✓ 9-Group Gated Scoring + 8-Gate Quality Filter (v9.3.0)                    ║
+║  ✓ 10-Group Gated Scoring + 8-Gate Quality Filter (v9.4.0)                   ║
 ║  ✓ Smart AI Weight Adjustment (Dynamic, Anti-Overfit)                        ║
-║  ✓ NEW: Geopolitical Risk Factor (War, Sanctions, Trade Tensions)            ║
+║  ✓ NEW: Market Depth Factor (Spread, Session, Liquidity, ATR)               ║
+║  ✓ NEW: Trading Time Badge (GREEN/YELLOW/RED per pair)                      ║
+║  ✓ Geopolitical Risk Factor (War, Sanctions, Trade Tensions)                ║
 ║  ✓ Separate Scoring Weights: Forex vs Commodities                            ║
 ║  ✓ Yahoo Finance Live Oil + GoldAPI (XAU/XAG/XPT)                            ║
 ║  ✓ Supply & Demand Factor (replaces Currency Strength for commodities)       ║
@@ -14,27 +16,29 @@
 ║  ✓ 16 Candlestick Pattern Recognition                                        ║
 ║  ✓ Smart Money Concepts: Order Blocks, Liquidity Zones, Session Timing       ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
-║  FOREX SCORING (45 pairs) - 9-Group Gated AI-Enhanced (v9.3.0)               ║
-║  - Trend & Momentum (20%): RSI, MACD, ADX + MTF alignment                    ║
-║  - Fundamental (14%): Interest rate differentials + FRED macro               ║
+║  FOREX SCORING (45 pairs) - 10-Group Gated AI-Enhanced (v9.4.0)              ║
+║  - Trend & Momentum (19%): RSI, MACD, ADX + MTF alignment                    ║
+║  - Fundamental (13%): Interest rate differentials + FRED macro               ║
 ║  - Sentiment (12%): IG positioning + enhanced news analysis                  ║
 ║  - Intermarket (11%): DXY, Gold, Yields, Oil correlations                    ║
 ║  - Mean Reversion (11%): Z-Score, Bollinger %B + S/R structure               ║
 ║  - AI Synthesis (10%): GPT-4o-mini market analysis                           ║
-║  - Currency Strength (10%): 50-instrument cross-currency analysis            ║
+║  - Currency Strength (9%): 50-instrument cross-currency analysis             ║
 ║  - Calendar Risk (7%): Economic event risk + seasonality                     ║
-║  - Geopolitical Risk (5%): War, sanctions, trade tensions, elections         ║
+║  - Geopolitical Risk (4%): War, sanctions, trade tensions, elections         ║
+║  - Market Depth (4%): Spread tightness, session activity, liquidity, ATR    ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
-║  COMMODITY SCORING (5 instruments) - Commodity-Specific Weights (v9.3.0)     ║
-║  - Trend & Momentum (21%): RSI, MACD, ADX + MTF alignment                    ║
-║  - Intermarket (14%): Cross-commodity, DXY, VIX, Yields, Equities           ║
-║  - Sentiment (12%): IG + COT institutional + commodity news                  ║
+║  COMMODITY SCORING (5 instruments) - Commodity-Specific Weights (v9.4.0)     ║
+║  - Trend & Momentum (20%): RSI, MACD, ADX + MTF alignment                    ║
+║  - Intermarket (13%): Cross-commodity, DXY, VIX, Yields, Equities           ║
 ║  - Mean Reversion (12%): Z-Score, Bollinger %B + S/R structure               ║
-║  - Fundamental (11%): DXY inverse, Real yields, VIX safe-haven              ║
+║  - Sentiment (11%): IG + COT institutional + commodity news                  ║
+║  - Fundamental (10%): DXY inverse, Real yields, VIX safe-haven              ║
 ║  - AI Synthesis (9%): GPT-4o-mini commodity analysis                         ║
-║  - Supply & Demand (8%): EIA inventory, USD correlation, warehouse stocks   ║
+║  - Supply & Demand (7%): EIA inventory, USD correlation, warehouse stocks   ║
 ║  - Calendar Risk (7%): OPEC, EIA, FOMC, PMI events                          ║
 ║  - Geopolitical Risk (6%): War, sanctions, OPEC politics, trade tensions    ║
+║  - Market Depth (5%): Spread tightness, session activity, liquidity, ATR    ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
 ║  17 APIs: Polygon, TwelveData, TraderMade, GoldAPI, Yahoo, Finnhub + more    ║
 ║  8-Gate Filter: G3 Trend, G5 Calendar, G8 Data are MANDATORY                 ║
@@ -99,7 +103,7 @@ def health_check():
     """Health check endpoint"""
     return jsonify({
         'status': 'healthy',
-        'version': '9.3.0 PRO - AI ENHANCED',
+        'version': '9.4.0 PRO - AI ENHANCED',
         'pairs': len(ALL_INSTRUMENTS),
         'timestamp': datetime.now().isoformat()
     })
