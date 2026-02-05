@@ -2227,8 +2227,8 @@
             'USD/NOK', 'USD/SEK', 'USD/DKK', 'USD/PLN',
             'EUR/TRY', 'EUR/PLN', 'EUR/NOK', 'EUR/SEK', 'EUR/HUF', 'EUR/CZK',
             'SGD/JPY', 'HKD/JPY',
-            // Commodities (6) - v9.3.0
-            'XAU/USD', 'XAG/USD', 'XPT/USD', 'WTI/USD', 'BRENT/USD', 'XCU/USD'
+            // Commodities (5) - v9.3.0
+            'XAU/USD', 'XAG/USD', 'XPT/USD', 'WTI/USD', 'BRENT/USD'
         ];
 
         // v9.3.0: TradingView symbol mapping for commodities
@@ -2240,7 +2240,6 @@
                 'XPT/USD': 'XPTUSD',      // Platinum - works as-is
                 'WTI/USD': 'USOIL',       // WTI Oil - TradingView uses USOIL
                 'BRENT/USD': 'UKOIL',     // Brent Oil - TradingView uses UKOIL
-                'XCU/USD': 'XCUUSD'       // Copper - works as XCUUSD
             };
             return tvSymbols[pair] || pair.replace('/', '');
         }
@@ -2347,7 +2346,7 @@
         function priceDecimals(pair) {
             const commodityDecimals = {
                 'XAU/USD': 2, 'XAG/USD': 3, 'XPT/USD': 2,
-                'WTI/USD': 2, 'BRENT/USD': 2, 'XCU/USD': 4
+                'WTI/USD': 2, 'BRENT/USD': 2
             };
             if (commodityDecimals[pair]) return commodityDecimals[pair];
             return (pair || '').includes('JPY') ? 3 : 5;
@@ -2510,7 +2509,7 @@
                 if (data.success) {
                     const tbody = document.getElementById('rates-body');
                     const category = document.getElementById('rates-category').value;
-                    const commodityPairs = ['XAU/USD', 'XAG/USD', 'XPT/USD', 'WTI/USD', 'BRENT/USD', 'XCU/USD'];
+                    const commodityPairs = ['XAU/USD', 'XAG/USD', 'XPT/USD', 'WTI/USD', 'BRENT/USD'];
                     const majorPairs = ['EUR/USD', 'GBP/USD', 'USD/JPY', 'USD/CHF', 'AUD/USD', 'USD/CAD', 'NZD/USD'];
                     const exoticPairs = ['USD/SGD', 'USD/HKD', 'USD/MXN', 'USD/ZAR', 'USD/TRY', 'USD/NOK', 'USD/SEK', 'USD/DKK', 'USD/PLN', 'EUR/TRY', 'EUR/PLN', 'EUR/NOK', 'EUR/SEK', 'EUR/HUF', 'EUR/CZK'];
 
@@ -2525,7 +2524,7 @@
                     tbody.innerHTML = rates.map(([pair, rate]) => {
                         const isCommodity = commodityPairs.includes(pair);
                         const pd = priceDecimals(pair);
-                        const pipSize = isCommodity ? ({'XAU/USD':0.10,'XAG/USD':0.01,'XPT/USD':0.10,'WTI/USD':0.01,'BRENT/USD':0.01,'XCU/USD':0.001}[pair] || 0.01) : (pair.includes('JPY') ? 0.01 : 0.0001);
+                        const pipSize = isCommodity ? ({'XAU/USD':0.10,'XAG/USD':0.01,'XPT/USD':0.10,'WTI/USD':0.01,'BRENT/USD':0.01}[pair] || 0.01) : (pair.includes('JPY') ? 0.01 : 0.0001);
                         const spreadPips = ((rate.ask - rate.bid) / pipSize).toFixed(1);
                         const liveClass = rate.source === 'static' ? 'error' : ['polygon','goldapi','twelvedata','tradermade','api_ninjas','eia','alphavantage','exchangerate','currencylayer'].includes(rate.source) ? 'ok' : 'limited';
                         return `
@@ -2546,7 +2545,7 @@
         // Load Analyzer Pairs
         function loadAnalyzerPairs() {
             const container = document.getElementById('analyzer-pairs');
-            const commodities = ['XAU/USD', 'XAG/USD', 'XPT/USD', 'WTI/USD', 'BRENT/USD', 'XCU/USD'];
+            const commodities = ['XAU/USD', 'XAG/USD', 'XPT/USD', 'WTI/USD', 'BRENT/USD'];
             const forexPairs = ALL_PAIRS.filter(p => !commodities.includes(p));
             // v9.3.0: Show commodities first, then forex pairs
             const orderedPairs = [...commodities, ...forexPairs];
@@ -2939,7 +2938,7 @@
         async function loadTechnical() {
             try {
                 const tbody = document.getElementById('technical-body');
-                const commodityPairs = ['XAU/USD', 'XAG/USD', 'XPT/USD', 'WTI/USD', 'BRENT/USD', 'XCU/USD'];
+                const commodityPairs = ['XAU/USD', 'XAG/USD', 'XPT/USD', 'WTI/USD', 'BRENT/USD'];
                 // v9.3.0: Sort commodities first, then forex
                 const sorted = [...signalsData].sort((a, b) => {
                     const aCmd = commodityPairs.includes(a.pair) ? 0 : 1;
@@ -3011,7 +3010,7 @@
                         </div>`;
                     } else {
                         // v9.3.0: Sort commodities first, then forex
-                        const commodityPairs = ['XAU/USD', 'XAG/USD', 'XPT/USD', 'WTI/USD', 'BRENT/USD', 'XCU/USD'];
+                        const commodityPairs = ['XAU/USD', 'XAG/USD', 'XPT/USD', 'WTI/USD', 'BRENT/USD'];
                         const sortedData = [...data.data].sort((a, b) => {
                             const aCmd = commodityPairs.includes(a.pair) ? 0 : 1;
                             const bCmd = commodityPairs.includes(b.pair) ? 0 : 1;
@@ -3073,7 +3072,6 @@
                             'XPT/USD': ['platinum'],
                             'WTI/USD': ['oil', 'crude', 'wti', 'petroleum', 'opec', 'eia', 'barrel'],
                             'BRENT/USD': ['brent', 'oil', 'crude', 'opec'],
-                            'XCU/USD': ['copper']
                         };
                         container.innerHTML = data.articles.map(article => {
                             const headline = (article.headline || '').toLowerCase();
@@ -3643,7 +3641,7 @@
                                 <thead><tr><th>Pair</th><th>Type</th><th>Score</th><th>Direction</th><th>Factors</th></tr></thead>
                                 <tbody>
                                     ${(data.scoring_quality?.test_pairs || []).map(p => {
-                                        const isCommodity = ['XAU/USD','XAG/USD','XPT/USD','WTI/USD','BRENT/USD','XCU/USD'].includes(p.pair);
+                                        const isCommodity = ['XAU/USD','XAG/USD','XPT/USD','WTI/USD','BRENT/USD'].includes(p.pair);
                                         return `
                                         <tr style="${isCommodity ? 'border-left: 3px solid #f59e0b; background: rgba(245,158,11,0.05);' : ''}">
                                             <td style="font-weight: 600;">${p.pair}</td>

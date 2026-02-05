@@ -238,7 +238,6 @@ COMMODITY_PAIRS = [
     'XPT/USD',    # Platinum
     'WTI/USD',    # WTI Crude Oil
     'BRENT/USD',  # Brent Crude Oil
-    'XCU/USD',    # Copper
 ]
 
 # Combined list of all tradeable instruments (51 total)
@@ -251,12 +250,11 @@ COMMODITY_PIP_SIZES = {
     'XPT/USD': 0.10,     # Platinum: $0.10 per pip
     'WTI/USD': 0.01,     # WTI Oil: $0.01 per pip
     'BRENT/USD': 0.01,   # Brent Oil: $0.01 per pip
-    'XCU/USD': 0.001,    # Copper: $0.001 per pip
 }
 
 COMMODITY_DECIMAL_PLACES = {
     'XAU/USD': 2, 'XAG/USD': 3, 'XPT/USD': 2,
-    'WTI/USD': 2, 'BRENT/USD': 2, 'XCU/USD': 4,
+    'WTI/USD': 2, 'BRENT/USD': 2,
 }
 
 def get_pip_size(pair):
@@ -278,7 +276,7 @@ PAIR_CATEGORIES = {
     'EXOTIC': ['USD/SGD', 'USD/HKD', 'USD/MXN', 'USD/ZAR', 'USD/TRY',
                'USD/NOK', 'USD/SEK', 'USD/DKK', 'USD/PLN',
                'EUR/TRY', 'EUR/PLN', 'EUR/NOK', 'EUR/SEK', 'EUR/HUF', 'EUR/CZK'],
-    'COMMODITY': ['XAU/USD', 'XAG/USD', 'XPT/USD', 'WTI/USD', 'BRENT/USD', 'XCU/USD']
+    'COMMODITY': ['XAU/USD', 'XAG/USD', 'XPT/USD', 'WTI/USD', 'BRENT/USD']
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -440,9 +438,6 @@ PAIR_CORRELATIONS = {
     ('WTI/USD', 'BRENT/USD'): 0.96,     # WTI-Brent: near-perfect positive
     ('WTI/USD', 'USD/CAD'): -0.70,      # Oil-USDCAD: Oil up = CAD up = USDCAD down
     ('XAU/USD', 'WTI/USD'): 0.35,       # Gold-Oil: weak positive (inflation hedge)
-    ('XCU/USD', 'AUD/USD'): 0.72,       # Copper-AUD: Australia = mining economy
-    ('XCU/USD', 'NZD/USD'): 0.55,       # Copper-NZD: commodity currency
-    ('XAG/USD', 'XCU/USD'): 0.60,       # Silver-Copper: industrial metals
     ('XPT/USD', 'XAU/USD'): 0.75,       # Platinum-Gold: precious metals
 }
 
@@ -568,10 +563,6 @@ def get_currency_strength_score(pair, rates_dict=None):
                         details_parts.append(f'VIX={vix_val:.0f} (risk-on)')
                 except Exception:
                     pass
-
-            # 4. Industrial demand for copper
-            if pair == 'XCU/USD':
-                details_parts.append('Industrial demand proxy')
 
             score = max(15, min(85, score))
             signal = 'BULLISH' if score > 55 else 'BEARISH' if score < 45 else 'NEUTRAL'
@@ -896,7 +887,7 @@ STATIC_RATES = {
     'EUR/PLN': 4.39, 'EUR/NOK': 12.21, 'EUR/SEK': 11.99, 'EUR/HUF': 408.50, 'EUR/CZK': 25.25,
     # v9.3.0: Commodities
     'XAU/USD': 2650.00, 'XAG/USD': 30.50, 'XPT/USD': 980.00,
-    'WTI/USD': 75.00, 'BRENT/USD': 80.00, 'XCU/USD': 4.10
+    'WTI/USD': 75.00, 'BRENT/USD': 80.00
 }
 
 DEFAULT_ATR = {
@@ -913,7 +904,7 @@ DEFAULT_ATR = {
     'EUR/PLN': 0.065, 'EUR/NOK': 0.18, 'EUR/SEK': 0.16, 'EUR/HUF': 5.5, 'EUR/CZK': 0.35,
     # v9.3.0: Commodities
     'XAU/USD': 30.0, 'XAG/USD': 0.60, 'XPT/USD': 18.0,
-    'WTI/USD': 1.80, 'BRENT/USD': 1.90, 'XCU/USD': 0.08
+    'WTI/USD': 1.80, 'BRENT/USD': 1.90
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -2236,13 +2227,13 @@ def get_polygon_rate(pair):
         return None
     try:
         # v9.3.0: Commodity ticker mapping for Polygon
-        # Note: Polygon forex API only supports precious metals, NOT oil/copper futures
+        # Note: Polygon forex API only supports precious metals, NOT oil futures
         polygon_commodity_tickers = {
             'XAU/USD': 'C:XAUUSD',   # Gold - supported
             'XAG/USD': 'C:XAGUSD',   # Silver - supported
             'XPT/USD': 'C:XPTUSD',   # Platinum - supported
-            # WTI, BRENT, XCU are NOT supported via Polygon forex API
-            # They will fallback to TwelveData/TraderMade
+            # WTI, BRENT are NOT supported via Polygon forex API
+            # They will fallback to TwelveData/TraderMade/EIA
         }
         ticker = polygon_commodity_tickers.get(pair, f"C:{pair.replace('/', '')}")
         url = f"https://api.polygon.io/v2/aggs/ticker/{ticker}/prev"
@@ -2296,7 +2287,6 @@ def get_twelvedata_rate(pair):
             'XPT/USD': 'XPT/USD',    # Platinum - natively supported
             'WTI/USD': 'WTI/USD',    # WTI Oil - TwelveData commodity
             'BRENT/USD': 'XBR/USD',  # Brent Oil - TwelveData uses XBR symbol
-            'XCU/USD': 'XCU/USD',    # Copper - commodity format
         }
         symbol = twelvedata_symbols.get(pair, pair)
         url = f"{TWELVE_DATA_URL}/price"
@@ -2331,7 +2321,6 @@ def get_tradermade_rate(pair):
             'XPT/USD': 'XPTUSD',
             'WTI/USD': 'OILUSD',     # TraderMade uses OILUSD for WTI
             'BRENT/USD': 'UKOUSD',   # TraderMade uses UKOUSD for Brent
-            'XCU/USD': 'XCUUSD',     # Copper
         }
         symbol = tradermade_symbols.get(pair, pair.replace('/', ''))
         url = f"{TRADERMADE_URL}/live"
@@ -2448,7 +2437,6 @@ def get_api_ninjas_commodity(pair):
     ninjas_commodities = {
         'WTI/USD': 'crude_oil_wti',
         'BRENT/USD': 'crude_oil_brent',
-        'XCU/USD': 'copper',
     }
     commodity = ninjas_commodities.get(pair)
     if not commodity:
@@ -2479,7 +2467,6 @@ def get_alphavantage_commodity(pair):
     av_commodities = {
         'WTI/USD': 'WTI',
         'BRENT/USD': 'BRENT',
-        'XCU/USD': 'COPPER',
     }
     symbol = av_commodities.get(pair)
     if not symbol:
@@ -2613,14 +2600,14 @@ def get_rate(pair):
         if rate:
             return rate
 
-    # Tier 4.6: Alpha Vantage (oil/copper - 500 calls/day free)
-    if pair in ['WTI/USD', 'BRENT/USD', 'XCU/USD']:
+    # Tier 4.6: Alpha Vantage (oil - 500 calls/day free)
+    if pair in ['WTI/USD', 'BRENT/USD']:
         rate = get_alphavantage_commodity(pair)
         if rate:
             return rate
 
-    # Tier 4.7: API Ninjas (all commodities - try for oil/copper)
-    if pair in ['WTI/USD', 'BRENT/USD', 'XCU/USD']:
+    # Tier 4.7: API Ninjas (oil commodities)
+    if pair in ['WTI/USD', 'BRENT/USD']:
         rate = get_api_ninjas_commodity(pair)
         if rate:
             return rate
@@ -2683,7 +2670,7 @@ def get_polygon_candles(pair, timeframe='day', limit=100):
         # v9.3.0: Use same commodity ticker mapping as rate fetch
         polygon_commodity_tickers = {
             'XAU/USD': 'C:XAUUSD', 'XAG/USD': 'C:XAGUSD', 'XPT/USD': 'C:XPTUSD',
-            'WTI/USD': 'C:USDWTI', 'BRENT/USD': 'C:USDBRENT', 'XCU/USD': 'C:XCUUSD',
+            'WTI/USD': 'C:USDWTI', 'BRENT/USD': 'C:USDBRENT',
         }
         ticker = polygon_commodity_tickers.get(pair, f"C:{pair.replace('/', '')}")
         multiplier = 1
@@ -4723,7 +4710,6 @@ def analyze_sentiment(pair):
         'XPT': ['platinum', 'xpt', 'platinum price', 'pgm', 'platinum futures'],
         'WTI': ['oil', 'wti', 'crude', 'crude oil', 'oil price', 'petroleum', 'opec', 'eia', 'nymex crude', 'oil futures'],
         'BRENT': ['brent', 'brent crude', 'oil', 'crude oil', 'opec', 'petroleum', 'ice brent', 'oil futures'],
-        'XCU': ['copper', 'xcu', 'copper price', 'industrial metal', 'lme copper', 'copper futures', 'dr copper'],
     }
 
     # Get keywords for this pair's currencies
@@ -5924,7 +5910,6 @@ def get_calendar_risk(pair):
         'XPT': ['US', 'USA', 'United States'],  # Platinum
         'WTI': ['US', 'USA', 'United States'],  # WTI = US oil
         'BRENT': ['US', 'USA', 'United States'],  # Brent also reacts to US data
-        'XCU': ['US', 'USA', 'United States', 'CN', 'China'],  # Copper: US + China demand
     }
 
     # v9.3.0: Commodity-specific high-impact event keywords
@@ -5934,7 +5919,6 @@ def get_calendar_risk(pair):
         'XPT': ['fomc', 'interest rate', 'inflation', 'platinum', 'auto sales'],
         'WTI': ['crude', 'oil', 'opec', 'eia', 'petroleum', 'inventory', 'drilling'],
         'BRENT': ['crude', 'oil', 'opec', 'eia', 'petroleum', 'inventory'],
-        'XCU': ['pmi', 'manufacturing', 'copper', 'industrial', 'china gdp', 'china pmi'],
     }
 
     base_countries = currency_map.get(base, [base])
@@ -6301,7 +6285,6 @@ def get_cot_data(currency):
         'XPT': 'PL',  # Platinum (NYMEX)
         'WTI': 'CL',  # WTI Crude Oil (NYMEX)
         'BRENT': 'BZ', # Brent Crude
-        'XCU': 'HG'   # Copper (COMEX)
     }
 
     if currency not in cftc_codes:
@@ -6671,22 +6654,6 @@ def analyze_intermarket(pair):
             # Brent-WTI spread awareness
             if pair == 'BRENT/USD' and gold:
                 pass  # Future: Brent premium tracking
-
-        # Copper: industrial bellwether, equity-correlated
-        elif pair == 'XCU/USD':
-            if spx_change > 0.8:
-                score += min(10, spx_change * 4)  # Strong equity = industrial demand
-                signals.append(f"Equities +{spx_change:.1f}%: Industrial demand bullish")
-            elif spx_change < -0.8:
-                score -= min(10, abs(spx_change) * 4)
-                signals.append(f"Equities {spx_change:.1f}%: Industrial demand bearish")
-
-            if vix > 25:
-                score -= 6
-                signals.append(f"VIX {vix:.0f}: Risk-off, copper bearish")
-            elif vix < 14:
-                score += 4
-                signals.append(f"VIX {vix:.0f}: Risk-on, copper bullish")
 
     # Clamp score
     score = max(0, min(100, score))
@@ -7380,11 +7347,6 @@ def calculate_factor_scores(pair):
                 elif weekly_change > 2:
                     fund_score -= 5
                     eia_note = f"EIA build +{weekly_change:.1f}M bbl: mild bearish"
-
-        # Copper: industrial demand proxy
-        elif pair == 'XCU/USD':
-            if vix > 25: fund_score -= 6
-            elif vix < 15: fund_score += 4
 
         fund_score = max(10, min(90, fund_score))
 
@@ -9273,7 +9235,7 @@ def run_system_audit():
             'currency_strength': {'weight': 10, 'sources': 'v9.3.0: 51-instrument analysis — base vs quote currency strength (0% for commodities)'}
         },
         'commodity_weights': {
-            'description': 'v9.3.0: Separate weight profile for 6 commodities (XAU, XAG, XPT, WTI, BRENT, XCU)',
+            'description': 'v9.3.0: Separate weight profile for 5 commodities (XAU, XAG, XPT, WTI, BRENT)',
             'trend_momentum': 22, 'fundamental': 12, 'sentiment': 13,
             'intermarket': 15, 'mean_reversion': 12, 'calendar_risk': 8,
             'ai_synthesis': 10, 'supply_demand': 8,
@@ -9980,7 +9942,7 @@ def run_system_audit():
     # ═══════════════════════════════════════════════════════════════════════════
     
     # Test multiple pairs to verify scoring distribution (v9.3.0: includes commodities)
-    test_pairs = ['EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'XAU/USD', 'WTI/USD', 'XCU/USD']
+    test_pairs = ['EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'XAU/USD', 'WTI/USD']
     pair_scores = []
     factor_distributions = {f: [] for f in FACTOR_WEIGHTS.keys()}
     
@@ -10300,7 +10262,7 @@ def run_ai_system_health_check(use_ai=True):
         # If no API Ninjas and commodities are showing static, add warning
         health['warnings'].append({
             'type': 'COMMODITY_API_MISSING',
-            'message': 'API Ninjas not configured - WTI/BRENT/XCU using static rates',
+            'message': 'API Ninjas not configured - WTI/BRENT may use static rates',
             'severity': 'MEDIUM'
         })
 
@@ -11484,7 +11446,6 @@ def get_all_ig_sentiment():
         'WTI/USD': 'OIL_CRUDE',
         'BRENT/USD': 'OIL_BRENT',
         'XPT/USD': 'PLATINUM',
-        'XCU/USD': 'COPPER'
     }
     
     results = []
@@ -11827,7 +11788,7 @@ def get_combined_retail_sentiment(pair):
             'EUR/CHF': 'EURCHF', 'GBP/CHF': 'GBPCHF', 'EUR/CAD': 'EURCAD',
             # v9.3.0: Commodity IG market IDs
             'XAU/USD': 'GOLD', 'XAG/USD': 'SILVER', 'WTI/USD': 'OIL_CRUDE',
-            'BRENT/USD': 'OIL_BRENT', 'XPT/USD': 'PLATINUM', 'XCU/USD': 'COPPER'
+            'BRENT/USD': 'OIL_BRENT', 'XPT/USD': 'PLATINUM',
         }
         if pair in ig_market_ids:
             ig_data = get_ig_client_sentiment(ig_market_ids[pair])
