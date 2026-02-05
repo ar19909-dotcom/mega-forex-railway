@@ -3,7 +3,7 @@
 ║                   MEGA FOREX v9.3.0 PRO - AI-ENHANCED SYSTEM                 ║
 ║                    Build: February 5, 2026 - COMMODITIES COMPLETE            ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
-║  ✓ 45 Forex Pairs + 6 Commodities (51 Instruments)                           ║
+║  ✓ 45 Forex Pairs + 5 Commodities (50 Instruments)                           ║
 ║  ✓ 8-Group Gated Scoring + 8-Gate Quality Filter (v9.3.0)                    ║
 ║  ✓ Separate Scoring Weights: Forex vs Commodities                            ║
 ║  ✓ EIA Live Oil Prices (WTI/Brent) + GoldAPI (XAU/XAG/XPT)                   ║
@@ -23,10 +23,10 @@
 ║  - Intermarket (12%): DXY, Gold, Yields, Oil correlations                    ║
 ║  - Mean Reversion (11%): Z-Score, Bollinger %B + S/R structure               ║
 ║  - AI Synthesis (10%): GPT-4o-mini market analysis                           ║
-║  - Currency Strength (10%): 51-instrument cross-currency analysis            ║
+║  - Currency Strength (10%): 50-instrument cross-currency analysis            ║
 ║  - Calendar Risk (8%): Economic event risk + seasonality                     ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
-║  COMMODITY SCORING (6 instruments) - Commodity-Specific Weights (v9.3.0)     ║
+║  COMMODITY SCORING (5 instruments) - Commodity-Specific Weights (v9.3.0)     ║
 ║  - Trend & Momentum (22%): RSI, MACD, ADX + MTF alignment                    ║
 ║  - Intermarket (15%): Cross-commodity, DXY, VIX, Yields, Equities           ║
 ║  - Sentiment (13%): IG + COT institutional + commodity news                  ║
