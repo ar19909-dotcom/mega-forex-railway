@@ -1,7 +1,8 @@
-# MEGA FOREX v8.4 PRO - Production Dependencies
-# Last updated: 2026-01-24 - Thread-safe cache implementation
+# MEGA FOREX v9.4.0 PRO - Production Dependencies
+# Last updated: 2026-02-06 - Market Depth + Trading Time
 flask==3.0.0
 requests==2.31.0
 python-dotenv==1.0.0
 numpy==1.26.2
 gunicorn==21.2.0
+pytz==2024.1

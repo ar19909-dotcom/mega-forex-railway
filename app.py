@@ -2720,12 +2720,13 @@ def get_all_rates():
                 return cache['rates']['data']
 
     rates = {}
-    with ThreadPoolExecutor(max_workers=50) as executor:
+    # v9.4.0: Reduced from 50 to 10 workers to prevent API rate limit cascade
+    with ThreadPoolExecutor(max_workers=10) as executor:
         future_to_pair = {executor.submit(get_rate, pair): pair for pair in ALL_INSTRUMENTS}
         for future in as_completed(future_to_pair):
             pair = future_to_pair[future]
             try:
-                result = future.result()
+                result = future.result(timeout=15)
                 if result:
                     rates[pair] = result
             except Exception as e:
@@ -3700,14 +3701,17 @@ def get_ict_killzones(pair=None):
 
     Returns current killzone status and trading recommendation
     """
-    from datetime import datetime
-    import pytz
-
     try:
-        utc_now = datetime.now(pytz.UTC)
+        import pytz
+        utc_now = datetime.utcnow()
         hour = utc_now.hour
         minute = utc_now.minute
-    except:
+    except ImportError:
+        # pytz not available - use datetime.utcnow() directly
+        utc_now = datetime.utcnow()
+        hour = utc_now.hour
+        minute = utc_now.minute
+    except Exception:
         return {
             'killzone': 'UNKNOWN',
             'is_killzone': False,
@@ -5044,6 +5048,7 @@ def calculate_market_depth(pair, rate_data=None, tech_data=None):
     score += (liq_score - 50) * 0.20
 
     # ── Sub-factor 4: ATR Activity (10%) ──
+    vol_score = 50  # Default neutral when no tech data
     if tech_data and isinstance(tech_data, dict):
         atr_pct = tech_data.get('atr_percentile', 50)
         if atr_pct > 70:
@@ -5054,7 +5059,7 @@ def calculate_market_depth(pair, rate_data=None, tech_data=None):
         else:
             vol_score = 35
             details.append('Low market activity')
-        score += (vol_score - 50) * 0.10
+    score += (vol_score - 50) * 0.10
 
     # Clamp score
     score = max(15, min(85, score))
@@ -5092,7 +5097,7 @@ def calculate_market_depth(pair, rate_data=None, tech_data=None):
         trading_time = {
             'quality': 'POOR', 'color': 'RED', 'label': 'AVOID',
             'reason': kz_name.replace('_', ' ').title(),
-            'session': kz_name.replace('_', ' ').title() if kz_name != 'off_session' else 'Off Session',
+            'session': 'Off Session' if kz_name in ('OFF_HOURS', 'off_session', 'UNKNOWN') else kz_name.replace('_', ' ').title(),
             'detail': f'Quality {kz_quality}% - Low activity'
         }
 
@@ -8658,20 +8663,30 @@ def generate_signal(pair):
         factor_groups = build_factor_groups(factors)
 
         # v9.2.2: Add Currency Strength as 8th factor group (10% weight)
-        # Uses 45-pair data to determine if direction aligns with currency strength
-        currency_strength_data = get_currency_strength_score(pair)
+        # v9.4.0: Pass cached rates to avoid spawning 50 threads per signal
+        try:
+            with cache_lock:
+                _cached_rates = cache.get('rates', {}).get('data', {})
+            currency_strength_data = get_currency_strength_score(pair, rates_dict=_cached_rates if _cached_rates else None)
+        except Exception as cs_err:
+            logger.warning(f"Currency strength error for {pair}: {cs_err}")
+            currency_strength_data = {'score': 50, 'signal': 'NEUTRAL', 'details': ['Error - using neutral'], 'base_strength': 50, 'quote_strength': 50}
         factor_groups['currency_strength'] = {
             'score': currency_strength_data['score'],
             'signal': currency_strength_data['signal'],
-            'weight': FACTOR_GROUP_WEIGHTS.get('currency_strength', 10),
-            'details': currency_strength_data['details'],
+            'weight': FACTOR_GROUP_WEIGHTS.get('currency_strength', 9),
+            'details': currency_strength_data.get('details', []),
             'base_strength': currency_strength_data.get('base_strength', 50),
             'quote_strength': currency_strength_data.get('quote_strength', 50)
         }
 
         # v9.3.0: Add Geopolitical Risk as 9th factor group (5% forex, 6% commodities)
         # Analyzes news for war, sanctions, trade tensions, elections
-        geo_risk_data = calculate_geopolitical_risk(pair)
+        try:
+            geo_risk_data = calculate_geopolitical_risk(pair)
+        except Exception as geo_err:
+            logger.warning(f"Geopolitical risk error for {pair}: {geo_err}")
+            geo_risk_data = {'score': 50, 'signal': 'NEUTRAL', 'risk_level': 'MODERATE', 'relevant_articles': 0, 'details': ['Error - using neutral']}
         geo_weight = COMMODITY_FACTOR_WEIGHTS.get('geopolitical_risk', 6) if is_commodity(pair) else FACTOR_GROUP_WEIGHTS.get('geopolitical_risk', 5)
         factor_groups['geopolitical_risk'] = {
             'score': geo_risk_data['score'],
@@ -8682,9 +8697,15 @@ def generate_signal(pair):
             'details': geo_risk_data.get('details', [])
         }
 
-        # v9.3.0: Add Market Depth as 10th factor group (4% forex, 5% commodities)
+        # v9.4.0: Add Market Depth as 10th factor group (4% forex, 5% commodities)
         # Analyzes spread, session activity, pair liquidity, ATR activity
-        depth_data = calculate_market_depth(pair, rate, tech)
+        try:
+            depth_data = calculate_market_depth(pair, rate, tech)
+        except Exception as depth_err:
+            logger.warning(f"Market depth error for {pair}: {depth_err}")
+            depth_data = {'score': 50, 'signal': 'NEUTRAL', 'details': ['Error - using neutral'],
+                          'trading_time': {'quality': 'MODERATE', 'color': 'YELLOW', 'label': 'MODERATE', 'reason': 'Calculation error'},
+                          'session_quality': 0, 'killzone': 'UNKNOWN'}
         depth_weight = COMMODITY_FACTOR_WEIGHTS.get('market_depth', 5) if is_commodity(pair) else FACTOR_GROUP_WEIGHTS.get('market_depth', 4)
         factor_groups['market_depth'] = {
             'score': depth_data['score'],
@@ -8696,7 +8717,7 @@ def generate_signal(pair):
         }
         # Store trading_time for signal output
         trading_time_data = depth_data.get('trading_time', {
-            'quality': 'MODERATE', 'color': 'yellow', 'label': 'MODERATE', 'reason': 'Unknown'
+            'quality': 'MODERATE', 'color': 'YELLOW', 'label': 'MODERATE', 'reason': 'Unknown'
         })
 
         # ═══════════════════════════════════════════════════════════════════════════
@@ -11435,20 +11456,21 @@ def get_signals():
         with ThreadPoolExecutor(max_workers=5) as executor:
             candle_futures = {executor.submit(get_polygon_candles, pair, 'day', 100): pair for pair in ALL_INSTRUMENTS}
             for future in as_completed(candle_futures):
+                cpair = candle_futures.get(future, 'UNKNOWN')
                 try:
                     result = future.result(timeout=15)
                     if result:
                         candle_count += 1
-                except:
-                    pass
-        logger.info(f"📊 Signals: Pre-fetched candles for {candle_count} pairs")
+                except Exception as candle_err:
+                    logger.debug(f"Candle pre-fetch failed for {cpair}: {candle_err}")
+        logger.info(f"📊 Signals: Pre-fetched candles for {candle_count}/{len(ALL_INSTRUMENTS)} pairs")
 
         # Generate fresh signals (v9.3.0: reduced workers to avoid rate limits)
         signals = []
         failed_pairs = []
 
-        # Use fewer workers to avoid overwhelming APIs
-        with ThreadPoolExecutor(max_workers=20) as executor:
+        # v9.4.0: Reduced from 20 to 10 workers to prevent API rate limit cascade
+        with ThreadPoolExecutor(max_workers=10) as executor:
             future_to_pair = {executor.submit(generate_signal, pair): pair for pair in ALL_INSTRUMENTS}
 
             for future in as_completed(future_to_pair):
@@ -11461,7 +11483,7 @@ def get_signals():
                         failed_pairs.append(pair)
                 except Exception as e:
                     failed_pairs.append(pair)
-                    logger.debug(f"Signal generation failed for {pair}: {e}")
+                    logger.warning(f"Signal generation failed for {pair}: {e}")
 
         if failed_pairs:
             logger.warning(f"📊 Signals: {len(failed_pairs)} pairs failed: {failed_pairs[:5]}...")
@@ -11562,20 +11584,23 @@ def get_subscription_signals():
                         'signals': stripped_signals
                     })
 
-        # Generate fresh signals (v8.5)
+        # v9.4.0: Pre-fetch rates before generating signals
+        get_all_rates()
+
+        # Generate fresh signals
         signals = []
 
-        with ThreadPoolExecutor(max_workers=15) as executor:
+        with ThreadPoolExecutor(max_workers=10) as executor:
             future_to_pair = {executor.submit(generate_signal, pair): pair for pair in ALL_INSTRUMENTS}
 
             for future in as_completed(future_to_pair):
                 try:
-                    signal = future.result()
+                    signal = future.result(timeout=30)
                     if signal:
                         signals.append(signal)
                 except Exception as e:
                     pair = future_to_pair.get(future, 'UNKNOWN')
-                    logger.debug(f"Signal generation failed for {pair}: {e}")
+                    logger.warning(f"Subscription signal failed for {pair}: {e}")
 
         # Sort: LONG/SHORT first (best trades), then NEUTRAL at bottom
         def signal_sort_key(x):
