@@ -2238,7 +2238,7 @@ def get_polygon_rate(pair):
         ticker = polygon_commodity_tickers.get(pair, f"C:{pair.replace('/', '')}")
         url = f"https://api.polygon.io/v2/aggs/ticker/{ticker}/prev"
         params = {'apiKey': POLYGON_API_KEY}
-        resp = req_lib.get(url, params=params, timeout=3)
+        resp = req_lib.get(url, params=params, timeout=2)
         if resp.status_code == 200:
             data = resp.json()
             if data.get('results') and len(data['results']) > 0:
@@ -2294,7 +2294,7 @@ def get_twelvedata_rate(pair):
             'symbol': symbol,
             'apikey': TWELVE_DATA_KEY
         }
-        resp = req_lib.get(url, params=params, timeout=3)
+        resp = req_lib.get(url, params=params, timeout=2)
         if resp.status_code == 200:
             data = resp.json()
             if 'price' in data:
@@ -2328,7 +2328,7 @@ def get_tradermade_rate(pair):
             'currency': symbol,
             'api_key': TRADERMADE_KEY
         }
-        resp = req_lib.get(url, params=params, timeout=3)
+        resp = req_lib.get(url, params=params, timeout=2)
         if resp.status_code == 200:
             data = resp.json()
             if 'quotes' in data and len(data['quotes']) > 0:
@@ -2358,7 +2358,7 @@ def get_currencylayer_rate(pair):
             'source': 'USD',
             'format': 1
         }
-        resp = req_lib.get(url, params=params, timeout=3)
+        resp = req_lib.get(url, params=params, timeout=2)
         if resp.status_code == 200:
             data = resp.json()
             if data.get('success') and 'quotes' in data:
@@ -2383,7 +2383,7 @@ def get_exchangerate_rate(pair):
     try:
         base, quote = pair.split('/')
         url = f"https://api.exchangerate-api.com/v4/latest/{base}"
-        resp = req_lib.get(url, timeout=3)
+        resp = req_lib.get(url, timeout=2)
         if resp.status_code == 200:
             data = resp.json()
             if quote in data.get('rates', {}):
@@ -2411,7 +2411,7 @@ def get_goldapi_rate(pair):
     try:
         url = f"{GOLDAPI_URL}/{symbol}/USD"
         headers = {'x-access-token': GOLDAPI_KEY, 'Content-Type': 'application/json'}
-        resp = req_lib.get(url, headers=headers, timeout=3)
+        resp = req_lib.get(url, headers=headers, timeout=2)
         if resp.status_code == 200:
             data = resp.json()
             if 'price' in data:
@@ -2444,7 +2444,7 @@ def get_api_ninjas_commodity(pair):
     try:
         url = f"{API_NINJAS_URL}?name={commodity}"
         headers = {'X-Api-Key': API_NINJAS_KEY}
-        resp = req_lib.get(url, headers=headers, timeout=3)
+        resp = req_lib.get(url, headers=headers, timeout=2)
         if resp.status_code == 200:
             data = resp.json()
             if data and 'price' in data:
@@ -2478,7 +2478,7 @@ def get_alphavantage_commodity(pair):
             'symbol': symbol,
             'apikey': ALPHA_VANTAGE_KEY
         }
-        resp = req_lib.get(url, params=params, timeout=3)
+        resp = req_lib.get(url, params=params, timeout=2)
         if resp.status_code == 200:
             data = resp.json()
             quote = data.get('Global Quote', {})
@@ -2508,7 +2508,7 @@ def get_yahoo_oil_price(pair):
         # Yahoo Finance query1 API (free, no key required)
         url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1d&range=1d"
         headers = {'User-Agent': 'Mozilla/5.0'}
-        resp = req_lib.get(url, headers=headers, timeout=3)
+        resp = req_lib.get(url, headers=headers, timeout=2)
         if resp.status_code == 200:
             data = resp.json()
             result = data.get('chart', {}).get('result', [])
@@ -2551,7 +2551,7 @@ def get_eia_oil_spot_price(pair):
             f"&sort[0][direction]=desc"
             f"&length=1"
         )
-        resp = req_lib.get(url, timeout=3)
+        resp = req_lib.get(url, timeout=2)
         if resp.status_code == 200:
             data = resp.json()
             records = data.get('response', {}).get('data', [])
@@ -2607,62 +2607,42 @@ def get_eia_oil_data():
     return None
 
 def get_rate(pair):
-    """Get rate with multi-tier fallback (v9.3.0: 7+ data sources)"""
-    # Tier 0: Yahoo Finance FIRST for oil (FREE, no API key needed!)
+    """Get rate with FAST multi-tier fallback (v9.3.0: optimized for speed)"""
+
+    # OIL COMMODITIES: Yahoo → Static (fastest path)
     if pair in ['WTI/USD', 'BRENT/USD']:
         rate = get_yahoo_oil_price(pair)
         if rate:
             return rate
-        # Tier 0.5: EIA as backup for oil
-        rate = get_eia_oil_spot_price(pair)
+        # Skip to static - other APIs are too slow
+        if pair in STATIC_RATES:
+            mid = STATIC_RATES[pair]
+            return {'bid': mid * 0.9995, 'ask': mid * 1.0005, 'mid': mid, 'source': 'static'}
+        return None
+
+    # PRECIOUS METALS: Polygon → GoldAPI → Static
+    if pair in ['XAU/USD', 'XAG/USD', 'XPT/USD']:
+        rate = get_polygon_rate(pair)
         if rate:
             return rate
+        rate = get_goldapi_rate(pair)
+        if rate:
+            return rate
+        if pair in STATIC_RATES:
+            mid = STATIC_RATES[pair]
+            return {'bid': mid * 0.9998, 'ask': mid * 1.0002, 'mid': mid, 'source': 'static'}
+        return None
 
-    # Tier 1: Polygon (premium)
+    # FOREX: Polygon → ExchangeRate → Static (fast path)
     rate = get_polygon_rate(pair)
     if rate:
         return rate
 
-    # Tier 2: Twelve Data (800 calls/day free)
-    rate = get_twelvedata_rate(pair)
+    rate = get_exchangerate_rate(pair)
     if rate:
         return rate
 
-    # Tier 3: TraderMade (1000 calls/month free)
-    rate = get_tradermade_rate(pair)
-    if rate:
-        return rate
-
-    # Tier 4: GoldAPI.io (precious metals only - 500 free req/month)
-    if is_commodity(pair) and pair in ['XAU/USD', 'XAG/USD', 'XPT/USD']:
-        rate = get_goldapi_rate(pair)
-        if rate:
-            return rate
-
-    # Tier 4.6: Alpha Vantage (oil - 500 calls/day free)
-    if pair in ['WTI/USD', 'BRENT/USD']:
-        rate = get_alphavantage_commodity(pair)
-        if rate:
-            return rate
-
-    # Tier 4.7: API Ninjas (oil commodities)
-    if pair in ['WTI/USD', 'BRENT/USD']:
-        rate = get_api_ninjas_commodity(pair)
-        if rate:
-            return rate
-
-    # Tier 5: ExchangeRate-API (unlimited free - forex only)
-    if not is_commodity(pair):
-        rate = get_exchangerate_rate(pair)
-        if rate:
-            return rate
-
-    # Tier 6: CurrencyLayer (100 calls/month free - low priority)
-    rate = get_currencylayer_rate(pair)
-    if rate:
-        return rate
-
-    # Tier 7: Static fallback
+    # Static fallback for forex
     if pair in STATIC_RATES:
         mid = STATIC_RATES[pair]
         return {
@@ -2682,7 +2662,7 @@ def get_all_rates():
                 return cache['rates']['data']
 
     rates = {}
-    with ThreadPoolExecutor(max_workers=15) as executor:
+    with ThreadPoolExecutor(max_workers=50) as executor:
         future_to_pair = {executor.submit(get_rate, pair): pair for pair in ALL_INSTRUMENTS}
         for future in as_completed(future_to_pair):
             pair = future_to_pair[future]
@@ -4466,7 +4446,7 @@ def get_rss_forex_news():
     
     for feed_url, source_name in rss_feeds:
         try:
-            resp = req_lib.get(feed_url, timeout=3, headers={
+            resp = req_lib.get(feed_url, timeout=2, headers={
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
             })
             
@@ -4528,7 +4508,7 @@ def get_finnhub_news():
         try:
             url = "https://finnhub.io/api/v1/news"
             params = {'category': 'forex', 'token': FINNHUB_API_KEY}
-            resp = req_lib.get(url, params=params, timeout=3)
+            resp = req_lib.get(url, params=params, timeout=2)
             
             if resp.status_code == 200:
                 data = resp.json()[:20]
@@ -4953,7 +4933,7 @@ def get_investing_calendar():
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
             'Accept': 'application/rss+xml, application/xml, text/xml'
         }
-        resp = req_lib.get(url, headers=headers, timeout=3)
+        resp = req_lib.get(url, headers=headers, timeout=2)
 
         if resp.status_code == 200 and ('<item>' in resp.text or '<entry>' in resp.text):
             events = []
@@ -5045,7 +5025,7 @@ def get_fxstreet_calendar():
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
             'Accept': 'application/rss+xml, application/xml, text/xml'
         }
-        resp = req_lib.get(url, headers=headers, timeout=3)
+        resp = req_lib.get(url, headers=headers, timeout=2)
 
         if resp.status_code == 200 and '<item>' in resp.text:
             events = []
@@ -5319,7 +5299,7 @@ def get_dailyfx_calendar():
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         }
-        resp = req_lib.get(url, headers=headers, timeout=3)
+        resp = req_lib.get(url, headers=headers, timeout=2)
         
         if resp.status_code == 200:
             events = []
@@ -6164,7 +6144,7 @@ def get_real_intermarket_data():
                 'symbol': 'VIX',
                 'apikey': ALPHA_VANTAGE_KEY
             }
-            resp = req_lib.get(url, params=params, timeout=3)
+            resp = req_lib.get(url, params=params, timeout=2)
             if resp.status_code == 200:
                 data = resp.json()
                 if 'Global Quote' in data and '05. price' in data['Global Quote']:
@@ -9802,7 +9782,7 @@ def run_system_audit():
             test_response = req_lib.get(
                 'https://api.openai.com/v1/models',
                 headers=headers,
-                timeout=3
+                timeout=2
             )
             if test_response.status_code == 200:
                 audit['api_status']['openai'] = {
@@ -10213,7 +10193,7 @@ def run_ai_system_health_check(use_ai=True):
     if OPENAI_API_KEY:
         try:
             headers = {'Authorization': f'Bearer {OPENAI_API_KEY}'}
-            resp = req_lib.get('https://api.openai.com/v1/models', headers=headers, timeout=3)
+            resp = req_lib.get('https://api.openai.com/v1/models', headers=headers, timeout=2)
             api_check['details']['openai'] = 'OK' if resp.status_code == 200 else f'ERROR: {resp.status_code}'
             if resp.status_code != 200:
                 health['warnings'].append({
@@ -10760,7 +10740,7 @@ def get_signals():
         # Generate fresh signals (v9.0: increased workers for faster loading)
         signals = []
 
-        with ThreadPoolExecutor(max_workers=20) as executor:
+        with ThreadPoolExecutor(max_workers=50) as executor:
             future_to_pair = {executor.submit(generate_signal, pair): pair for pair in ALL_INSTRUMENTS}
 
             for future in as_completed(future_to_pair):
