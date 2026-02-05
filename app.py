@@ -4431,17 +4431,76 @@ def get_technical_indicators(pair):
     }
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# NEWS & SENTIMENT - Multi-Source (Finnhub + RSS Feeds)
+# NEWS & SENTIMENT - Multi-Source (Finnhub + RSS Feeds + Yahoo Finance)
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def get_rss_forex_news():
-    """Fetch news from FREE RSS feeds - ForexLive, FXStreet, Investing.com"""
+def get_yahoo_finance_news():
+    """v9.3.0: Fetch forex/commodity news from Yahoo Finance (FREE, no API key)"""
     articles = []
-    
+
+    # Yahoo Finance news tickers for forex/commodities
+    tickers = ['EURUSD=X', 'GC=F', 'CL=F', '^DXY']  # EUR/USD, Gold, Oil, DXY
+
+    for ticker in tickers:
+        try:
+            url = f"https://query1.finance.yahoo.com/v1/finance/search?q={ticker}&newsCount=5"
+            headers = {'User-Agent': 'Mozilla/5.0'}
+            resp = req_lib.get(url, headers=headers, timeout=2)
+
+            if resp.status_code == 200:
+                data = resp.json()
+                news = data.get('news', [])
+
+                for item in news[:5]:
+                    headline = item.get('title', '')
+                    if headline:
+                        articles.append({
+                            'headline': headline,
+                            'summary': item.get('publisher', 'Yahoo Finance'),
+                            'source': 'Yahoo Finance',
+                            'url': item.get('link', ''),
+                            'datetime': item.get('providerPublishTime', int(datetime.now().timestamp()))
+                        })
+        except Exception as e:
+            logger.debug(f"Yahoo Finance news error for {ticker}: {e}")
+            continue
+
+    return articles
+
+def get_yahoo_market_movers():
+    """v9.3.0: Get market sentiment from Yahoo Finance trending/movers"""
+    try:
+        # Get trending tickers for sentiment
+        url = "https://query1.finance.yahoo.com/v1/finance/trending/US"
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        resp = req_lib.get(url, headers=headers, timeout=2)
+
+        if resp.status_code == 200:
+            data = resp.json()
+            quotes = data.get('finance', {}).get('result', [{}])[0].get('quotes', [])
+            return {
+                'trending_count': len(quotes),
+                'trending_symbols': [q.get('symbol', '') for q in quotes[:10]],
+                'source': 'yahoo'
+            }
+    except Exception as e:
+        logger.debug(f"Yahoo market movers error: {e}")
+    return None
+
+def get_rss_forex_news():
+    """Fetch news from FREE RSS feeds - ForexLive, FXStreet, Investing.com, Bloomberg, Reuters"""
+    articles = []
+
     rss_feeds = [
+        # Forex-specific feeds
         ('https://www.forexlive.com/feed/', 'ForexLive'),
         ('https://www.fxstreet.com/rss/news', 'FXStreet'),
         ('https://www.investing.com/rss/news_14.rss', 'Investing.com'),
+        # Bloomberg & Reuters - Markets/Commodities
+        ('https://feeds.bloomberg.com/markets/news.rss', 'Bloomberg'),
+        ('https://news.google.com/rss/search?q=forex+currency+trading&hl=en-US&gl=US&ceid=US:en', 'Google News Forex'),
+        ('https://www.reuters.com/rssfeed/businessNews', 'Reuters Business'),
+        ('https://www.reuters.com/rssfeed/marketsNews', 'Reuters Markets'),
     ]
     
     for feed_url, source_name in rss_feeds:
@@ -4533,7 +4592,15 @@ def get_finnhub_news():
         sources_status['rss'] = {'status': 'OK', 'count': len(rss_articles)}
     except Exception as e:
         sources_status['rss'] = {'status': 'ERROR', 'error': str(e)}
-    
+
+    # Source 3: Yahoo Finance News (FREE, no API key needed) - v9.3.0
+    try:
+        yahoo_articles = get_yahoo_finance_news()
+        all_articles.extend(yahoo_articles)
+        sources_status['yahoo'] = {'status': 'OK', 'count': len(yahoo_articles)}
+    except Exception as e:
+        sources_status['yahoo'] = {'status': 'ERROR', 'error': str(e)}
+
     # Deduplicate by headline hash
     seen = set()
     unique_articles = []
