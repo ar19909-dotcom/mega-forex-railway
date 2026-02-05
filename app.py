@@ -4856,6 +4856,22 @@ def analyze_sentiment(pair):
                 time_decay = 0.5  # Default if can't parse time
 
         # ─────────────────────────────────────────────────────────────────────
+        # SOURCE QUALITY: Premium sources get more weight (v9.3.0)
+        # ─────────────────────────────────────────────────────────────────────
+        source = article.get('source', '').lower()
+        source_quality = 1.0
+        if 'bloomberg' in source:
+            source_quality = 1.8  # Bloomberg: highest credibility
+        elif 'reuters' in source:
+            source_quality = 1.7  # Reuters: very high credibility
+        elif 'yahoo' in source:
+            source_quality = 1.3  # Yahoo Finance: good credibility
+        elif 'finnhub' in source:
+            source_quality = 1.2  # Finnhub: aggregated news
+        elif 'fxstreet' in source or 'forexlive' in source:
+            source_quality = 1.1  # Forex-specific sources
+
+        # ─────────────────────────────────────────────────────────────────────
         # SENTIMENT SCORING with impact weighting
         # ─────────────────────────────────────────────────────────────────────
         article_bull_score = 0
@@ -4903,8 +4919,8 @@ def analyze_sentiment(pair):
             # Both or neither - use direct sentiment
             net_score = article_bull_score - article_bear_score
 
-        # Apply time decay and add to weighted average
-        article_weight = (1.5 if is_high_impact else 1.0) * time_decay
+        # Apply time decay, source quality, and add to weighted average
+        article_weight = (1.5 if is_high_impact else 1.0) * time_decay * source_quality
         if is_high_impact:
             high_impact_count += 1
 
@@ -4929,7 +4945,8 @@ def analyze_sentiment(pair):
         'score': round(news_sentiment, 1),
         'articles_analyzed': len(relevant_articles),
         'high_impact_articles': high_impact_count,
-        'source': 'FINNHUB_NEWS_ENHANCED',
+        'source': 'MULTI_SOURCE_NEWS',  # v9.3.0: Finnhub + Yahoo + Bloomberg + Reuters
+        'sources_used': ['Finnhub', 'Yahoo Finance', 'Bloomberg', 'Reuters', 'RSS Feeds'],
         'quality': 'HIGH' if high_impact_count >= 2 else 'MEDIUM' if len(relevant_articles) >= 3 else 'LOW'
     }
     
@@ -4978,8 +4995,25 @@ def analyze_sentiment(pair):
         sentiment_score = news_sentiment
         data_quality = 'MEDIUM'
 
+    # v9.3.0: Yahoo Market Movers boost - if market is trending, boost confidence
+    try:
+        yahoo_movers = get_yahoo_market_movers()
+        if yahoo_movers and yahoo_movers.get('trending_count', 0) > 5:
+            # High market activity = higher confidence in sentiment readings
+            sentiment_sources['yahoo_market_movers'] = {
+                'trending_count': yahoo_movers['trending_count'],
+                'status': 'ACTIVE'
+            }
+            # Slight boost to confidence when markets are active
+            if sentiment_score > 55:
+                sentiment_score = min(100, sentiment_score + 2)  # Boost bullish
+            elif sentiment_score < 45:
+                sentiment_score = max(0, sentiment_score - 2)  # Boost bearish
+    except:
+        pass
+
     sentiment_score = max(0, min(100, sentiment_score))
-    
+
     return {
         'score': round(sentiment_score, 1),
         'signal': 'BULLISH' if sentiment_score > 55 else 'BEARISH' if sentiment_score < 45 else 'NEUTRAL',
