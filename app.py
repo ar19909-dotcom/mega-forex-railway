@@ -2611,6 +2611,12 @@ def get_eia_oil_data():
 def get_rate(pair):
     """Get rate with FAST multi-tier fallback (v9.3.0: optimized for speed)"""
 
+    # v9.3.0 FIX: Check rate cache first to avoid redundant API calls
+    with cache_lock:
+        cached_rates = cache.get('rates', {}).get('data', {})
+        if pair in cached_rates:
+            return cached_rates[pair]
+
     # OIL COMMODITIES: Yahoo → Static (fastest path)
     if pair in ['WTI/USD', 'BRENT/USD']:
         rate = get_yahoo_oil_price(pair)
@@ -2684,9 +2690,17 @@ def get_all_rates():
 # CANDLE DATA & TECHNICAL INDICATORS
 # ═══════════════════════════════════════════════════════════════════════════════
 def get_polygon_candles(pair, timeframe='day', limit=100):
-    """Fetch candle data from Polygon (v9.3.0: supports commodities)"""
+    """Fetch candle data from Polygon (v9.3.0: supports commodities with caching)"""
     if not POLYGON_API_KEY:
         return None
+
+    # v9.3.0 FIX: Check candle cache first to avoid redundant API calls
+    cache_key = f"{pair}_{timeframe}_{limit}"
+    with cache_lock:
+        candle_cache = cache.get('candles', {}).get('data', {})
+        if cache_key in candle_cache:
+            return candle_cache[cache_key]
+
     try:
         # v9.3.0: Use same commodity ticker mapping as rate fetch
         polygon_commodity_tickers = {
@@ -2711,7 +2725,7 @@ def get_polygon_candles(pair, timeframe='day', limit=100):
         if resp.status_code == 200:
             data = resp.json()
             if data.get('results'):
-                return [{
+                candles = [{
                     'timestamp': r['t'],
                     'open': r['o'],
                     'high': r['h'],
@@ -2719,6 +2733,13 @@ def get_polygon_candles(pair, timeframe='day', limit=100):
                     'close': r['c'],
                     'volume': r.get('v', 0)
                 } for r in data['results']]
+                # Cache the result
+                with cache_lock:
+                    if 'candles' not in cache:
+                        cache['candles'] = {'data': {}, 'timestamp': datetime.now()}
+                    cache['candles']['data'][cache_key] = candles
+                    cache['candles']['timestamp'] = datetime.now()
+                return candles
     except Exception as e:
         logger.debug(f"Candle fetch failed for {pair}: {e}")
     return None
@@ -10293,8 +10314,8 @@ def run_system_audit():
     # v9.3.0: API Ninjas (oil/copper commodity prices)
     audit['api_status']['api_ninjas'] = {
         'status': 'OK' if API_NINJAS_KEY else 'NOT_CONFIGURED',
-        'purpose': 'Live oil & copper prices (free tier)',
-        'coverage': 'WTI, Brent, Copper'
+        'purpose': 'Live oil prices (free tier)',
+        'coverage': 'WTI, Brent (Oil commodities)'
     }
 
     # ═══════════════════════════════════════════════════════════════════════════
@@ -10529,7 +10550,7 @@ def run_ai_system_health_check(use_ai=True):
             'mtf': ['Weekly (W1) Timeframe', 'Weighted Alignment Scoring', 'Trend Strength Classification'],
             'structure': ['Fibonacci Retracement Levels', 'Golden Zone Detection', 'Swing High/Low Analysis'],
             'ai_analysis': ['Key Drivers Detection', 'Risk Factor Analysis', 'Factor-by-Factor Breakdown', 'Trade Quality Grading'],
-            'commodities': ['Gold/Silver/Platinum (Metals)', 'WTI/Brent (Energy)', 'Copper (Industrial)', 'Commodity-Specific Weights (currency_strength=0%)', 'DXY/Yields/VIX Fundamental Factor']
+            'commodities': ['Gold/Silver/Platinum (Metals)', 'WTI/Brent (Energy)', 'Commodity-Specific Weights (currency_strength=0%)', 'DXY/Yields/VIX Fundamental Factor']
         }
     }
 
@@ -11167,20 +11188,58 @@ def get_signals():
         if force_refresh:
             logger.info("📊 Signals: Force refresh requested - regenerating all signals")
 
-        # Generate fresh signals (v9.0: increased workers for faster loading)
-        signals = []
+        # ═══════════════════════════════════════════════════════════════════════════
+        # v9.3.0 FIX: Pre-fetch all rates BEFORE parallel signal generation
+        # This prevents 50 workers from hitting API rate limits simultaneously
+        # ═══════════════════════════════════════════════════════════════════════════
+        logger.info("📊 Signals: Pre-fetching rates for all instruments...")
+        prefetched_rates = get_all_rates()
+        logger.info(f"📊 Signals: Pre-fetched {len(prefetched_rates)} rates")
 
-        with ThreadPoolExecutor(max_workers=50) as executor:
+        # Also pre-fetch shared data (fundamental, calendar, intermarket)
+        try:
+            get_fundamental_data()  # Cache fundamental data
+            get_intermarket_data()  # Cache intermarket data
+            get_calendar_data()     # Cache calendar data
+        except Exception as e:
+            logger.debug(f"Pre-fetch shared data warning: {e}")
+
+        # v9.3.0 FIX: Pre-fetch candles with rate limiting (5 workers to respect API limits)
+        logger.info("📊 Signals: Pre-fetching candle data...")
+        candle_count = 0
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            candle_futures = {executor.submit(get_polygon_candles, pair, 'day', 100): pair for pair in ALL_INSTRUMENTS}
+            for future in as_completed(candle_futures):
+                try:
+                    result = future.result(timeout=15)
+                    if result:
+                        candle_count += 1
+                except:
+                    pass
+        logger.info(f"📊 Signals: Pre-fetched candles for {candle_count} pairs")
+
+        # Generate fresh signals (v9.3.0: reduced workers to avoid rate limits)
+        signals = []
+        failed_pairs = []
+
+        # Use fewer workers to avoid overwhelming APIs
+        with ThreadPoolExecutor(max_workers=20) as executor:
             future_to_pair = {executor.submit(generate_signal, pair): pair for pair in ALL_INSTRUMENTS}
 
             for future in as_completed(future_to_pair):
+                pair = future_to_pair.get(future, 'UNKNOWN')
                 try:
-                    signal = future.result()
+                    signal = future.result(timeout=30)  # 30 second timeout per signal
                     if signal:
                         signals.append(signal)
+                    else:
+                        failed_pairs.append(pair)
                 except Exception as e:
-                    pair = future_to_pair.get(future, 'UNKNOWN')
+                    failed_pairs.append(pair)
                     logger.debug(f"Signal generation failed for {pair}: {e}")
+
+        if failed_pairs:
+            logger.warning(f"📊 Signals: {len(failed_pairs)} pairs failed: {failed_pairs[:5]}...")
 
         # Sort: LONG/SHORT first (best trades), then NEUTRAL at bottom
         # Within each group, sort by signal strength (furthest from 50)
@@ -12569,9 +12628,9 @@ def api_status():
         'api_ninjas': {
             'configured': bool(API_NINJAS_KEY),
             'status': 'OK' if API_NINJAS_KEY else 'NOT_CONFIGURED',
-            'purpose': 'Live oil & copper prices (free tier)',
+            'purpose': 'Live oil prices (free tier)',
             'tier': 4.5,
-            'coverage': 'WTI, Brent, Copper'
+            'coverage': 'WTI, Brent (Oil commodities)'
         }
     }
 
@@ -12940,7 +12999,7 @@ if __name__ == '__main__':
     print(f"  CurrencyLayer:   {'✓ (100/month)' if CURRENCYLAYER_KEY else '✗'}")
     print(f"  ExchangeRate:    ✓ (Free, no key needed)")
     print(f"  GoldAPI.io:      {'✓ (Precious metals)' if GOLDAPI_KEY else '✗ (Optional)'}")
-    print(f"  API Ninjas:      {'✓ (Oil/Copper prices)' if API_NINJAS_KEY else '✗ (Optional)'}")
+    print(f"  API Ninjas:      {'✓ (Oil prices)' if API_NINJAS_KEY else '✗ (Optional)'}")
     print(f"  EIA Open Data:   {'✓ (Oil inventory/supply)' if EIA_API_KEY else '✗ (Optional)'}")
     print("=" * 70)
     print("  v9.3.0 PRO FEATURES:")
