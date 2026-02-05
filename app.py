@@ -9080,6 +9080,13 @@ def generate_signal(pair):
         entry_min = min(entry_min, current_price)
         entry_max = max(entry_max, current_price)
 
+        # Determine pair category FIRST (needed for entry spread calculation)
+        pair_category = 'MAJOR'
+        for cat, pairs_list in PAIR_CATEGORIES.items():
+            if pair in pairs_list:
+                pair_category = cat
+                break
+
         # v9.3.0: Cap entry spread and ensure it's centered around current price
         # Commodities have large ATR values that create unrealistic entry windows
         # Scandinavian/Exotic pairs need tighter % spread due to high values
@@ -9103,13 +9110,6 @@ def generate_signal(pair):
 
         # Convert ATR to pips for this pair
         atr_pips = atr / pip_size
-
-        # Determine pair category
-        pair_category = 'MAJOR'
-        for cat, pairs_list in PAIR_CATEGORIES.items():
-            if pair in pairs_list:
-                pair_category = cat
-                break
 
         # v9.2.1: ATR-SMART MULTIPLIERS
         # SL: minimum 1.5x ATR (avoid noise), maximum 2.5x ATR (not too wide)
