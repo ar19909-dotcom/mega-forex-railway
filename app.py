@@ -4,7 +4,7 @@
 ║                    Build: February 6, 2026 - MARKET DEPTH + TRADING TIME     ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
 ║  ✓ 45 Forex Pairs + 5 Commodities (50 Instruments)                           ║
-║  ✓ 10-Group Gated Scoring + 8-Gate Quality Filter (v9.4.0)                   ║
+║  ✓ 10-Group Gated Scoring + 10-Gate Quality Filter (v9.4.0)                   ║
 ║  ✓ Smart AI Weight Adjustment (Dynamic, Anti-Overfit)                        ║
 ║  ✓ NEW: Market Depth Factor (Spread, Session, Liquidity, ATR)               ║
 ║  ✓ NEW: Trading Time Badge (GREEN/YELLOW/RED per pair)                      ║
@@ -41,7 +41,7 @@
 ║  - Market Depth (5%): Spread tightness, session activity, liquidity, ATR    ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
 ║  17 APIs: Polygon, TwelveData, TraderMade, GoldAPI, Yahoo, Finnhub + more    ║
-║  8-Gate Filter: G3 Trend, G5 Calendar, G8 Data are MANDATORY                 ║
+║  10-Gate Filter: G3 Trend, G5 Calendar, G8 Data are MANDATORY                 ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 """
 
@@ -7650,7 +7650,7 @@ def detect_market_regime(adx, atr, current_price):
 
 def build_factor_groups(factors):
     """
-    v9.3.0: Merge 11 individual factors into 9 independent groups.
+    v9.4.0: Merge 11 individual factors into 10 independent groups.
     Groups: Trend/Momentum, Fundamental, Sentiment, Intermarket, Mean Reversion,
             Calendar Risk, AI Synthesis, Currency Strength, Geopolitical Risk
     Eliminates correlation between Technical/MTF/Quantitative/Structure.
@@ -8917,8 +8917,8 @@ def generate_signal(pair):
                         composite_score -= killzone_boost_applied
 
         # ═══════════════════════════════════════════════════════════════════════════
-        # v9.0: 6-GATE QUALITY FILTER
-        # 5 of 7 gates must pass for directional signal, otherwise NEUTRAL
+        # v9.4.0: 10-GATE QUALITY FILTER
+        # 8 of 10 gates must pass for directional signal, otherwise NEUTRAL
         # ═══════════════════════════════════════════════════════════════════════════
 
         # Pre-compute R:R for gate G4 (need SL/TP estimates)
@@ -9000,6 +9000,16 @@ def generate_signal(pair):
                 'passed': tech.get('data_quality', 'UNKNOWN') == 'REAL',
                 'value': tech.get('data_quality', 'UNKNOWN'),
                 'rule': 'Technical data must be REAL (not fallback/estimated)'
+            },
+            'G9_geo_risk': {
+                'passed': factor_groups.get('geopolitical_risk', {}).get('score', 50) >= 25,
+                'value': round(factor_groups.get('geopolitical_risk', {}).get('score', 50), 1),
+                'rule': 'Geopolitical risk not extreme (score >= 25)'
+            },
+            'G10_liquidity': {
+                'passed': factor_groups.get('market_depth', {}).get('score', 50) >= 30,
+                'value': round(factor_groups.get('market_depth', {}).get('score', 50), 1),
+                'rule': 'Market depth/liquidity adequate (score >= 30)'
             }
         }
 
@@ -9073,7 +9083,7 @@ def generate_signal(pair):
         g5_passed = gate_details['G5_calendar_clear']['passed']
         g8_passed = gate_details['G8_data_quality']['passed']
         mandatory_gates_pass = g3_passed and g5_passed and g8_passed
-        all_gates_pass = gates_passed >= 6 and mandatory_gates_pass  # 6/8 gates + G3 + G8 mandatory
+        all_gates_pass = gates_passed >= 8 and mandatory_gates_pass  # 8/10 gates + G3/G5/G8 mandatory
 
         # ═══════════════════════════════════════════════════════════════════════════
         # v9.0: SCORE VALIDATION
@@ -9939,8 +9949,8 @@ def run_system_audit():
     # SCORING METHODOLOGY DOCUMENTATION
     # ═══════════════════════════════════════════════════════════════════════════
     audit['scoring_methodology'] = {
-        'version': '9.3.0 PRO',
-        'description': 'v9.3.0 — 9 factor groups (incl. geopolitical risk), 8-gate quality filter (G3/G5/G8 mandatory), 50 instruments (45 forex + 5 commodities), commodity-specific weights, regime-dynamic weights',
+        'version': '9.4.0 PRO',
+        'description': 'v9.4.0 — 10 factor groups (incl. geopolitical risk + market depth), 10-gate quality filter (G3/G5/G8 mandatory), 50 instruments (45 forex + 5 commodities), commodity-specific weights, regime-dynamic weights',
         'score_range': {
             'min': 5,
             'max': 95,
@@ -10640,7 +10650,7 @@ def run_system_audit():
         'features': [
             '50 Instruments (45 Forex + 5 Commodities)',
             '10-Group Gated Scoring (v9.4.0)',
-            '8-Gate Quality Filter (G3/G5/G8 Mandatory)',
+            '10-Gate Quality Filter (G3/G5/G8 Mandatory)',
             'ICT Smart Money Concepts (SMC)',
             'Market Structure (BOS/CHoCH)',
             'Order Blocks & Fair Value Gaps',
@@ -11086,7 +11096,7 @@ def run_ai_system_health_check(use_ai=True):
     overfit_check['details']['principles'] = [
         'Individual indicator caps prevent single-factor dominance',
         'Multiple timeframe confirmation required (H1, H4, D1, W1)',
-        '8-gate quality filter removes low-confidence signals',
+        '10-gate quality filter removes low-confidence signals',
         'AI cross-validation catches inconsistent factor scores',
         'Regime-aware weighting adapts to market conditions'
     ]
@@ -11404,14 +11414,14 @@ def run_startup_health_check():
 @app.route('/api-info')
 def api_info():
     return jsonify({
-        'name': 'MEGA FOREX v9.3.0 PRO - AI Enhanced',
+        'name': 'MEGA FOREX v9.4.0 PRO - AI Enhanced',
         'version': '9.3.0',
         'status': 'operational',
         'pairs': len(ALL_INSTRUMENTS),
         'factor_groups': len(FACTOR_GROUP_WEIGHTS),
         'features': [
             '50 Instruments (45 Forex + 5 Commodities)',
-            '10-Group Gated Scoring with 8-Gate Quality Filter (v9.4.0) + ICT SMC',
+            '10-Group Gated Scoring with 10-Gate Quality Filter (v9.4.0) + ICT SMC',
             'Conviction Metric + Dynamic Regime Weights',
             '90-Day Signal Evaluation & Historical Accuracy',
             'Multi-Source News (Finnhub + RSS)',
@@ -13331,15 +13341,15 @@ def run_background_health_check():
     thread.start()
 
 run_background_health_check()
-logger.info("🚀 MEGA FOREX v9.3.0 PRO - AI ENHANCED initialized")
+logger.info("🚀 MEGA FOREX v9.4.0 PRO - AI ENHANCED initialized")
 
 if __name__ == '__main__':
     print("=" * 70)
-    print("      MEGA FOREX v9.3.0 PRO - AI ENHANCED SYSTEM")
+    print("      MEGA FOREX v9.4.0 PRO - AI ENHANCED SYSTEM")
     print("=" * 70)
     print(f"  Instruments:     {len(ALL_INSTRUMENTS)} ({len(FOREX_PAIRS)} Forex + {len(COMMODITY_PAIRS)} Commodities)")
-    print(f"  Factor Groups:   9 (merged from 11 individual factors)")
-    print(f"  Quality Gates:   8 (G3/G5/G8 mandatory)")
+    print(f"  Factor Groups:   10 (merged from 11 individual factors)")
+    print(f"  Quality Gates:   10 (G3/G5/G8 mandatory)")
     print(f"  Database:        {DATABASE_PATH}")
     print(f"  Polygon API:     {'✓' if POLYGON_API_KEY else '✗'}")
     print(f"  Finnhub API:     {'✓' if FINNHUB_API_KEY else '✗'}")
@@ -13358,7 +13368,7 @@ if __name__ == '__main__':
     print("  v9.4.0 PRO FEATURES:")
     print(f"    ✨ {len(ALL_INSTRUMENTS)} Instruments ({len(FOREX_PAIRS)} Forex + {len(COMMODITY_PAIRS)} Commodities)")
     print("    ✨ 10-Group Scoring (11 factors, 10 groups)")
-    print("    ✨ 8-Gate Quality Filter (G3 Trend, G5 Calendar, G8 Data = MANDATORY)")
+    print("    ✨ 10-Gate Quality Filter (G3 Trend, G5 Calendar, G8 Data = MANDATORY)")
     print("    ✨ Dynamic Regime Weights (trending/ranging/volatile/quiet)")
     print("    ✨ 90-Day Signal Evaluation & Historical Accuracy Tracking")
     print("    ✨ Smart Dynamic SL/TP (Variable ATR, commodity-calibrated)")

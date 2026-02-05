@@ -3643,7 +3643,7 @@
                             <p style="margin-top: 1rem; color: var(--text-secondary);">
                                 <strong>Conviction Metric:</strong> Separate breadth x strength score (0-100) — not a score amplifier.
                                 <br><strong>Agreement Expansion:</strong> +2 pts per agreeing group beyond 2 (max +8) to counter neutral-group dilution.
-                                <br><strong>Quality Gates:</strong> 6 of 8 gates must pass + G3/G5/G8 mandatory for directional signal (otherwise NEUTRAL).
+                                <br><strong>Quality Gates:</strong> 8 of 10 gates must pass + G3/G5/G8 mandatory for directional signal (otherwise NEUTRAL).
                             </p>
                             <button onclick="showMethodology()" style="margin-top: 1rem;">📖 View Full Methodology Details</button>
                         </div>
@@ -3751,9 +3751,9 @@
                     const factors = data.factor_details;
                     container.innerHTML = `
                         <div class="audit-section">
-                            <h3>📖 Complete Scoring Methodology - v9.4.0 PRO (8-Gate Protected)</h3>
+                            <h3>📖 Complete Scoring Methodology - v9.4.0 PRO (10-Gate Protected)</h3>
                             <p style="color: var(--text-secondary); margin-bottom: 1rem;">
-                                This system merges 11 individual factors into <strong>10 independent groups</strong> (incl. Currency Strength, Geopolitical Risk + Market Depth) with <strong>regime-dynamic weights</strong>, an <strong>8-gate quality filter</strong> (incl. AI alignment + data quality), and a separate <strong>conviction metric</strong> (breadth x strength).
+                                This system merges 11 individual factors into <strong>10 independent groups</strong> (incl. Currency Strength, Geopolitical Risk + Market Depth) with <strong>regime-dynamic weights</strong>, an <strong>10-gate quality filter</strong> (incl. AI alignment + data quality), and a separate <strong>conviction metric</strong> (breadth x strength).
                                 <strong>50 instruments</strong> (45 Forex + 5 Commodities) with <strong>separate weight profiles</strong>.
                                 All calculations use <strong>100% REAL market data + AI analysis</strong>. <strong style="color: #ef4444;">3 gates are MANDATORY (G3 Trend, G5 Calendar, G8 Data)</strong>.
                             </p>
@@ -3798,7 +3798,7 @@
                         </div>
 
                         <div class="audit-section">
-                            <h3>🚦 8-Gate Quality Filter</h3>
+                            <h3>🚦 10-Gate Quality Filter</h3>
                             <table class="data-table">
                                 <thead><tr><th>Gate</th><th>Rule</th></tr></thead>
                                 <tbody>
@@ -3810,10 +3810,12 @@
                                     <tr><td><strong>G6</strong></td><td>ATR between 0.5x–2.5x of 20-period average</td></tr>
                                     <tr><td><strong>G7</strong></td><td>AI must not strongly contradict (AI ≤60 for SHORT, ≥40 for LONG)</td></tr>
                                     <tr><td><strong>G8</strong> <span style="color: #ef4444; font-size: 0.7rem;">MANDATORY</span></td><td style="color: #ef4444;"><strong>Technical data must be REAL</strong> (not fallback/estimated)</td></tr>
+                                    <tr><td><strong>G9</strong></td><td>Geopolitical risk not extreme (score ≥ 25)</td></tr>
+                                    <tr><td><strong>G10</strong></td><td>Market depth/liquidity adequate (score ≥ 30)</td></tr>
                                 </tbody>
                             </table>
                             <p style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);">
-                                <strong>6 of 8 gates required</strong> for directional signal + <strong style="color: #ef4444;">G3, G5, G8 are MANDATORY</strong>. Allows 2 non-mandatory gates to fail.<br>
+                                <strong>8 of 10 gates required</strong> for directional signal + <strong style="color: #ef4444;">G3, G5, G8 are MANDATORY</strong>. Allows 2 non-mandatory gates to fail.<br>
                                 <strong>Agreement Expansion:</strong> +2 pts per agreeing group beyond 2 (max +8) to counter neutral-group dilution.
                             </p>
                         </div>
