@@ -261,10 +261,26 @@ COMMODITY_DECIMAL_PLACES = {
     'WTI/USD': 2, 'BRENT/USD': 2,
 }
 
+# v9.4.0: Exotic pair pip sizes - high-value pairs need larger pip units
+# Without this, ATR/pip_size creates absurd pip counts (e.g. 8500 pips for USD/TRY)
+# that get hard-capped by PIP_LIMITS, resulting in SL/TP that are way too tight
+EXOTIC_PIP_SIZES = {
+    'USD/TRY': 0.01,    # Price ~43, ATR ~0.85 → 85 pips
+    'EUR/TRY': 0.01,    # Price ~40, ATR ~0.95 → 95 pips
+    'USD/ZAR': 0.01,    # Price ~18, ATR ~0.35 → 35 pips
+    'USD/MXN': 0.01,    # Price ~20, ATR ~0.25 → 25 pips
+    'EUR/HUF': 0.1,     # Price ~408, ATR ~5.5 → 55 pips
+    'EUR/CZK': 0.01,    # Price ~25, ATR ~0.35 → 35 pips
+    'USD/PLN': 0.001,   # Price ~4, ATR ~0.055 → 55 pips
+    'EUR/PLN': 0.001,   # Price ~4.4, ATR ~0.065 → 65 pips
+}
+
 def get_pip_size(pair):
-    """v9.3.0: Centralized pip size for all instruments"""
+    """v9.4.0: Centralized pip size for all instruments including exotics"""
     if pair in COMMODITY_PIP_SIZES:
         return COMMODITY_PIP_SIZES[pair]
+    if pair in EXOTIC_PIP_SIZES:
+        return EXOTIC_PIP_SIZES[pair]
     return 0.01 if 'JPY' in pair else 0.0001
 
 def is_commodity(pair):
@@ -8802,7 +8818,7 @@ def generate_signal(pair):
             scale_factor = 100 / total_weight
             regime_weights = {k: round(v * scale_factor, 1) for k, v in regime_weights.items()}
 
-        # Calculate weighted composite from 9 groups
+        # Calculate weighted composite from 10 groups
         composite_score = 0
         available_weight = 0
 
@@ -9372,7 +9388,7 @@ def generate_signal(pair):
             'MAJOR':     {'sl_abs_min': 12,  'sl_abs_max': 60,   'tp1_abs_max': 100,  'tp2_abs_max': 180},
             'MINOR':     {'sl_abs_min': 15,  'sl_abs_max': 80,   'tp1_abs_max': 140,  'tp2_abs_max': 240},
             'CROSS':     {'sl_abs_min': 18,  'sl_abs_max': 100,  'tp1_abs_max': 180,  'tp2_abs_max': 300},
-            'EXOTIC':    {'sl_abs_min': 25,  'sl_abs_max': 150,  'tp1_abs_max': 250,  'tp2_abs_max': 400},
+            'EXOTIC':    {'sl_abs_min': 25,  'sl_abs_max': 300,  'tp1_abs_max': 500,  'tp2_abs_max': 800},
             'SCANDINAVIAN': {'sl_abs_min': 80, 'sl_abs_max': 400, 'tp1_abs_max': 600, 'tp2_abs_max': 1000},
             'COMMODITY': {'sl_abs_min': 50,  'sl_abs_max': 500,  'tp1_abs_max': 800,  'tp2_abs_max': 1500}
         }
@@ -9988,7 +10004,7 @@ def run_system_audit():
     audit['factor_details'] = {
         'technical': {
             'weight': 13,
-            'weight_percent': '60% of Trend & Momentum (21%)',
+            'weight_percent': '60% of Trend & Momentum (19%)',
             'description': 'RSI, MACD, ADX trend analysis',
             'data_sources': ['Polygon.io (Tier 1)', 'Twelve Data (Tier 2)', 'TraderMade (Tier 3)', 'ExchangeRate (Tier 4)', 'CurrencyLayer (Tier 5)'],
             'score_range': '10-90',
@@ -10030,7 +10046,7 @@ def run_system_audit():
         },
         'fundamental': {
             'weight': 15,
-            'weight_percent': '100% of Fundamental (15%)',
+            'weight_percent': '100% of Fundamental (13%)',
             'description': 'Interest rate differentials and carry trade analysis',
             'data_sources': ['Central bank rates database', 'FRED API'],
             'score_range': '15-85',
@@ -10053,7 +10069,7 @@ def run_system_audit():
         },
         'sentiment': {
             'weight': 8,
-            'weight_percent': '65% of Sentiment (13%)',
+            'weight_percent': '65% of Sentiment (12%)',
             'description': 'IG Client Positioning + News sentiment analysis',
             'data_sources': ['IG Markets API (client positioning)', 'Finnhub API (news)', 'RSS feeds (ForexLive, FXStreet, Investing.com)'],
             'score_range': '15-85',
@@ -10096,7 +10112,7 @@ def run_system_audit():
         },
         'intermarket': {
             'weight': 12,
-            'weight_percent': '100% of Intermarket (12%)',
+            'weight_percent': '100% of Intermarket (11%)',
             'description': 'Correlation analysis with DXY, Gold, Yields, Oil',
             'data_sources': ['Polygon.io', 'Alpha Vantage'],
             'score_range': '15-85',
@@ -10146,7 +10162,7 @@ def run_system_audit():
         },
         'mtf': {
             'weight': 8,
-            'weight_percent': '40% of Trend & Momentum (21%)',
+            'weight_percent': '40% of Trend & Momentum (19%)',
             'description': 'Multi-Timeframe trend alignment (H1, H4, D1)',
             'data_sources': ['Polygon.io candles (hourly, daily)'],
             'score_range': '12-88',
@@ -10202,7 +10218,7 @@ def run_system_audit():
         },
         'calendar': {
             'weight': 8,
-            'weight_percent': '100% of Calendar Risk (8%)',
+            'weight_percent': '100% of Calendar Risk (7%)',
             'description': 'Economic events risk assessment + Seasonality patterns',
             'data_sources': ['Finnhub API economic calendar'],
             'score_range': '20-90',
@@ -10220,7 +10236,7 @@ def run_system_audit():
         },
         'options': {
             'weight': 5,
-            'weight_percent': '35% of Sentiment (13%)',
+            'weight_percent': '35% of Sentiment (12%)',
             'description': '25-Delta Risk Reversals & Put/Call Ratio analysis',
             'data_sources': ['CME FX Options (when available)', 'Price volatility structure proxy'],
             'score_range': '15-85 (REAL), 40-60 (PROXY)',
@@ -10249,7 +10265,7 @@ def run_system_audit():
         },
         'currency_strength': {
             'weight': 10,
-            'weight_percent': '100% of Currency Strength (10%)',
+            'weight_percent': '100% of Currency Strength (9%)',
             'description': '50-instrument analysis — base vs quote currency relative strength (0% weight for commodities)',
             'data_sources': ['Polygon.io (all 50 instruments)', 'Real-time cross-currency analysis'],
             'score_range': '15-85',
@@ -10623,7 +10639,7 @@ def run_system_audit():
         'factor_group_weights': FACTOR_GROUP_WEIGHTS,
         'features': [
             '50 Instruments (45 Forex + 5 Commodities)',
-            '9-Group Gated Scoring (v9.3.0)',
+            '10-Group Gated Scoring (v9.4.0)',
             '8-Gate Quality Filter (G3/G5/G8 Mandatory)',
             'ICT Smart Money Concepts (SMC)',
             'Market Structure (BOS/CHoCH)',
@@ -10739,7 +10755,7 @@ def run_system_audit():
             'structure': 'Swing high/low detection + pivot calculations',
             'calendar': 'Multi-tier economic calendar + Seasonality patterns (month/quarter-end flows)',
             'options': '25-delta risk reversals + Put/Call ratios (price volatility proxy)',
-            'confluence': 'Factor agreement analysis (feeds into 9-group scoring v9.3.0)'
+            'confluence': 'Factor agreement analysis (feeds into 10-group scoring v9.4.0)'
         },
         'calibration_notes': {
             'score_range': '5-95 (proper differentiation)',
@@ -11291,8 +11307,8 @@ Issues:
 {chr(10).join(issues_summary)}
 
 System context:
-- Version: 9.3.0 PRO
-- 9-Group Gated Scoring with 8 Quality Gates
+- Version: 9.4.0 PRO
+- 10-Group Gated Scoring with 8 Quality Gates
 - 50 Instruments (45 Forex + 5 Commodities)
 - Data sources: Polygon, IG Markets, Finnhub, FRED, OpenAI
 
@@ -11395,7 +11411,7 @@ def api_info():
         'factor_groups': len(FACTOR_GROUP_WEIGHTS),
         'features': [
             '50 Instruments (45 Forex + 5 Commodities)',
-            '9-Group Gated Scoring with 8-Gate Quality Filter (v9.3.0) + ICT SMC',
+            '10-Group Gated Scoring with 8-Gate Quality Filter (v9.4.0) + ICT SMC',
             'Conviction Metric + Dynamic Regime Weights',
             '90-Day Signal Evaluation & Historical Accuracy',
             'Multi-Source News (Finnhub + RSS)',
@@ -12021,7 +12037,7 @@ def fix_system_issues():
         if total_fx != 100 or total_cmd != 100:
             fixes_failed.append(f'Weight totals incorrect: FX={total_fx}, CMD={total_cmd}')
         else:
-            fixes_applied.append(f'Weight configuration OK: FX=100%, CMD=100% (9 groups each)')
+            fixes_applied.append(f'Weight configuration OK: FX=100%, CMD=100% (10 groups each)')
     except Exception as e:
         fixes_failed.append(f'Weight check failed: {str(e)[:50]}')
 
@@ -13339,9 +13355,9 @@ if __name__ == '__main__':
     print(f"  API Ninjas:      {'✓ (Oil prices)' if API_NINJAS_KEY else '✗ (Optional)'}")
     print(f"  EIA Open Data:   {'✓ (Oil inventory/supply)' if EIA_API_KEY else '✗ (Optional)'}")
     print("=" * 70)
-    print("  v9.3.0 PRO FEATURES:")
+    print("  v9.4.0 PRO FEATURES:")
     print(f"    ✨ {len(ALL_INSTRUMENTS)} Instruments ({len(FOREX_PAIRS)} Forex + {len(COMMODITY_PAIRS)} Commodities)")
-    print("    ✨ 9-Group Scoring (11 factors, 9 groups)")
+    print("    ✨ 10-Group Scoring (11 factors, 10 groups)")
     print("    ✨ 8-Gate Quality Filter (G3 Trend, G5 Calendar, G8 Data = MANDATORY)")
     print("    ✨ Dynamic Regime Weights (trending/ranging/volatile/quiet)")
     print("    ✨ 90-Day Signal Evaluation & Historical Accuracy Tracking")
