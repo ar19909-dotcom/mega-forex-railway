@@ -2429,7 +2429,11 @@
 
                     ${signal.gates ? `
                     <div class="gates-row">
-                        ${Object.entries(signal.gates.details || {}).map(([key, g]) =>
+                        ${Object.entries(signal.gates.details || {}).sort((a, b) => {
+                            const numA = parseInt(a[0].match(/\d+/)?.[0] || '0');
+                            const numB = parseInt(b[0].match(/\d+/)?.[0] || '0');
+                            return numA - numB;
+                        }).map(([key, g]) =>
                             `<span class="gate-badge ${g.passed ? 'pass' : 'fail'}">${key.split('_')[0]} ${g.passed ? '✓' : '✗'}</span>`
                         ).join('')}
                     </div>

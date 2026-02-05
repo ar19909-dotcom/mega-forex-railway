@@ -7756,7 +7756,8 @@ def calculate_factor_scores(pair):
     fundamental = get_fundamental_data()
     
     # Get candles for pattern recognition and structure analysis
-    candles = get_polygon_candles(pair, 'day', 50)
+    # v9.4.0: Use 100 candles (same as pre-fetch) to avoid redundant API call
+    candles = get_polygon_candles(pair, 'day', 100)
     patterns = detect_candlestick_patterns(candles) if candles else {'patterns': [], 'signal': 'NEUTRAL', 'score': 50}
     
     # Extract price data for enhanced calculations
@@ -11481,6 +11482,14 @@ def get_signals():
             except Exception as e:
                 logger.debug(f"Pre-fetch shared data warning: {e}")
 
+        def _prefetch_positioning():
+            """v9.4.0: Pre-fetch ALL sentiment data in batch (avoids 50 individual API calls)"""
+            try:
+                get_all_ig_sentiment()  # Populates _ig_batch_cache for all IG pairs
+                get_saxo_sentiment()    # Warms saxo_cache
+            except Exception as e:
+                logger.debug(f"Pre-fetch positioning warning: {e}")
+
         def _prefetch_candles():
             """Pre-fetch candle data for all instruments"""
             count = 0
@@ -11496,11 +11505,12 @@ def get_signals():
                         logger.debug(f"Candle pre-fetch failed for {cpair}: {candle_err}")
             return count
 
-        # Run rates, candles, and shared data ALL at the same time
-        with ThreadPoolExecutor(max_workers=3) as prefetch_executor:
+        # Run rates, candles, shared data, and positioning ALL at the same time
+        with ThreadPoolExecutor(max_workers=4) as prefetch_executor:
             rates_future = prefetch_executor.submit(get_all_rates)
             candles_future = prefetch_executor.submit(_prefetch_candles)
             shared_future = prefetch_executor.submit(_prefetch_shared_data)
+            positioning_future = prefetch_executor.submit(_prefetch_positioning)
 
             try:
                 prefetched_rates = rates_future.result(timeout=25)
@@ -11515,6 +11525,11 @@ def get_signals():
 
             try:
                 shared_future.result(timeout=15)
+            except Exception:
+                pass
+
+            try:
+                positioning_future.result(timeout=20)
             except Exception:
                 pass
 
@@ -12236,11 +12251,24 @@ def ig_login():
         ig_session['last_error'] = str(e)
         return False
 
+# v9.4.0: Batch IG sentiment cache - populated once during pre-fetch, reused by all signals
+_ig_batch_cache = {
+    'data': {},       # market_id -> sentiment data
+    'timestamp': None,
+    'ttl': 900        # 15 minutes
+}
+
 def get_ig_client_sentiment(market_id):
     """Get client sentiment for a specific market from IG"""
+    # v9.4.0: Check batch cache first (populated during pre-fetch)
+    if _ig_batch_cache.get('timestamp') and _ig_batch_cache['data']:
+        elapsed = (datetime.now() - _ig_batch_cache['timestamp']).total_seconds()
+        if elapsed < _ig_batch_cache['ttl'] and market_id in _ig_batch_cache['data']:
+            return _ig_batch_cache['data'][market_id]
+
     if not ig_login():
         return None
-    
+
     try:
         headers = {
             'Content-Type': 'application/json',
@@ -12250,11 +12278,11 @@ def get_ig_client_sentiment(market_id):
             'X-SECURITY-TOKEN': ig_session['x_security_token'],
             'Version': '1'
         }
-        
+
         response = req_lib.get(
             f"{IG_BASE_URL}/clientsentiment/{market_id}",
             headers=headers,
-            timeout=10
+            timeout=5
         )
         
         if response.status_code == 200:
@@ -12304,14 +12332,16 @@ def get_all_ig_sentiment():
     }
     
     results = []
-    
+    batch_data = {}
+
     for pair, market_id in ig_market_ids.items():
         sentiment = get_ig_client_sentiment(market_id)
-        
+
         if sentiment:
             long_pct = sentiment['long_percentage']
             short_pct = sentiment['short_percentage']
-            
+            batch_data[market_id] = sentiment
+
             results.append({
                 'pair': pair,
                 'long_percentage': long_pct,
@@ -12319,6 +12349,11 @@ def get_all_ig_sentiment():
                 'contrarian_signal': 'SHORT' if long_pct > 60 else 'LONG' if long_pct < 40 else 'NEUTRAL',
                 'source': 'IG_REAL'
             })
+
+    # v9.4.0: Populate batch cache so per-pair calls don't make redundant API requests
+    if batch_data:
+        _ig_batch_cache['data'] = batch_data
+        _ig_batch_cache['timestamp'] = datetime.now()
 
     return results
 
@@ -12351,7 +12386,7 @@ def get_saxo_sentiment():
     try:
         response = req_lib.get(
             'https://fxowebtools.saxobank.com/retail.html',
-            timeout=10,
+            timeout=5,
             headers={
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
             }
