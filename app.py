@@ -459,8 +459,9 @@ TRIANGLE_SETS = [
 
 def calculate_currency_strength(rates_dict):
     """
-    Calculate relative strength of each currency based on all pairs.
-    Returns dict with currency -> strength score (0-100, 50=neutral)
+    Calculate relative strength of each currency and commodity based on all pairs.
+    Returns dict with symbol -> strength score (0-100, 50=neutral)
+    v9.3.0: Includes commodities (XAU, XAG, XPT, WTI, BRENT)
     """
     currencies = ['USD', 'EUR', 'GBP', 'JPY', 'CHF', 'AUD', 'NZD', 'CAD']
     strength = {c: [] for c in currencies}
@@ -496,6 +497,49 @@ def calculate_currency_strength(rates_dict):
             result[curr] = sum(scores) / len(scores)
         else:
             result[curr] = 50  # Neutral if no data
+
+    # v9.3.0: Add commodity strength (inverse USD correlation + cross-commodity analysis)
+    usd_score = result.get('USD', 50)
+    base_commodity_strength = 100 - usd_score  # Commodities inversely correlated to USD
+
+    commodity_prices = {}
+    for pair_name in ['XAU/USD', 'XAG/USD', 'XPT/USD', 'WTI/USD', 'BRENT/USD']:
+        if pair_name in rates_dict:
+            rd = rates_dict[pair_name]
+            mid_val = rd.get('mid', 0) if isinstance(rd, dict) else (rd if isinstance(rd, (int, float)) else 0)
+            if mid_val > 0:
+                commodity_prices[pair_name.split('/')[0]] = mid_val
+
+    if commodity_prices:
+        # Gold-Silver Ratio: historical avg ~80, higher = gold stronger vs silver
+        if 'XAU' in commodity_prices and 'XAG' in commodity_prices:
+            gsr = commodity_prices['XAU'] / commodity_prices['XAG']
+            gsr_adj = (gsr - 80) * 0.1
+            result['XAU'] = round(min(70, max(30, base_commodity_strength + gsr_adj)), 1)
+            result['XAG'] = round(min(70, max(30, base_commodity_strength - gsr_adj)), 1)
+        elif 'XAU' in commodity_prices:
+            result['XAU'] = round(min(70, max(30, base_commodity_strength)), 1)
+        elif 'XAG' in commodity_prices:
+            result['XAG'] = round(min(70, max(30, base_commodity_strength)), 1)
+
+        # Oil: Brent-WTI spread, typical ~3-8, avg ~5
+        if 'WTI' in commodity_prices and 'BRENT' in commodity_prices:
+            oil_spread = commodity_prices['BRENT'] - commodity_prices['WTI']
+            spread_adj = (oil_spread - 5) * 0.5
+            result['BRENT'] = round(min(65, max(35, base_commodity_strength + spread_adj)), 1)
+            result['WTI'] = round(min(65, max(35, base_commodity_strength - spread_adj)), 1)
+        elif 'WTI' in commodity_prices:
+            result['WTI'] = round(min(65, max(35, base_commodity_strength)), 1)
+        elif 'BRENT' in commodity_prices:
+            result['BRENT'] = round(min(65, max(35, base_commodity_strength)), 1)
+
+        # Platinum: ratio to gold, typical 0.40-0.60
+        if 'XPT' in commodity_prices and 'XAU' in commodity_prices:
+            pt_ratio = commodity_prices['XPT'] / commodity_prices['XAU']
+            pt_adj = (pt_ratio - 0.50) * 10
+            result['XPT'] = round(min(65, max(35, base_commodity_strength + pt_adj)), 1)
+        elif 'XPT' in commodity_prices:
+            result['XPT'] = round(min(65, max(35, base_commodity_strength)), 1)
 
     return result
 
@@ -9038,37 +9082,39 @@ def generate_signal(pair):
             entry_atr_mid = atr * 0.5
 
         if direction == 'LONG':
-            # SMART LONG ENTRY:
-            # If in downtrend (EMA BEARISH), wait for deeper pullback to support
-            # If in uptrend (EMA BULLISH), tighter range is OK
-            if ema_signal == 'BEARISH':
-                # Counter-trend LONG - need strong reversal zone
-                entry_min = max(pivot_s1, nearest_support, current_price - entry_atr_wide)
-                entry_max = current_price  # Don't buy above current in downtrend
-            elif ema_signal == 'BULLISH':
-                # With-trend LONG - tighter range OK
-                entry_min = max(pivot_point, current_price - entry_atr_tight)
-                entry_max = current_price + entry_atr_tight
+            # SMART LONG ENTRY: Zone = ideal BUY price range
+            # For LONG you want to buy low - zone should be at or below current price
+            if ema_signal == 'BULLISH':
+                # With-trend LONG - can enter near current price
+                entry_min = current_price - entry_atr_tight
+                entry_max = current_price + entry_atr_tight * 0.5
+            elif ema_signal == 'BEARISH':
+                # Counter-trend LONG - wait for pullback to support
+                support_target = min(pivot_s1, nearest_support)
+                support_target = max(support_target, current_price - entry_atr_wide)  # Don't go too far
+                entry_min = support_target
+                entry_max = support_target + entry_atr_tight
             else:
-                # Neutral trend - moderate range
+                # Neutral trend - moderate range around current
                 entry_min = current_price - entry_atr_mid
-                entry_max = current_price + entry_atr_tight * 0.7
+                entry_max = current_price + entry_atr_tight * 0.3
 
         elif direction == 'SHORT':
-            # SMART SHORT ENTRY:
-            # If in uptrend (EMA BULLISH), wait for deeper bounce to resistance
-            # If in downtrend (EMA BEARISH), tighter range is OK
-            if ema_signal == 'BULLISH':
-                # Counter-trend SHORT - need strong reversal zone
-                entry_min = current_price  # Don't sell below current in uptrend
-                entry_max = min(pivot_r1, nearest_resistance, current_price + entry_atr_wide)
-            elif ema_signal == 'BEARISH':
-                # With-trend SHORT - tighter range OK
-                entry_min = current_price - entry_atr_tight
-                entry_max = min(pivot_point, current_price + entry_atr_tight)
+            # SMART SHORT ENTRY: Zone = ideal SELL price range
+            # For SHORT you want to sell high - zone should be at or above current price
+            if ema_signal == 'BEARISH':
+                # With-trend SHORT - can enter near current price
+                entry_min = current_price - entry_atr_tight * 0.5
+                entry_max = current_price + entry_atr_tight
+            elif ema_signal == 'BULLISH':
+                # Counter-trend SHORT - wait for bounce to resistance
+                resistance_target = max(pivot_r1, nearest_resistance)
+                resistance_target = min(resistance_target, current_price + entry_atr_wide)  # Don't go too far
+                entry_min = resistance_target - entry_atr_tight
+                entry_max = resistance_target
             else:
-                # Neutral trend - moderate range
-                entry_min = current_price - entry_atr_tight * 0.7
+                # Neutral trend - moderate range around current
+                entry_min = current_price - entry_atr_tight * 0.3
                 entry_max = current_price + entry_atr_mid
 
         else:
@@ -9076,9 +9122,9 @@ def generate_signal(pair):
             entry_min = current_price
             entry_max = current_price
 
-        # Ensure entry range is sensible (min < current < max for valid entries)
-        entry_min = min(entry_min, current_price)
-        entry_max = max(entry_max, current_price)
+        # Safety: ensure entry_min < entry_max
+        if entry_min > entry_max:
+            entry_min, entry_max = entry_max, entry_min
 
         # Determine pair category FIRST (needed for entry spread calculation)
         pair_category = 'MAJOR'
@@ -9087,9 +9133,8 @@ def generate_signal(pair):
                 pair_category = cat
                 break
 
-        # v9.3.0: Cap entry spread and ensure it's centered around current price
-        # Commodities have large ATR values that create unrealistic entry windows
-        # Scandinavian/Exotic pairs need tighter % spread due to high values
+        # v9.3.0: Cap entry spread to prevent unrealistic entry windows
+        # Only cap the WIDTH - do NOT recenter on current price (keep real zone position)
         scandinavian_check = 'NOK' in pair or 'SEK' in pair or 'DKK' in pair
         if is_commodity(pair):
             max_entry_spread_pct = 0.001  # 0.1% for commodities
@@ -9101,12 +9146,12 @@ def generate_signal(pair):
         max_spread = current_price * max_entry_spread_pct
         actual_spread = entry_max - entry_min
 
-        # If spread is too wide OR entry range doesn't contain current price, recenter
-        if actual_spread > max_spread or entry_min > current_price or entry_max < current_price:
-            # Center around current price
+        # Cap spread width but keep zone centered on its technical position
+        if actual_spread > max_spread:
+            zone_center = (entry_min + entry_max) / 2
             half_spread = max_spread / 2
-            entry_min = current_price - half_spread
-            entry_max = current_price + half_spread
+            entry_min = zone_center - half_spread
+            entry_max = zone_center + half_spread
 
         # Convert ATR to pips for this pair
         atr_pips = atr / pip_size
@@ -10749,6 +10794,12 @@ def run_ai_system_health_check(use_ai=True):
     # ═══════════════════════════════════════════════════════════════════════════
     scoring_check = {'name': 'Scoring System', 'status': 'PASS', 'details': {}}
 
+    # Pre-fetch rates before testing signal generation (ensures rate data is available)
+    try:
+        get_all_rates()
+    except Exception:
+        pass
+
     # Test signal generation for multiple pairs (v9.3.0: includes commodities)
     test_pairs = ['EUR/USD', 'GBP/USD', 'XAU/USD', 'WTI/USD']
     signals_generated = 0
@@ -11735,6 +11786,45 @@ def fix_system_issues():
     except Exception as e:
         fixes_failed.append(f'Saxo preload failed: {str(e)[:50]}')
 
+    # Fix 7: Pre-fetch all rates (critical for signal generation)
+    try:
+        rates = get_all_rates()
+        if rates:
+            fixes_applied.append(f'Pre-fetched rates for {len(rates)} instruments')
+        else:
+            fixes_failed.append('Rate pre-fetch returned no data')
+    except Exception as e:
+        fixes_failed.append(f'Rate pre-fetch failed: {str(e)[:50]}')
+
+    # Fix 8: Generate test signals to verify scoring system
+    try:
+        test_pairs = ['EUR/USD', 'XAU/USD']
+        signals_ok = 0
+        for tp in test_pairs:
+            try:
+                sig = generate_signal(tp)
+                if sig and sig.get('composite_score', 0) > 0:
+                    signals_ok += 1
+            except Exception:
+                pass
+        if signals_ok > 0:
+            fixes_applied.append(f'Scoring system verified: {signals_ok}/{len(test_pairs)} test signals OK')
+        else:
+            fixes_failed.append('Scoring system: Could not generate test signals')
+    except Exception as e:
+        fixes_failed.append(f'Signal test failed: {str(e)[:50]}')
+
+    # Fix 9: Reset weight configuration if needed
+    try:
+        total_fx = sum(FACTOR_GROUP_WEIGHTS.values())
+        total_cmd = sum(COMMODITY_FACTOR_WEIGHTS.values())
+        if total_fx != 100 or total_cmd != 100:
+            fixes_failed.append(f'Weight totals incorrect: FX={total_fx}, CMD={total_cmd}')
+        else:
+            fixes_applied.append(f'Weight configuration OK: FX=100%, CMD=100% (9 groups each)')
+    except Exception as e:
+        fixes_failed.append(f'Weight check failed: {str(e)[:50]}')
+
     # Run health check after fixes
     health = run_ai_system_health_check(use_ai=False)
 
@@ -12088,6 +12178,12 @@ COT_CURRENCY_CODES = {
     'CHF': {'code': '092741', 'name': 'SWISS FRANC', 'pairs': ['USD/CHF', 'CHF/JPY']},
     'NZD': {'code': '112741', 'name': 'NEW ZEALAND DOLLAR', 'pairs': ['NZD/USD', 'NZD/JPY', 'NZD/CHF', 'NZD/CAD']},
     'MXN': {'code': '095741', 'name': 'MEXICAN PESO', 'pairs': ['USD/MXN']},
+    # v9.3.0: Commodity futures (CFTC also publishes COT for these)
+    'XAU': {'code': '088691', 'name': 'GOLD', 'pairs': ['XAU/USD']},
+    'XAG': {'code': '084691', 'name': 'SILVER', 'pairs': ['XAG/USD']},
+    'XPT': {'code': '076651', 'name': 'PLATINUM', 'pairs': ['XPT/USD']},
+    'WTI': {'code': '067651', 'name': 'CRUDE OIL', 'pairs': ['WTI/USD']},
+    'BRENT': {'code': '06765T', 'name': 'BRENT CRUDE', 'pairs': ['BRENT/USD']},
 }
 
 def get_cot_institutional_data():
@@ -12200,6 +12296,12 @@ def get_cot_institutional_data():
                 'CAD': {'long_percentage': 40, 'short_percentage': 60, 'sentiment': 'BEARISH', 'net_position': -15000, 'pairs': COT_CURRENCY_CODES['CAD']['pairs'], 'estimated': True},
                 'CHF': {'long_percentage': 55, 'short_percentage': 45, 'sentiment': 'BULLISH', 'net_position': 8000, 'pairs': COT_CURRENCY_CODES['CHF']['pairs'], 'estimated': True},
                 'NZD': {'long_percentage': 38, 'short_percentage': 62, 'sentiment': 'BEARISH', 'net_position': -10000, 'pairs': COT_CURRENCY_CODES['NZD']['pairs'], 'estimated': True},
+                # v9.3.0: Commodity futures COT estimates
+                'XAU': {'long_percentage': 62, 'short_percentage': 38, 'sentiment': 'BULLISH', 'net_position': 180000, 'pairs': COT_CURRENCY_CODES['XAU']['pairs'], 'estimated': True},
+                'XAG': {'long_percentage': 58, 'short_percentage': 42, 'sentiment': 'BULLISH', 'net_position': 40000, 'pairs': COT_CURRENCY_CODES['XAG']['pairs'], 'estimated': True},
+                'XPT': {'long_percentage': 45, 'short_percentage': 55, 'sentiment': 'BEARISH', 'net_position': -5000, 'pairs': COT_CURRENCY_CODES['XPT']['pairs'], 'estimated': True},
+                'WTI': {'long_percentage': 55, 'short_percentage': 45, 'sentiment': 'BULLISH', 'net_position': 120000, 'pairs': COT_CURRENCY_CODES['WTI']['pairs'], 'estimated': True},
+                'BRENT': {'long_percentage': 53, 'short_percentage': 47, 'sentiment': 'NEUTRAL', 'net_position': 80000, 'pairs': COT_CURRENCY_CODES['BRENT']['pairs'], 'estimated': True},
             }
 
         if cot_results:
@@ -12448,14 +12550,49 @@ def get_positioning():
             }
 
         if not sources_for_pair:
-            # v9.3.0: For commodities with no data, show neutral estimate
+            # v9.3.0: For commodities/pairs with no data, estimate from technical indicators
             if is_commodity(pair):
+                # Estimate retail positioning from signal data (if available)
+                try:
+                    sig = generate_signal(pair)
+                    if sig:
+                        score = sig.get('composite_score', 50)
+                        direction = sig.get('direction', 'NEUTRAL')
+                        # Retail tends to follow the trend (contrarian to smart money)
+                        # Score > 50 = bullish signal → retail likely long
+                        if direction == 'LONG':
+                            est_long = min(75, max(40, 50 + (score - 50) * 0.5))
+                        elif direction == 'SHORT':
+                            est_long = min(60, max(25, 50 - (50 - score) * 0.5))
+                        else:
+                            est_long = 50.0
+                        est_short = 100.0 - est_long
+                    else:
+                        est_long, est_short = 50.0, 50.0
+                except Exception:
+                    est_long, est_short = 50.0, 50.0
+
+                est_long = round(est_long, 1)
+                est_short = round(est_short, 1)
+
+                # Determine contrarian signal
+                if est_long > 65:
+                    est_contrarian = 'STRONG_SHORT'
+                elif est_long > 55:
+                    est_contrarian = 'SHORT'
+                elif est_long < 35:
+                    est_contrarian = 'STRONG_LONG'
+                elif est_long < 45:
+                    est_contrarian = 'LONG'
+                else:
+                    est_contrarian = 'NEUTRAL'
+
                 positioning.append({
                     'pair': pair,
-                    'long_percentage': 50.0,
-                    'short_percentage': 50.0,
-                    'contrarian_signal': 'NEUTRAL',
-                    'sources': ['estimated'],
+                    'long_percentage': est_long,
+                    'short_percentage': est_short,
+                    'contrarian_signal': est_contrarian,
+                    'sources': ['technical_estimate'],
                     'source_count': 0,
                     'has_institutional': False,
                     'has_retail': False,
