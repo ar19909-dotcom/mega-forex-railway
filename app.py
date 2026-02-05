@@ -2507,18 +2507,19 @@ def get_eia_oil_spot_price(pair):
     if not product:
         return None
     try:
-        # EIA API v2: Petroleum spot prices endpoint
-        url = f"{EIA_API_URL}/petroleum/pri/spt/data/"
-        params = {
-            'api_key': EIA_API_KEY,
-            'frequency': 'daily',
-            'data[0]': 'value',
-            'facets[product][]': product,
-            'sort[0][column]': 'period',
-            'sort[0][direction]': 'desc',
-            'length': 1
-        }
-        resp = req_lib.get(url, params=params, timeout=8)
+        # EIA API v2: Build URL manually to avoid encoding issues
+        # Format: https://api.eia.gov/v2/petroleum/pri/spt/data/?api_key=KEY&frequency=daily&data[0]=value&facets[product][]=RWTC&sort[0][column]=period&sort[0][direction]=desc&length=1
+        url = (
+            f"{EIA_API_URL}/petroleum/pri/spt/data/"
+            f"?api_key={EIA_API_KEY}"
+            f"&frequency=daily"
+            f"&data[0]=value"
+            f"&facets[product][]={product}"
+            f"&sort[0][column]=period"
+            f"&sort[0][direction]=desc"
+            f"&length=1"
+        )
+        resp = req_lib.get(url, timeout=8)
         if resp.status_code == 200:
             data = resp.json()
             records = data.get('response', {}).get('data', [])
@@ -2531,6 +2532,8 @@ def get_eia_oil_spot_price(pair):
                         'mid': price,
                         'source': 'eia'
                     }
+        else:
+            logger.debug(f"EIA API returned status {resp.status_code} for {pair}")
     except Exception as e:
         logger.debug(f"EIA spot price fetch failed for {pair}: {e}")
     return None
@@ -2573,6 +2576,12 @@ def get_eia_oil_data():
 
 def get_rate(pair):
     """Get rate with multi-tier fallback (v9.3.0: 7+ data sources)"""
+    # Tier 0: EIA FIRST for oil (most reliable free govt API)
+    if pair in ['WTI/USD', 'BRENT/USD']:
+        rate = get_eia_oil_spot_price(pair)
+        if rate:
+            return rate
+
     # Tier 1: Polygon (premium)
     rate = get_polygon_rate(pair)
     if rate:
@@ -2591,12 +2600,6 @@ def get_rate(pair):
     # Tier 4: GoldAPI.io (precious metals only - 500 free req/month)
     if is_commodity(pair) and pair in ['XAU/USD', 'XAG/USD', 'XPT/USD']:
         rate = get_goldapi_rate(pair)
-        if rate:
-            return rate
-
-    # Tier 4.5: EIA (WTI + Brent oil spot prices - FREE govt API)
-    if pair in ['WTI/USD', 'BRENT/USD']:
-        rate = get_eia_oil_spot_price(pair)
         if rate:
             return rate
 
