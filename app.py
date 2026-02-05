@@ -240,7 +240,7 @@ COMMODITY_PAIRS = [
     'BRENT/USD',  # Brent Crude Oil
 ]
 
-# Combined list of all tradeable instruments (51 total)
+# Combined list of all tradeable instruments (50 total)
 ALL_INSTRUMENTS = FOREX_PAIRS + COMMODITY_PAIRS
 
 # v9.3.0: Commodity pip sizes and decimal places
@@ -778,7 +778,7 @@ FACTOR_GROUP_WEIGHTS = {
 
 # v9.3.0 DYNAMIC REGIME WEIGHTS - Adapt to market conditions
 # Research: +0.29 Sharpe improvement (Northern Trust)
-# Now includes currency_strength (10%) from 51-instrument analysis
+# Now includes currency_strength (10%) from 50-instrument analysis
 REGIME_WEIGHTS = {
     'trending': {
         'trend_momentum': 24, 'fundamental': 13, 'sentiment': 7,
@@ -935,7 +935,7 @@ CACHE_TTL = {
     'fundamental': 3600,
     'intermarket_data': 300,  # 5 minutes
     'positioning': 900,  # 15 minutes - IG sentiment doesn't change rapidly + avoid rate limits
-    'signals': 180,   # 3 minutes - balanced refresh rate (51 instruments)
+    'signals': 180,   # 3 minutes - balanced refresh rate (50 instruments)
     'audit': 300      # 5 minutes - audit data doesn't change rapidly
 }
 
@@ -4616,9 +4616,61 @@ def get_finnhub_news():
     unique_articles.sort(key=lambda x: x.get('datetime', 0), reverse=True)
     unique_articles = unique_articles[:50]
     
+    # v9.3.0: Map each article to affected instruments and impact level
+    enriched_articles = []
+    for article in unique_articles:
+        headline = article.get('headline', '').lower()
+        summary = article.get('summary', '').lower()
+        text = f"{headline} {summary}"
+
+        affected_instruments = []
+        impact_level = 'LOW'
+        max_impact_score = 0
+
+        # Check each currency/commodity for relevance
+        for currency, keywords in NEWS_INSTRUMENT_MAPPING.items():
+            matches = sum(1 for kw in keywords if kw in text)
+            if matches > 0:
+                # Calculate impact based on keyword matches
+                impact_score = matches
+                # Higher impact for headline mentions
+                headline_matches = sum(1 for kw in keywords if kw in headline)
+                impact_score += headline_matches * 2
+
+                # Determine impact level
+                if impact_score >= 4:
+                    pair_impact = 'HIGH'
+                elif impact_score >= 2:
+                    pair_impact = 'MEDIUM'
+                else:
+                    pair_impact = 'LOW'
+
+                affected_instruments.append({
+                    'currency': currency,
+                    'impact': pair_impact,
+                    'score': impact_score
+                })
+
+                if impact_score > max_impact_score:
+                    max_impact_score = impact_score
+                    if impact_score >= 4:
+                        impact_level = 'HIGH'
+                    elif impact_score >= 2:
+                        impact_level = 'MEDIUM'
+
+        # Sort by impact score
+        affected_instruments.sort(key=lambda x: x['score'], reverse=True)
+
+        enriched_articles.append({
+            **article,
+            'affected_instruments': affected_instruments[:5],  # Top 5 most affected
+            'overall_impact': impact_level,
+            'instrument_count': len(affected_instruments)
+        })
+
     result = {
-        'articles': unique_articles,
-        'count': len(unique_articles),
+        'articles': enriched_articles,
+        'count': len(enriched_articles),
         'sources': sources_status
     }
 
@@ -4626,6 +4678,32 @@ def get_finnhub_news():
         cache['news']['data'] = result
         cache['news']['timestamp'] = datetime.now()
     return result
+
+# v9.3.0: News-to-instrument mapping keywords
+NEWS_INSTRUMENT_MAPPING = {
+    # Major currencies
+    'EUR': ['euro', 'eur', 'eurozone', 'ecb', 'germany', 'france', 'italy', 'spain', 'europe'],
+    'USD': ['dollar', 'usd', 'fed', 'fomc', 'powell', 'treasury', 'us economy', 'america'],
+    'GBP': ['pound', 'gbp', 'sterling', 'boe', 'uk', 'britain', 'england', 'brexit'],
+    'JPY': ['yen', 'jpy', 'boj', 'japan', 'ueda', 'kuroda'],
+    'CHF': ['franc', 'chf', 'snb', 'swiss', 'switzerland'],
+    'AUD': ['aussie', 'aud', 'rba', 'australia', 'iron ore', 'coal'],
+    'CAD': ['loonie', 'cad', 'boc', 'canada', 'oil sands'],
+    'NZD': ['kiwi', 'nzd', 'rbnz', 'new zealand', 'dairy'],
+
+    # Commodities
+    'XAU': ['gold', 'xau', 'bullion', 'precious metal', 'safe haven', 'gold price', 'comex gold'],
+    'XAG': ['silver', 'xag', 'silver price', 'precious metal'],
+    'XPT': ['platinum', 'xpt', 'palladium', 'pgm'],
+    'WTI': ['oil', 'wti', 'crude', 'petroleum', 'opec', 'eia', 'gasoline', 'nymex crude'],
+    'BRENT': ['brent', 'crude', 'oil', 'opec', 'north sea', 'ice brent'],
+
+    # Emerging/Other
+    'NOK': ['norwegian', 'nok', 'norway', 'norges bank', 'oil'],
+    'SEK': ['swedish', 'sek', 'sweden', 'riksbank'],
+    'MXN': ['peso', 'mxn', 'mexico', 'banxico'],
+    'ZAR': ['rand', 'zar', 'south africa'],
+}
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # v9.3.0: GEOPOLITICAL RISK FACTOR
@@ -9585,7 +9663,7 @@ def run_system_audit():
     # ═══════════════════════════════════════════════════════════════════════════
     audit['scoring_methodology'] = {
         'version': '9.3.0 PRO',
-        'description': 'v9.3.0 — 8 factor groups, 8-gate quality filter (G3/G5/G8 mandatory), 51 instruments (45 forex + 6 commodities), commodity-specific weights, regime-dynamic weights',
+        'description': 'v9.3.0 — 9 factor groups (incl. geopolitical risk), 8-gate quality filter (G3/G5/G8 mandatory), 50 instruments (45 forex + 5 commodities), commodity-specific weights, regime-dynamic weights',
         'score_range': {
             'min': 5,
             'max': 95,
@@ -9603,7 +9681,7 @@ def run_system_audit():
             'mean_reversion': {'weight': 11, 'sources': 'Quantitative (Z-Score/Bollinger) 55% + Structure (S/R) 45%'},
             'calendar_risk': {'weight': 8, 'sources': 'Economic events + Seasonality'},
             'ai_synthesis': {'weight': 10, 'sources': 'GPT enhanced analysis — activates when 2+ groups agree'},
-            'currency_strength': {'weight': 10, 'sources': 'v9.3.0: 51-instrument analysis — base vs quote currency strength (0% for commodities)'}
+            'currency_strength': {'weight': 10, 'sources': 'v9.3.0: 50-instrument analysis — base vs quote currency strength (0% for commodities)'}
         },
         'commodity_weights': {
             'description': 'v9.3.0: Separate weight profile for 5 commodities (XAU, XAG, XPT, WTI, BRENT)',
@@ -9911,8 +9989,8 @@ def run_system_audit():
         'currency_strength': {
             'weight': 10,
             'weight_percent': '100% of Currency Strength (10%)',
-            'description': '51-instrument analysis — base vs quote currency relative strength (0% weight for commodities)',
-            'data_sources': ['Polygon.io (all 51 instruments)', 'Real-time cross-currency analysis'],
+            'description': '50-instrument analysis — base vs quote currency relative strength (0% weight for commodities)',
+            'data_sources': ['Polygon.io (all 50 instruments)', 'Real-time cross-currency analysis'],
             'score_range': '15-85',
             'components': {
                 'Base_Currency_Strength': {
@@ -9937,7 +10015,7 @@ def run_system_audit():
                 }
             },
             'signal_thresholds': {'bullish': '>= 58', 'bearish': '<= 42', 'neutral': '43-57'},
-            'note': 'Uses all 51 monitored instruments for comprehensive strength analysis (commodities get neutral score)'
+            'note': 'Uses all 50 monitored instruments for comprehensive strength analysis (commodities get neutral score)'
         }
     }
 
@@ -10283,8 +10361,8 @@ def run_system_audit():
         'total_factor_groups': len(FACTOR_GROUP_WEIGHTS),
         'factor_group_weights': FACTOR_GROUP_WEIGHTS,
         'features': [
-            '51 Instruments (45 Forex + 6 Commodities)',
-            '8-Group Gated Scoring (v9.3.0)',
+            '50 Instruments (45 Forex + 5 Commodities)',
+            '9-Group Gated Scoring (v9.3.0)',
             '8-Gate Quality Filter (G3/G5/G8 Mandatory)',
             'ICT Smart Money Concepts (SMC)',
             'Market Structure (BOS/CHoCH)',
@@ -10400,7 +10478,7 @@ def run_system_audit():
             'structure': 'Swing high/low detection + pivot calculations',
             'calendar': 'Multi-tier economic calendar + Seasonality patterns (month/quarter-end flows)',
             'options': '25-delta risk reversals + Put/Call ratios (price volatility proxy)',
-            'confluence': 'Factor agreement analysis (feeds into 8-group scoring v9.3.0)'
+            'confluence': 'Factor agreement analysis (feeds into 9-group scoring v9.3.0)'
         },
         'calibration_notes': {
             'score_range': '5-95 (proper differentiation)',
@@ -10947,8 +11025,8 @@ Issues:
 
 System context:
 - Version: 9.3.0 PRO
-- 8-Group Gated Scoring with 8 Quality Gates
-- 51 Instruments (45 Forex + 6 Commodities)
+- 9-Group Gated Scoring with 8 Quality Gates
+- 50 Instruments (45 Forex + 5 Commodities)
 - Data sources: Polygon, IG Markets, Finnhub, FRED, OpenAI
 
 Provide concise, actionable analysis in JSON format:
@@ -11049,8 +11127,8 @@ def api_info():
         'pairs': len(ALL_INSTRUMENTS),
         'factor_groups': len(FACTOR_GROUP_WEIGHTS),
         'features': [
-            '51 Instruments (45 Forex + 6 Commodities)',
-            '8-Group Gated Scoring with 8-Gate Quality Filter (v9.3.0) + ICT SMC',
+            '50 Instruments (45 Forex + 5 Commodities)',
+            '9-Group Gated Scoring with 8-Gate Quality Filter (v9.3.0) + ICT SMC',
             'Conviction Metric + Dynamic Regime Weights',
             '90-Day Signal Evaluation & Historical Accuracy',
             'Multi-Source News (Finnhub + RSS)',
@@ -11300,7 +11378,7 @@ def get_news():
 def get_correlation_analysis():
     """
     v9.3.0: Get currency correlation analysis and triangle deviations.
-    Uses 51-instrument data for advanced signal confirmation.
+    Uses 50-instrument data for advanced signal confirmation.
     """
     try:
         # Get all current rates (returns dict: {pair: rate_data})
@@ -11423,17 +11501,18 @@ def weights_endpoint():
 
 @app.route('/weights/reset')
 def reset_weights():
-    """v9.0: Reset to default 7 factor group weights"""
+    """v9.3.0: Reset to default 9 factor group weights"""
     global FACTOR_GROUP_WEIGHTS
     FACTOR_GROUP_WEIGHTS = {
-        'trend_momentum': 21,     # Technical (RSI/MACD/ADX) 60% + MTF 40%
-        'fundamental': 15,        # Interest rate diffs + FRED macro data
-        'sentiment': 13,          # IG Positioning 65% + Options 35%
-        'intermarket': 12,        # DXY, Gold, Yields, Oil correlations
+        'trend_momentum': 20,     # Technical (RSI/MACD/ADX) 60% + MTF 40%
+        'fundamental': 14,        # Interest rate diffs + FRED macro data
+        'sentiment': 12,          # IG Positioning 65% + Options 35%
+        'intermarket': 11,        # DXY, Gold, Yields, Oil correlations
         'mean_reversion': 11,     # Quantitative 55% + Structure 45%
-        'calendar_risk': 8,       # Economic events + Seasonality
+        'calendar_risk': 7,       # Economic events + Seasonality
         'ai_synthesis': 10,       # GPT analysis (activates when 2+ groups agree)
-        'currency_strength': 10   # v9.3.0: 51-instrument currency strength analysis (0% for commodities)
+        'currency_strength': 10,  # v9.3.0: 50-instrument currency strength analysis
+        'geopolitical_risk': 5    # v9.3.0: War, sanctions, trade tensions, elections
     }
     save_group_weights(FACTOR_GROUP_WEIGHTS)
     return jsonify({'success': True, 'weights': FACTOR_GROUP_WEIGHTS})
@@ -12281,7 +12360,7 @@ def get_positioning():
         list(ig_data_map.keys()) +
         list(saxo_map.keys()) +
         list(cot_pair_map.keys()) +
-        ALL_INSTRUMENTS  # Ensure we cover all 51 instruments including commodities
+        ALL_INSTRUMENTS  # Ensure we cover all 50 instruments including commodities
     ))
 
     for pair in pairs_to_process:
@@ -12845,10 +12924,9 @@ logger.info("🚀 MEGA FOREX v9.3.0 PRO - AI ENHANCED initialized")
 if __name__ == '__main__':
     print("=" * 70)
     print("      MEGA FOREX v9.3.0 PRO - AI ENHANCED SYSTEM")
-
- ows  with"=" * 70)
+    print("=" * 70)
     print(f"  Instruments:     {len(ALL_INSTRUMENTS)} ({len(FOREX_PAIRS)} Forex + {len(COMMODITY_PAIRS)} Commodities)")
-    print(f"  Factor Groups:   8 (merged from 12 individual factors)")
+    print(f"  Factor Groups:   9 (merged from 11 individual factors)")
     print(f"  Quality Gates:   8 (G3/G5/G8 mandatory)")
     print(f"  Database:        {DATABASE_PATH}")
     print(f"  Polygon API:     {'✓' if POLYGON_API_KEY else '✗'}")
@@ -12867,7 +12945,7 @@ if __name__ == '__main__':
     print("=" * 70)
     print("  v9.3.0 PRO FEATURES:")
     print(f"    ✨ {len(ALL_INSTRUMENTS)} Instruments ({len(FOREX_PAIRS)} Forex + {len(COMMODITY_PAIRS)} Commodities)")
-    print("    ✨ 8-Group Scoring (11 factors, 8 groups)")
+    print("    ✨ 9-Group Scoring (11 factors, 9 groups)")
     print("    ✨ 8-Gate Quality Filter (G3 Trend, G5 Calendar, G8 Data = MANDATORY)")
     print("    ✨ Dynamic Regime Weights (trending/ranging/volatile/quiet)")
     print("    ✨ 90-Day Signal Evaluation & Historical Accuracy Tracking")
