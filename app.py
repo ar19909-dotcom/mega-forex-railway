@@ -828,56 +828,56 @@ FACTOR_WEIGHTS = {
 # Research: 3-4 non-correlated factors is the sweet spot (CME Group 2019)
 # ═══════════════════════════════════════════════════════════════════════════════
 FACTOR_GROUP_WEIGHTS = {
-    'trend_momentum': 19,     # Technical (RSI, MACD, ADX) + MTF (H1/H4/D1) merged
-    'fundamental': 13,        # Interest rate diffs + FRED data (independent)
-    'sentiment': 12,          # IG positioning + News + Options merged (contrarian)
-    'intermarket': 11,        # DXY, Gold, Yields, Oil (independent)
-    'mean_reversion': 11,     # Z-Score + Bollinger %B + S/R merged
-    'calendar_risk': 7,       # Economic events + Seasonality (independent)
-    'ai_synthesis': 10,       # GPT enhanced analysis (activates when 2+ groups agree)
-    'currency_strength': 9,   # v9.3.0: 50-instrument currency strength analysis (0% for commodities)
-    'geopolitical_risk': 4,   # v9.3.0: War, sanctions, trade tensions, elections
-    'market_depth': 4          # v9.3.0: Spread, session, liquidity, volume analysis
+    'trend_momentum': 22,     # #1 return driver (CME, Quantpedia research) — RSI, MACD, ADX + MTF
+    'fundamental': 14,        # #2 FX factor — carry trade / interest rate differentials (SSRN)
+    'sentiment': 11,          # Confirmation + alpha booster — IG positioning + News + Options
+    'intermarket': 10,        # DXY, Gold, Yields, Oil correlations (independent)
+    'mean_reversion': 12,     # Combined with momentum = best FX strategy (ResearchGate)
+    'calendar_risk': 6,       # Gate/filter role — 10-Gate already filters high-impact events
+    'ai_synthesis': 9,        # Synthesis tool — follows, doesn't lead
+    'currency_strength': 8,   # Confirmation tool — buy strong/sell weak (MarketMilk research)
+    'geopolitical_risk': 4,   # Tail-risk filter for forex (IMF 2025)
+    'market_depth': 4          # Trade quality filter — spread, session, liquidity
 }
-# Total: 100%
+# Total: 100% (22+14+11+10+12+6+9+8+4+4)
 
 # v9.3.0 DYNAMIC REGIME WEIGHTS - Adapt to market conditions
 # Research: +0.29 Sharpe improvement (Northern Trust)
 # Now includes currency_strength (10%) from 50-instrument analysis
 REGIME_WEIGHTS = {
-    'trending': {
-        'trend_momentum': 23, 'fundamental': 12, 'sentiment': 7,
-        'intermarket': 10, 'mean_reversion': 6, 'calendar_risk': 5, 'ai_synthesis': 12, 'currency_strength': 12, 'geopolitical_risk': 7, 'market_depth': 6
-    },
-    'ranging': {
-        'trend_momentum': 9, 'fundamental': 11, 'sentiment': 10,
-        'intermarket': 9, 'mean_reversion': 19, 'calendar_risk': 5, 'ai_synthesis': 12, 'currency_strength': 12, 'geopolitical_risk': 7, 'market_depth': 6
-    },
-    'volatile': {
-        'trend_momentum': 13, 'fundamental': 9, 'sentiment': 13,
-        'intermarket': 9, 'mean_reversion': 7, 'calendar_risk': 8, 'ai_synthesis': 10, 'currency_strength': 11, 'geopolitical_risk': 13, 'market_depth': 7
-    },
-    'quiet': {
-        'trend_momentum': 19, 'fundamental': 14, 'sentiment': 7,
-        'intermarket': 11, 'mean_reversion': 11, 'calendar_risk': 4, 'ai_synthesis': 10, 'currency_strength': 12, 'geopolitical_risk': 6, 'market_depth': 6
-    }
+    'trending': {  # ADX > 25: Ride the trend hard
+        'trend_momentum': 28, 'fundamental': 12, 'sentiment': 6,
+        'intermarket': 10, 'mean_reversion': 4, 'calendar_risk': 5, 'ai_synthesis': 10, 'currency_strength': 13, 'geopolitical_risk': 6, 'market_depth': 6
+    },  # Total: 100
+    'ranging': {  # ADX < 20: Mean reversion dominates
+        'trend_momentum': 8, 'fundamental': 12, 'sentiment': 11,
+        'intermarket': 9, 'mean_reversion': 22, 'calendar_risk': 5, 'ai_synthesis': 10, 'currency_strength': 11, 'geopolitical_risk': 6, 'market_depth': 6
+    },  # Total: 100
+    'volatile': {  # ATR spike > 1.5x: Geopolitical + trend matter most
+        'trend_momentum': 15, 'fundamental': 8, 'sentiment': 12,
+        'intermarket': 9, 'mean_reversion': 5, 'calendar_risk': 9, 'ai_synthesis': 9, 'currency_strength': 10, 'geopolitical_risk': 15, 'market_depth': 8
+    },  # Total: 100
+    'quiet': {  # Low ATR + Low ADX: Carry trade + mean reversion shine
+        'trend_momentum': 18, 'fundamental': 15, 'sentiment': 7,
+        'intermarket': 11, 'mean_reversion': 14, 'calendar_risk': 4, 'ai_synthesis': 9, 'currency_strength': 11, 'geopolitical_risk': 5, 'market_depth': 6
+    }  # Total: 100
 }
 
 # v9.3.0: Commodity-specific factor weights
 # Currency Strength replaced by Supply & Demand (EIA inventory, DXY inverse, warehouse stocks)
 COMMODITY_FACTOR_WEIGHTS = {
-    'trend_momentum': 20,     # Commodities trend strongly
-    'fundamental': 10,        # DXY + real yields + supply/demand
-    'sentiment': 11,          # COT positioning + retail
-    'intermarket': 13,        # Cross-commodity correlations critical
-    'mean_reversion': 12,     # Commodities do revert
-    'calendar_risk': 7,       # OPEC, EIA, crop reports
-    'ai_synthesis': 9,        # AI analysis
-    'currency_strength': 7,   # → Becomes "Supply & Demand" for commodities (EIA, DXY, warehouse)
-    'geopolitical_risk': 6,   # v9.3.0: Wars, sanctions, OPEC politics (higher weight for commodities)
-    'market_depth': 5          # v9.3.0: Spread, session, liquidity analysis (higher for commodities)
+    'trend_momentum': 22,     # #1 commodity factor — commodities trend harder than forex (EDHEC)
+    'fundamental': 8,          # Slow-moving for commodities — DXY + real yields
+    'sentiment': 10,           # COT data is weekly, less actionable for swing
+    'intermarket': 15,         # #2 commodity factor — gold/oil/DXY/yields correlations critical
+    'mean_reversion': 11,      # Less reliable than in forex — commodities trend strongly
+    'calendar_risk': 7,        # Essential — OPEC, EIA, crop reports
+    'ai_synthesis': 8,         # Synthesis tool — supports but doesn't lead
+    'currency_strength': 7,    # → "Supply & Demand" for commodities (EIA, DXY, warehouse)
+    'geopolitical_risk': 8,    # IMF research: geo stress directly drives gold, disrupts oil supply
+    'market_depth': 4           # Execution filter — commodities have good liquidity
 }
-# Total: 100%
+# Total: 100% (22+8+10+15+11+7+8+7+8+4)
 
 # v9.0 STATISTICAL CAPS - Realistic limits (FXCM 43M trade study)
 STAT_CAPS = {
@@ -9962,27 +9962,29 @@ def run_system_audit():
             'bullish_threshold': 60,
             'bearish_threshold': 40
         },
-        'total_factor_groups': 8,
+        'total_factor_groups': 10,
         'total_weight': 100,
         'factor_groups': {
-            'trend_momentum': {'weight': 21, 'sources': 'Technical (RSI/MACD/ADX) 60% + MTF (H1/H4/D1) 40%'},
-            'fundamental': {'weight': 15, 'sources': 'Interest rate differentials + FRED macro data'},
-            'sentiment': {'weight': 13, 'sources': 'IG positioning 65% + Options proxy 35%'},
-            'intermarket': {'weight': 12, 'sources': 'DXY, Gold, Yields, Oil correlations'},
-            'mean_reversion': {'weight': 11, 'sources': 'Quantitative (Z-Score/Bollinger) 55% + Structure (S/R) 45%'},
-            'calendar_risk': {'weight': 8, 'sources': 'Economic events + Seasonality'},
-            'ai_synthesis': {'weight': 10, 'sources': 'GPT enhanced analysis — activates when 2+ groups agree'},
-            'currency_strength': {'weight': 9, 'sources': 'v9.4.0: 50-instrument analysis — base vs quote currency strength (0% for commodities)'}
+            'trend_momentum': {'weight': 22, 'sources': 'Technical (RSI/MACD/ADX) 60% + MTF (H1/H4/D1) 40% — #1 return driver'},
+            'fundamental': {'weight': 14, 'sources': 'Interest rate differentials + FRED macro data — #2 FX factor (carry)'},
+            'mean_reversion': {'weight': 12, 'sources': 'Quantitative (Z-Score/Bollinger) 55% + Structure (S/R) 45%'},
+            'sentiment': {'weight': 11, 'sources': 'IG positioning 65% + Options proxy 35% — confirmation + alpha booster'},
+            'intermarket': {'weight': 10, 'sources': 'DXY, Gold, Yields, Oil correlations'},
+            'ai_synthesis': {'weight': 9, 'sources': 'GPT enhanced analysis — synthesis tool'},
+            'currency_strength': {'weight': 8, 'sources': 'v9.4.0: 50-instrument analysis — confirmation tool'},
+            'calendar_risk': {'weight': 6, 'sources': 'Economic events + Seasonality — gate/filter role'},
+            'geopolitical_risk': {'weight': 4, 'sources': 'War, sanctions, trade tensions — tail-risk filter (IMF 2025)'},
+            'market_depth': {'weight': 4, 'sources': 'Spread, session, liquidity — trade quality filter'}
         },
         'commodity_weights': {
             'description': 'v9.4.0: Separate weight profile for 5 commodities (XAU, XAG, XPT, WTI, BRENT)',
-            'trend_momentum': 22, 'fundamental': 12, 'sentiment': 13,
-            'intermarket': 15, 'mean_reversion': 12, 'calendar_risk': 8,
-            'ai_synthesis': 10, 'supply_demand': 8,
-            'note': 'Currency Strength replaced by Supply & Demand (8%): EIA inventory for oil, DXY inverse for all, safe-haven demand for metals. Fundamental uses DXY/yields/VIX instead of interest rate differentials.'
+            'trend_momentum': 22, 'intermarket': 15, 'mean_reversion': 11,
+            'sentiment': 10, 'fundamental': 8, 'ai_synthesis': 8,
+            'geopolitical_risk': 8, 'calendar_risk': 7, 'supply_demand': 7, 'market_depth': 4,
+            'note': 'Currency Strength replaced by Supply & Demand (7%): EIA inventory for oil, DXY inverse for all, safe-haven demand for metals. Intermarket is #2 commodity factor (15%). Geopolitical risk higher (8%) — IMF: geo stress directly drives gold, disrupts oil.'
         },
         'quality_gates': {
-            'description': '5 of 7 gates must pass for LONG/SHORT signal, otherwise NEUTRAL',
+            'description': '8 of 10 gates must pass for LONG/SHORT signal, otherwise NEUTRAL',
             'gates': [
                 {'id': 'G1', 'rule': 'Score >= 60 (LONG) or <= 40 (SHORT)'},
                 {'id': 'G2', 'rule': '>= 3 of 7 groups agree on direction'},
@@ -10018,7 +10020,7 @@ def run_system_audit():
     audit['factor_details'] = {
         'technical': {
             'weight': 13,
-            'weight_percent': '60% of Trend & Momentum (19%)',
+            'weight_percent': '60% of Trend & Momentum (22%)',
             'description': 'RSI, MACD, ADX trend analysis',
             'data_sources': ['Polygon.io (Tier 1)', 'Twelve Data (Tier 2)', 'TraderMade (Tier 3)', 'ExchangeRate (Tier 4)', 'CurrencyLayer (Tier 5)'],
             'score_range': '10-90',
@@ -10060,7 +10062,7 @@ def run_system_audit():
         },
         'fundamental': {
             'weight': 15,
-            'weight_percent': '100% of Fundamental (13%)',
+            'weight_percent': '100% of Fundamental (14%)',
             'description': 'Interest rate differentials and carry trade analysis',
             'data_sources': ['Central bank rates database', 'FRED API'],
             'score_range': '15-85',
@@ -10083,7 +10085,7 @@ def run_system_audit():
         },
         'sentiment': {
             'weight': 8,
-            'weight_percent': '65% of Sentiment (12%)',
+            'weight_percent': '65% of Sentiment (11%)',
             'description': 'IG Client Positioning + News sentiment analysis',
             'data_sources': ['IG Markets API (client positioning)', 'Finnhub API (news)', 'RSS feeds (ForexLive, FXStreet, Investing.com)'],
             'score_range': '15-85',
@@ -10103,7 +10105,7 @@ def run_system_audit():
         },
         'ai': {
             'weight': 10,
-            'weight_percent': '100% of AI Synthesis (10%)',
+            'weight_percent': '100% of AI Synthesis (9%)',
             'description': 'GPT-4o-mini AI-powered market analysis (v9.4.0)',
             'data_sources': ['OpenAI API (GPT-4o-mini model)'],
             'score_range': '15-85',
@@ -10126,7 +10128,7 @@ def run_system_audit():
         },
         'intermarket': {
             'weight': 12,
-            'weight_percent': '100% of Intermarket (11%)',
+            'weight_percent': '100% of Intermarket (10%)',
             'description': 'Correlation analysis with DXY, Gold, Yields, Oil',
             'data_sources': ['Polygon.io', 'Alpha Vantage'],
             'score_range': '15-85',
@@ -10141,7 +10143,7 @@ def run_system_audit():
         },
         'quantitative': {
             'weight': 6,
-            'weight_percent': '55% of Mean Reversion (11%)',
+            'weight_percent': '55% of Mean Reversion (12%)',
             'description': 'Z-Score and Bollinger Band mean reversion analysis',
             'data_sources': ['Calculated from price data'],
             'score_range': '10-90',
@@ -10176,7 +10178,7 @@ def run_system_audit():
         },
         'mtf': {
             'weight': 8,
-            'weight_percent': '40% of Trend & Momentum (19%)',
+            'weight_percent': '40% of Trend & Momentum (22%)',
             'description': 'Multi-Timeframe trend alignment (H1, H4, D1)',
             'data_sources': ['Polygon.io candles (hourly, daily)'],
             'score_range': '12-88',
@@ -10197,7 +10199,7 @@ def run_system_audit():
         },
         'structure': {
             'weight': 5,
-            'weight_percent': '45% of Mean Reversion (11%)',
+            'weight_percent': '45% of Mean Reversion (12%)',
             'description': 'Support/Resistance levels and Pivot Points',
             'data_sources': ['Calculated from swing highs/lows'],
             'score_range': '15-85',
@@ -10232,7 +10234,7 @@ def run_system_audit():
         },
         'calendar': {
             'weight': 8,
-            'weight_percent': '100% of Calendar Risk (7%)',
+            'weight_percent': '100% of Calendar Risk (6%)',
             'description': 'Economic events risk assessment + Seasonality patterns',
             'data_sources': ['Finnhub API economic calendar'],
             'score_range': '20-90',
@@ -10250,7 +10252,7 @@ def run_system_audit():
         },
         'options': {
             'weight': 5,
-            'weight_percent': '35% of Sentiment (12%)',
+            'weight_percent': '35% of Sentiment (11%)',
             'description': '25-Delta Risk Reversals & Put/Call Ratio analysis',
             'data_sources': ['CME FX Options (when available)', 'Price volatility structure proxy'],
             'score_range': '15-85 (REAL), 40-60 (PROXY)',
@@ -10279,7 +10281,7 @@ def run_system_audit():
         },
         'currency_strength': {
             'weight': 10,
-            'weight_percent': '100% of Currency Strength (9%)',
+            'weight_percent': '100% of Currency Strength (8%)',
             'description': '50-instrument analysis — base vs quote currency relative strength (0% weight for commodities)',
             'data_sources': ['Polygon.io (all 50 instruments)', 'Real-time cross-currency analysis'],
             'score_range': '15-85',
@@ -11884,19 +11886,19 @@ def weights_endpoint():
 
 @app.route('/weights/reset')
 def reset_weights():
-    """v9.3.0: Reset to default 10 factor group weights"""
+    """v9.4.0: Reset to research-backed 10 factor group weights"""
     global FACTOR_GROUP_WEIGHTS
     FACTOR_GROUP_WEIGHTS = {
-        'trend_momentum': 19,     # Technical (RSI/MACD/ADX) 60% + MTF 40%
-        'fundamental': 13,        # Interest rate diffs + FRED macro data
-        'sentiment': 12,          # IG Positioning 65% + Options 35%
-        'intermarket': 11,        # DXY, Gold, Yields, Oil correlations
-        'mean_reversion': 11,     # Quantitative 55% + Structure 45%
-        'calendar_risk': 7,       # Economic events + Seasonality
-        'ai_synthesis': 10,       # GPT analysis (activates when 2+ groups agree)
-        'currency_strength': 9,   # v9.3.0: 50-instrument currency strength analysis
-        'geopolitical_risk': 4,   # v9.3.0: War, sanctions, trade tensions, elections
-        'market_depth': 4         # v9.3.0: Spread, session, liquidity, ATR activity
+        'trend_momentum': 22,     # #1 return driver (CME, Quantpedia research)
+        'fundamental': 14,        # #2 FX factor — carry trade (SSRN)
+        'sentiment': 11,          # Confirmation + alpha booster
+        'intermarket': 10,        # DXY, Gold, Yields, Oil correlations
+        'mean_reversion': 12,     # Combined with momentum = best FX strategy
+        'calendar_risk': 6,       # Gate/filter role
+        'ai_synthesis': 9,        # Synthesis tool
+        'currency_strength': 8,   # Confirmation tool
+        'geopolitical_risk': 4,   # Tail-risk filter (IMF 2025)
+        'market_depth': 4         # Trade quality filter
     }
     save_group_weights(FACTOR_GROUP_WEIGHTS)
     return jsonify({'success': True, 'weights': FACTOR_GROUP_WEIGHTS})

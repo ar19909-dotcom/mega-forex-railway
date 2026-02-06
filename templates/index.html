@@ -3369,16 +3369,16 @@
                     // v9.3.0: Commodity weights (read-only, with Geopolitical Risk + Supply & Demand)
                     // Ordered alphabetically to match Forex weights display order
                     const commodityWeights = [
-                        ['ai_synthesis', 9],
+                        ['ai_synthesis', 8],
                         ['calendar_risk', 7],
-                        ['fundamental', 10],
-                        ['geopolitical_risk', 6],  // v9.3.0: Wars, sanctions, OPEC politics
-                        ['intermarket', 13],
-                        ['market_depth', 5],       // v9.3.0: Spread, session, liquidity
-                        ['mean_reversion', 12],
-                        ['sentiment', 11],
+                        ['fundamental', 8],
+                        ['geopolitical_risk', 8],  // IMF: geo stress drives gold, disrupts oil
+                        ['intermarket', 15],       // #2 commodity factor — cross-commodity correlations
+                        ['market_depth', 4],
+                        ['mean_reversion', 11],
+                        ['sentiment', 10],
                         ['supply_demand', 7],  // Replaces currency_strength for commodities
-                        ['trend_momentum', 20]
+                        ['trend_momentum', 22] // #1 commodity factor — commodities trend hard
                     ];
 
                     const groupLabels = {
@@ -3768,16 +3768,16 @@
                             <table class="data-table">
                                 <thead><tr><th>Group</th><th>Forex Weight</th><th>Sources</th></tr></thead>
                                 <tbody>
-                                    <tr><td><strong>Trend & Momentum</strong></td><td style="font-weight: 600;">19%</td><td>Technical (RSI/MACD/ADX) 60% + MTF (H1/H4/D1) 40%</td></tr>
-                                    <tr><td><strong>Fundamental</strong></td><td style="font-weight: 600;">13%</td><td>Interest rate differentials + FRED macro data</td></tr>
-                                    <tr><td><strong>Sentiment</strong></td><td style="font-weight: 600;">12%</td><td>IG positioning 65% + Options proxy 35%</td></tr>
-                                    <tr><td><strong>Intermarket</strong></td><td style="font-weight: 600;">11%</td><td>DXY, Gold, Yields, Oil correlations</td></tr>
-                                    <tr><td><strong>Mean Reversion</strong></td><td style="font-weight: 600;">11%</td><td>Quantitative (Z-Score/Bollinger) 55% + Structure (S/R) 45%</td></tr>
-                                    <tr><td><strong>AI Synthesis</strong></td><td style="font-weight: 600;">10%</td><td>GPT enhanced analysis — activates when 2+ groups agree</td></tr>
-                                    <tr><td><strong>Currency Strength</strong></td><td style="font-weight: 600; color: #a78bfa;">9%</td><td>50-instrument analysis — base vs quote currency relative strength</td></tr>
-                                    <tr><td><strong>Calendar Risk</strong></td><td style="font-weight: 600;">7%</td><td>Economic events + Seasonality</td></tr>
-                                    <tr style="background: rgba(239, 68, 68, 0.15);"><td><strong>Geopolitical Risk</strong></td><td style="font-weight: 600; color: #ef4444;">4%</td><td>War, sanctions, trade tensions, elections</td></tr>
-                                    <tr style="background: rgba(59, 130, 246, 0.15);"><td><strong>Market Depth</strong> <span style="color: #3b82f6; font-size: 0.7rem;">NEW</span></td><td style="font-weight: 600; color: #3b82f6;">4%</td><td>Spread tightness, session activity, pair liquidity, ATR activity</td></tr>
+                                    <tr><td><strong>Trend & Momentum</strong></td><td style="font-weight: 600;">22%</td><td>#1 return driver — Technical (RSI/MACD/ADX) 60% + MTF 40%</td></tr>
+                                    <tr><td><strong>Fundamental</strong></td><td style="font-weight: 600;">14%</td><td>#2 FX factor — carry trade / interest rate diffs + FRED</td></tr>
+                                    <tr><td><strong>Mean Reversion</strong></td><td style="font-weight: 600;">12%</td><td>Combined with momentum = best FX strategy — Z-Score + Bollinger + S/R</td></tr>
+                                    <tr><td><strong>Sentiment</strong></td><td style="font-weight: 600;">11%</td><td>Confirmation + alpha booster — IG positioning 65% + Options 35%</td></tr>
+                                    <tr><td><strong>Intermarket</strong></td><td style="font-weight: 600;">10%</td><td>DXY, Gold, Yields, Oil correlations</td></tr>
+                                    <tr><td><strong>AI Synthesis</strong></td><td style="font-weight: 600;">9%</td><td>GPT synthesis tool — follows, doesn't lead</td></tr>
+                                    <tr><td><strong>Currency Strength</strong></td><td style="font-weight: 600; color: #a78bfa;">8%</td><td>Confirmation tool — 50-instrument buy strong/sell weak</td></tr>
+                                    <tr><td><strong>Calendar Risk</strong></td><td style="font-weight: 600;">6%</td><td>Gate/filter role — events + seasonality</td></tr>
+                                    <tr style="background: rgba(239, 68, 68, 0.15);"><td><strong>Geopolitical Risk</strong></td><td style="font-weight: 600; color: #ef4444;">4%</td><td>Tail-risk filter — war, sanctions, tensions (IMF 2025)</td></tr>
+                                    <tr style="background: rgba(59, 130, 246, 0.15);"><td><strong>Market Depth</strong></td><td style="font-weight: 600; color: #3b82f6;">4%</td><td>Trade quality filter — spread, session, liquidity, ATR</td></tr>
                                 </tbody>
                             </table>
 
@@ -3785,20 +3785,20 @@
                             <table class="data-table">
                                 <thead><tr><th>Group</th><th>Commodity Weight</th><th>Sources</th></tr></thead>
                                 <tbody>
-                                    <tr><td><strong>Trend & Momentum</strong></td><td style="font-weight: 600; color: #f59e0b;">20%</td><td>Commodities trend strongly — RSI/MACD/ADX + MTF</td></tr>
-                                    <tr><td><strong>Intermarket</strong></td><td style="font-weight: 600; color: #f59e0b;">13%</td><td>Cross-commodity, DXY, VIX, Yields, Equities</td></tr>
-                                    <tr><td><strong>Mean Reversion</strong></td><td style="font-weight: 600;">12%</td><td>Z-Score, Bollinger %B + S/R structure</td></tr>
-                                    <tr><td><strong>Sentiment</strong></td><td style="font-weight: 600;">11%</td><td>IG + COT institutional + commodity news</td></tr>
-                                    <tr><td><strong>Fundamental</strong></td><td style="font-weight: 600;">10%</td><td>DXY inverse, Real yields, VIX, EIA inventory</td></tr>
-                                    <tr><td><strong>AI Synthesis</strong></td><td style="font-weight: 600;">9%</td><td>GPT-4o-mini commodity analysis</td></tr>
+                                    <tr><td><strong>Trend & Momentum</strong></td><td style="font-weight: 600; color: #f59e0b;">22%</td><td>#1 commodity factor — commodities trend harder than forex (EDHEC)</td></tr>
+                                    <tr><td><strong>Intermarket</strong></td><td style="font-weight: 600; color: #f59e0b;">15%</td><td>#2 commodity factor — gold/oil/DXY/yields correlations critical</td></tr>
+                                    <tr><td><strong>Mean Reversion</strong></td><td style="font-weight: 600;">11%</td><td>Z-Score, Bollinger %B + S/R structure</td></tr>
+                                    <tr><td><strong>Sentiment</strong></td><td style="font-weight: 600;">10%</td><td>COT positioning (weekly) + IG + commodity news</td></tr>
+                                    <tr style="background: rgba(239, 68, 68, 0.15);"><td><strong>Geopolitical Risk</strong></td><td style="font-weight: 600; color: #ef4444;">8%</td><td>IMF: geo stress directly drives gold, disrupts oil supply</td></tr>
+                                    <tr><td><strong>Fundamental</strong></td><td style="font-weight: 600;">8%</td><td>Slow-moving for commodities — DXY inverse, real yields</td></tr>
+                                    <tr><td><strong>AI Synthesis</strong></td><td style="font-weight: 600;">8%</td><td>GPT-4o-mini commodity analysis — supports, doesn't lead</td></tr>
                                     <tr style="background: rgba(245, 158, 11, 0.15);"><td><strong>Supply & Demand</strong></td><td style="font-weight: 600; color: #f59e0b;">7%</td><td>EIA inventory, USD correlation, safe-haven demand</td></tr>
-                                    <tr><td><strong>Calendar Risk</strong></td><td style="font-weight: 600;">7%</td><td>OPEC, EIA, FOMC, PMI events</td></tr>
-                                    <tr style="background: rgba(239, 68, 68, 0.15);"><td><strong>Geopolitical Risk</strong></td><td style="font-weight: 600; color: #ef4444;">6%</td><td>War, sanctions, trade tensions, OPEC politics</td></tr>
-                                    <tr style="background: rgba(59, 130, 246, 0.15);"><td><strong>Market Depth</strong> <span style="color: #3b82f6; font-size: 0.7rem;">NEW</span></td><td style="font-weight: 600; color: #3b82f6;">5%</td><td>Spread tightness, session activity, commodity liquidity, ATR</td></tr>
+                                    <tr><td><strong>Calendar Risk</strong></td><td style="font-weight: 600;">7%</td><td>Essential — OPEC, EIA, crop reports</td></tr>
+                                    <tr style="background: rgba(59, 130, 246, 0.15);"><td><strong>Market Depth</strong></td><td style="font-weight: 600; color: #3b82f6;">4%</td><td>Execution filter — commodities have good liquidity</td></tr>
                                 </tbody>
                             </table>
                             <p style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);">
-                                <strong>Smart AI Weight Adjustment</strong>: Weights shift dynamically based on regime detection and factor consensus. Commodities get higher market_depth weight (5% vs 4% for forex) and geopolitical_risk weight (6% vs 4%).</p>
+                                <strong>Smart AI Weight Adjustment</strong>: Weights shift dynamically based on regime detection (trending/ranging/volatile/quiet). Commodities get higher intermarket (15% vs 10%) and geopolitical_risk (8% vs 4%) — research-backed for swing/position trading.</p>
                         </div>
 
                         <div class="audit-section">
