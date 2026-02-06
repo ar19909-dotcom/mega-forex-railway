@@ -10064,20 +10064,23 @@ def run_system_audit():
             'note': 'Currency Strength replaced by Supply & Demand (7%): EIA inventory for oil, DXY inverse for all, safe-haven demand for metals. Intermarket is #2 commodity factor (15%). Geopolitical risk higher (8%) — IMF: geo stress directly drives gold, disrupts oil.'
         },
         'quality_gates': {
-            'description': '8 of 10 gates must pass for LONG/SHORT signal, otherwise NEUTRAL',
+            'description': '8 of 10 gates must pass for LONG/SHORT signal, otherwise NEUTRAL. G3/G5/G8 are MANDATORY.',
             'gates': [
                 {'id': 'G1', 'rule': 'Score >= 60 (LONG) or <= 40 (SHORT)'},
-                {'id': 'G2', 'rule': '>= 3 of 7 groups agree on direction'},
-                {'id': 'G3', 'rule': 'Trend & Momentum must CONFIRM direction (score > 52 for LONG, < 48 for SHORT)'},
+                {'id': 'G2', 'rule': '>= 3 of 10 groups agree on direction'},
+                {'id': 'G3', 'rule': 'MANDATORY — Trend & Momentum + EMA must CONFIRM direction (score > 52 for LONG, < 48 for SHORT)', 'mandatory': True},
                 {'id': 'G4', 'rule': 'R:R >= 1.3:1'},
-                {'id': 'G5', 'rule': 'No high-impact calendar event imminent'},
+                {'id': 'G5', 'rule': 'MANDATORY — No high-impact calendar event imminent', 'mandatory': True},
                 {'id': 'G6', 'rule': 'ATR between 0.5x-2.5x of 20-period average'},
-                {'id': 'G7', 'rule': 'AI must not strongly contradict (AI <= 60 for SHORT, >= 40 for LONG)'}
+                {'id': 'G7', 'rule': 'AI must not strongly contradict (AI <= 60 for SHORT, >= 40 for LONG)'},
+                {'id': 'G8', 'rule': 'MANDATORY — Technical data must be REAL (not fallback/estimated)', 'mandatory': True},
+                {'id': 'G9', 'rule': 'Geopolitical risk not extreme (score >= 25)'},
+                {'id': 'G10', 'rule': 'Market depth/liquidity adequate (score >= 30)'}
             ]
         },
         'conviction_metric': {
             'description': 'Separate metric (not score amplifier): breadth x strength',
-            'breadth': 'Fraction of 7 groups agreeing on direction (0-1)',
+            'breadth': 'Fraction of 10 groups agreeing on direction (0-1)',
             'strength': 'Average deviation of agreeing groups from 50',
             'scale': '0-100',
             'labels': ['LOW (<30)', 'MODERATE (30-50)', 'HIGH (50-70)', 'VERY HIGH (70+)']
@@ -10095,7 +10098,7 @@ def run_system_audit():
     }
     
     # ═══════════════════════════════════════════════════════════════════════════
-    # 11 FACTOR DETAILS — individual factors (grouped into 8 in v9.2, Currency Strength added)
+    # 13 FACTOR DETAILS — individual factors merged into 10 groups (v9.4.0)
     # ═══════════════════════════════════════════════════════════════════════════
     audit['factor_details'] = {
         'technical': {
@@ -10389,6 +10392,94 @@ def run_system_audit():
             },
             'signal_thresholds': {'bullish': '>= 58', 'bearish': '<= 42', 'neutral': '43-57'},
             'note': 'Uses all 50 monitored instruments for comprehensive strength analysis (commodities get neutral score)'
+        },
+
+        'geopolitical_risk': {
+            'weight': 4,
+            'weight_percent': '100% of Geopolitical Risk (4%)',
+            'description': 'Geopolitical tension analysis — war, sanctions, trade disputes, political crises affecting currency pairs (IMF 2025 research)',
+            'data_sources': ['Finnhub News API', 'News headline sentiment analysis', 'Region-based keyword matching'],
+            'score_range': '35-65',
+            'components': {
+                'Risk_Keywords': {
+                    'description': 'Detects conflict, sanctions, crisis, military, trade war, tariffs in news headlines',
+                    'scoring': [
+                        {'condition': 'High tension keywords found', 'points': '+risk_score', 'meaning': 'Geopolitical stress detected'},
+                        {'condition': 'Moderate tension', 'points': '+partial_risk', 'meaning': 'Some geopolitical concern'},
+                        {'condition': 'No tension keywords', 'points': '0', 'meaning': 'Calm geopolitical environment'}
+                    ]
+                },
+                'Resolution_Keywords': {
+                    'description': 'Detects peace, ceasefire, agreement, deal, de-escalation in news',
+                    'scoring': [
+                        {'condition': 'Resolution keywords found', 'points': '-risk_score', 'meaning': 'Tensions easing'},
+                        {'condition': 'No resolution keywords', 'points': '0', 'meaning': 'No change in tensions'}
+                    ]
+                },
+                'Net_Risk_Score': {
+                    'description': 'Net risk = risk_score - resolution_score, scaled to 35-65 range',
+                    'scoring': [
+                        {'condition': 'Net risk positive (tensions)', 'points': 'Score < 50', 'meaning': 'Higher risk, score drops toward 35'},
+                        {'condition': 'Net risk negative (resolution)', 'points': 'Score > 50', 'meaning': 'Lower risk, score rises toward 65'},
+                        {'condition': 'Net risk zero', 'points': 'Score = 50', 'meaning': 'Neutral geopolitical environment'}
+                    ]
+                },
+                'Time_Decay': {
+                    'description': '48-hour decay — newer news weighted more heavily than older articles'
+                }
+            },
+            'signal_thresholds': {'bullish': '>= 58 (LOW risk)', 'bearish': '<= 42 (HIGH risk)', 'neutral': '43-57 (MODERATE)'},
+            'note': 'Commodities get 8% weight (vs 4% forex) — IMF research shows geo stress directly drives gold and disrupts oil supply'
+        },
+
+        'market_depth': {
+            'weight': 4,
+            'weight_percent': '100% of Market Depth (4%)',
+            'description': 'Trade execution quality assessment — spread tightness, session activity, pair liquidity class, and ATR volatility',
+            'data_sources': ['Polygon.io (bid/ask spreads)', 'ICT Killzone session detection', 'Pair classification (Major/Minor/Cross/Exotic)', 'ATR (14-period)'],
+            'score_range': '15-85',
+            'components': {
+                'Spread_Tightness': {
+                    'description': 'Bid-ask spread in basis points (35% of score)',
+                    'scoring': [
+                        {'condition': 'Spread < 2 bps', 'points': '80', 'meaning': 'Excellent liquidity'},
+                        {'condition': 'Spread < 5 bps', 'points': '66', 'meaning': 'Good liquidity'},
+                        {'condition': 'Spread < 15 bps', 'points': '50', 'meaning': 'Average liquidity'},
+                        {'condition': 'Spread < 30 bps', 'points': '35', 'meaning': 'Below average'},
+                        {'condition': 'Spread > 30 bps', 'points': '20', 'meaning': 'Poor liquidity'}
+                    ]
+                },
+                'Session_Activity': {
+                    'description': 'ICT Killzone quality — active trading session detection (35% of score)',
+                    'scoring': [
+                        {'condition': 'Killzone quality >= 80%', 'points': '80', 'meaning': 'Peak session overlap'},
+                        {'condition': 'Killzone quality >= 60%', 'points': '65', 'meaning': 'Active session'},
+                        {'condition': 'Killzone quality >= 40%', 'points': '50', 'meaning': 'Moderate activity'},
+                        {'condition': 'Killzone quality >= 20%', 'points': '35', 'meaning': 'Low activity'},
+                        {'condition': 'Killzone quality < 20%', 'points': '20', 'meaning': 'Off-session'}
+                    ]
+                },
+                'Pair_Liquidity': {
+                    'description': 'Pair classification liquidity score (20% of score)',
+                    'scoring': [
+                        {'condition': 'MAJOR pair', 'points': '80', 'meaning': 'EUR/USD, GBP/USD, USD/JPY etc.'},
+                        {'condition': 'MINOR pair', 'points': '65', 'meaning': 'Cross pairs with major currencies'},
+                        {'condition': 'COMMODITY', 'points': '60', 'meaning': 'XAU, XAG, WTI, BRENT'},
+                        {'condition': 'CROSS pair', 'points': '55', 'meaning': 'Non-USD crosses'},
+                        {'condition': 'EXOTIC pair', 'points': '30', 'meaning': 'TRY, ZAR, MXN, HUF etc.'}
+                    ]
+                },
+                'ATR_Activity': {
+                    'description': 'ATR percentile relative to 20-period average (10% of score)',
+                    'scoring': [
+                        {'condition': 'ATR percentile > 70%', 'points': '68', 'meaning': 'High volatility activity'},
+                        {'condition': 'ATR percentile > 40%', 'points': '55', 'meaning': 'Normal activity'},
+                        {'condition': 'ATR percentile <= 40%', 'points': '35', 'meaning': 'Low activity'}
+                    ]
+                }
+            },
+            'signal_thresholds': {'bullish': '>= 60 (good depth)', 'bearish': '<= 40 (poor depth)', 'neutral': '41-59'},
+            'note': 'G10 gate requires market depth score >= 30 for directional signals'
         }
     }
 

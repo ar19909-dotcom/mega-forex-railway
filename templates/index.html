@@ -4602,7 +4602,7 @@
                         <div class="audit-section">
                             <h3>📖 Complete Scoring Methodology - v9.4.0 PRO (10-Gate Protected)</h3>
                             <p style="color: var(--text-secondary); margin-bottom: 1rem;">
-                                This system merges 11 individual factors into <strong>10 independent groups</strong> (incl. Currency Strength, Geopolitical Risk + Market Depth) with <strong>regime-dynamic weights</strong>, a <strong>10-gate quality filter</strong> (incl. AI alignment + data quality), and a separate <strong>conviction metric</strong> (breadth x strength).
+                                This system merges 13 individual factors into <strong>10 independent groups</strong> (incl. Currency Strength, Geopolitical Risk + Market Depth) with <strong>regime-dynamic weights</strong>, a <strong>10-gate quality filter</strong> (incl. AI alignment + data quality), and a separate <strong>conviction metric</strong> (breadth x strength).
                                 <strong>50 instruments</strong> (45 Forex + 5 Commodities) with <strong>separate weight profiles</strong>.
                                 All calculations use <strong>100% REAL market data + AI analysis</strong>. <strong style="color: #ef4444;">3 gates are MANDATORY (G3 Trend, G5 Calendar, G8 Data)</strong>.
                             </p>
@@ -4712,13 +4712,13 @@
                         
                         <div class="audit-section">
                             <details>
-                                <summary style="cursor: pointer; color: var(--accent-blue); font-size: 1.1rem; font-weight: 600;">📋 Individual Factor Details (11 Underlying Factors — merged into 10 groups above)</summary>
-                                <p style="color: var(--text-secondary); margin: 0.75rem 0; font-size: 0.85rem;">These 11 factors are the raw inputs that feed into the 10 factor groups. Click each to see scoring details.</p>
+                                <summary style="cursor: pointer; color: var(--accent-blue); font-size: 1.1rem; font-weight: 600;">📋 Individual Factor Details (13 Underlying Factors — merged into 10 groups above)</summary>
+                                <p style="color: var(--text-secondary); margin: 0.75rem 0; font-size: 0.85rem;">These 13 factors are the raw inputs that feed into the 10 factor groups. Click each to see scoring details.</p>
                         </div>
 
                         ${Object.entries(factors).map(([name, f]) => `
                             <div class="audit-section" style="border-left: 4px solid var(--accent-blue); padding-left: 1rem;">
-                                <h3 style="text-transform: capitalize;">${name === 'mtf' ? 'MTF (Multi-Timeframe)' : name} - ${f.weight_percent}</h3>
+                                <h3 style="text-transform: capitalize;">${name === 'mtf' ? 'MTF (Multi-Timeframe)' : name.replace(/_/g, ' ')} - ${f.weight_percent}</h3>
                                 <p style="color: var(--text-secondary); margin-bottom: 0.5rem;">${f.description}</p>
                                 <p style="font-size: 0.85rem;"><strong>Score Range:</strong> ${f.score_range} | <strong>Data Sources:</strong> ${f.data_sources?.join(', ') || 'Calculated'}</p>
                                 
