@@ -701,36 +701,45 @@
             border: 1px solid rgba(139, 92, 246, 0.3);
         }
         .ai-panel-header {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
             padding: 0.85rem 1rem;
             background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(59, 130, 246, 0.15));
-            flex-wrap: wrap;
         }
         .ai-panel-header .ai-title {
-            font-size: 1rem;
+            font-size: 1.05rem;
             font-weight: 700;
             color: var(--text-primary);
         }
-        .ai-badge {
-            font-size: 0.7rem;
-            padding: 0.2rem 0.6rem;
-            border-radius: 1rem;
-            font-weight: 600;
+        .ai-badges-bar {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            border-bottom: 1px solid rgba(255,255,255,0.05);
         }
-        .ai-badge.consistent { background: rgba(52, 211, 153, 0.2); color: #34d399; }
-        .ai-badge.flags { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
-        .ai-badge.conf { background: rgba(255,255,255,0.08); color: var(--text-muted); }
-        .ai-badge.grade { background: rgba(139, 92, 246, 0.3); color: #a78bfa; }
-        .ai-panel-status {
+        .ai-badges-bar .ai-badge-cell {
+            text-align: center;
+            padding: 0.55rem 0.5rem;
+            background: rgba(0,0,0,0.12);
+            border-right: 1px solid rgba(255,255,255,0.05);
+        }
+        .ai-badges-bar .ai-badge-cell:last-child { border-right: none; }
+        .ai-badge-cell .badge-val {
+            font-size: 0.85rem;
+            font-weight: 700;
+        }
+        .ai-badge-cell .badge-lbl {
+            font-size: 0.6rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            margin-top: 0.15rem;
+        }
+        .ai-panel-footer {
             display: flex;
-            gap: 0.5rem;
+            gap: 1rem;
             padding: 0.6rem 1rem;
             background: rgba(0,0,0,0.15);
-            border-bottom: 1px solid rgba(255,255,255,0.05);
+            border-top: 1px solid rgba(255,255,255,0.05);
             flex-wrap: wrap;
             align-items: center;
+            font-size: 0.8rem;
         }
         .ai-panel-analysis {
             padding: 0.85rem 1rem;
@@ -1293,9 +1302,9 @@
             /* AI Split Panel mobile */
             .ai-split { grid-template-columns: 1fr; }
             .ai-split-col.bull-col { border-right: none; border-bottom: 1px solid rgba(255,255,255,0.05); }
-            .ai-panel-header { font-size: 0.9rem; }
-            .ai-panel-status { flex-direction: column; gap: 0.3rem; }
-            .ai-panel-status span:last-child { margin-left: 0; }
+            .ai-badges-bar .ai-badge-cell .badge-val { font-size: 0.75rem; }
+            .ai-panel-footer { flex-direction: column; gap: 0.3rem; font-size: 0.75rem; }
+            .ai-panel-footer span:last-child { margin-left: 0; }
 
             /* Result Cards - 2 columns */
             .backtest-results {
@@ -3132,37 +3141,40 @@
                         const truncated = aiAnalysisText.length > maxLen;
                         const displayText = truncated ? aiAnalysisText.substring(0, maxLen) + '...' : aiAnalysisText;
 
-                        // Build Split Panel
+                        // Build Split Panel (matching mockup layout)
                         aiValidationHtml = '<div class="ai-panel">' +
-                            // Header row
+                            // 1. Title row
                             '<div class="ai-panel-header">' +
-                            '<span class="ai-title">🤖 AI Insight</span>' +
-                            '<span class="ai-badge ' + (aiConsistent ? 'consistent' : 'flags') + '">' + statusText + '</span>' +
-                            '<span class="ai-badge conf">' + aiConf + '</span>' +
-                            (tradeQuality ? '<span class="ai-badge grade">Grade: ' + tradeQuality + '</span>' : '') +
+                            '<span class="ai-title">🤖 AI Deep Analysis</span>' +
                             '</div>' +
-                            // Status bar
-                            '<div class="ai-panel-status">' +
-                            '<span style="font-size:0.8rem;color:var(--text-muted);">AI Direction: <strong style="color:' + aiDirColor + ';">' + aiDirDisplay + '</strong></span>' +
-                            '<span style="font-size:0.75rem;color:var(--text-muted);margin-left:auto;">Factors: <strong>' + (aiVal.factors_checked || 11) + '</strong> | Groups: <strong>' + (aiVal.groups_checked || 10) + '</strong></span>' +
+                            // 2. Status badges - 3-column bar
+                            '<div class="ai-badges-bar">' +
+                            '<div class="ai-badge-cell"><div class="badge-val" style="color:' + statusColor + ';">' + (aiConsistent ? '✅' : '⚠️') + ' ' + statusText + '</div><div class="badge-lbl">Validation</div></div>' +
+                            '<div class="ai-badge-cell"><div class="badge-val" style="color:var(--text-primary);">' + aiConf + '</div><div class="badge-lbl">Confidence</div></div>' +
+                            '<div class="ai-badge-cell"><div class="badge-val" style="color:#a78bfa;">' + (tradeQuality || 'N/A') + '</div><div class="badge-lbl">Grade</div></div>' +
                             '</div>' +
-                            // Analysis text
+                            // 3. Analysis text with Read More
                             '<div class="ai-panel-analysis">' +
-                            '<span id="ai-text-short">' + displayText + (truncated ? ' <span class="ai-read-more" onclick="document.getElementById(\'ai-text-short\').style.display=\'none\';document.getElementById(\'ai-text-full\').style.display=\'inline\';">▸ Read More</span>' : '') + '</span>' +
+                            '<span id="ai-text-short">' + displayText + (truncated ? ' <span class="ai-read-more" onclick="document.getElementById(\'ai-text-short\').style.display=\'none\';document.getElementById(\'ai-text-full\').style.display=\'inline\';">▾ Read More</span>' : '') + '</span>' +
                             '<span id="ai-text-full" style="display:none;">' + aiAnalysisText + ' <span class="ai-read-more" onclick="document.getElementById(\'ai-text-full\').style.display=\'none\';document.getElementById(\'ai-text-short\').style.display=\'inline\';">▴ Less</span></span>' +
                             '</div>' +
-                            // Split Panel: Bull vs Bear
+                            // 4. Split Panel: BULLISH ▲ vs BEARISH ▼
                             '<div class="ai-split">' +
                             '<div class="ai-split-col bull-col">' +
-                            '<div class="split-header">▲ Bullish</div>' +
+                            '<div class="split-header">▲ BULLISH</div>' +
                             (factorAnalysis.strongest_bullish ? '<div class="split-strongest">' + factorAnalysis.strongest_bullish + '</div>' : '<div class="split-strongest" style="opacity:0.5;">No strong bullish factor</div>') +
-                            (keyDrivers.length > 0 ? '<div style="font-size:0.7rem;font-weight:600;color:#34d399;margin-bottom:0.3rem;">Key Drivers</div><div class="split-list">' + keyDrivers.map(d => '<div class="split-list-item">• ' + d + '</div>').join('') + '</div>' : '') +
+                            (keyDrivers.length > 0 ? '<div style="font-size:0.7rem;font-weight:600;color:#34d399;margin-bottom:0.3rem;">Key Drivers:</div><div class="split-list">' + keyDrivers.map(d => '<div class="split-list-item">• ' + d + '</div>').join('') + '</div>' : '') +
                             '</div>' +
                             '<div class="ai-split-col bear-col">' +
-                            '<div class="split-header">▼ Bearish</div>' +
+                            '<div class="split-header">▼ BEARISH</div>' +
                             (factorAnalysis.strongest_bearish ? '<div class="split-strongest">' + factorAnalysis.strongest_bearish + '</div>' : '<div class="split-strongest" style="opacity:0.5;">No strong bearish factor</div>') +
-                            (riskFactors.length > 0 ? '<div style="font-size:0.7rem;font-weight:600;color:#ef4444;margin-bottom:0.3rem;">Risk Factors</div><div class="split-list">' + riskFactors.map(r => '<div class="split-list-item">• ' + r + '</div>').join('') + '</div>' : '') +
+                            (riskFactors.length > 0 ? '<div style="font-size:0.7rem;font-weight:600;color:#ef4444;margin-bottom:0.3rem;">Risk Factors:</div><div class="split-list">' + riskFactors.map(r => '<div class="split-list-item">• ' + r + '</div>').join('') + '</div>' : '') +
                             '</div>' +
+                            '</div>' +
+                            // 5. Bottom bar: AI says + Factors + Groups
+                            '<div class="ai-panel-footer">' +
+                            '<span style="color:var(--text-muted);">AI says: <strong style="color:' + aiDirColor + ';">' + aiDirDisplay + '</strong></span>' +
+                            '<span style="color:var(--text-muted);margin-left:auto;">Factors: <strong>' + (aiVal.factors_checked || 11) + '</strong> | Groups: <strong>' + (aiVal.groups_checked || 10) + '</strong></span>' +
                             '</div>' +
                             // Flags (if any)
                             flagsHtml +
