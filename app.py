@@ -9940,7 +9940,7 @@ def run_system_audit():
     """Run comprehensive system audit with complete scoring methodology"""
     audit = {
         'timestamp': datetime.now().isoformat(),
-        'version': '9.3.0 PRO',
+        'version': '9.4.0 PRO',
         'api_status': {},
         'data_quality': {},
         'score_validation': {},
@@ -10805,7 +10805,7 @@ def run_ai_system_health_check(use_ai=True):
     """
     health = {
         'timestamp': datetime.now().isoformat(),
-        'version': '9.3.0',
+        'version': '9.4.0',
         'overall_status': 'HEALTHY',  # HEALTHY, WARNING, CRITICAL
         'overall_score': 100,
         'checks': {},
@@ -10815,7 +10815,7 @@ def run_ai_system_health_check(use_ai=True):
         'ai_analysis': None,
         # v9.3.0: Enhancement tracking
         'enhancements': {
-            'version': '9.3.0',
+            'version': '9.4.0',
             'technical': ['Stochastic Oscillator', 'CCI (Commodity Channel Index)', 'RSI Divergence Detection'],
             'fundamental': ['GDP Growth Differential', 'Inflation Analysis', 'Current Account Balance'],
             'intermarket': ['VIX Fear Index', 'S&P 500 Correlation', 'Yield Spreads (US-EU, US-JP)'],
@@ -11421,7 +11421,7 @@ def run_startup_health_check():
 def api_info():
     return jsonify({
         'name': 'MEGA FOREX v9.4.0 PRO - AI Enhanced',
-        'version': '9.3.0',
+        'version': '9.4.0',
         'status': 'operational',
         'pairs': len(ALL_INSTRUMENTS),
         'factor_groups': len(FACTOR_GROUP_WEIGHTS),
