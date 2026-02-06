@@ -2911,7 +2911,7 @@
                     <div class="range-ladder">
                         <div class="range-ladder-header">
                             <span class="rl-title">Trade Range</span>
-                            ${ts.trade_quality ? `<span class="rl-grade ${gradeClass}">Grade ${ts.trade_quality}</span>` : ''}
+                            ${isDirectional && ts.trade_quality ? `<span class="rl-grade ${gradeClass}">Grade ${ts.trade_quality}</span>` : ''}
                         </div>
                         ${ladderHTML}
                     </div>
@@ -3359,7 +3359,7 @@
                         <div class="analyzer-range-ladder">
                             <div class="range-ladder-header">
                                 <span class="rl-title">Trade Range</span>
-                                ${ts.trade_quality ? `<span class="rl-grade ${gradeClass}">Grade ${ts.trade_quality}</span>` : ''}
+                                ${isDirectional && ts.trade_quality ? `<span class="rl-grade ${gradeClass}">Grade ${ts.trade_quality}</span>` : ''}
                             </div>
                             ${analyzerLadderHTML}
                         </div>
