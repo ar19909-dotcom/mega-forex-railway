@@ -396,6 +396,79 @@
         .rl-grade.grade-b { background: rgba(255,170,0,0.25); color: #ffaa00; }
         .rl-grade.grade-c { background: rgba(255,102,102,0.25); color: #ff6666; }
 
+        /* ═══ Grade Ribbon Banner ═══ */
+        .grade-ribbon {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.6rem 0.75rem;
+            border-radius: 0.5rem;
+            margin-bottom: 0.6rem;
+        }
+        .grade-ribbon.ribbon-a-plus {
+            background: linear-gradient(135deg, rgba(0,255,136,0.12), rgba(0,255,136,0.04));
+            border: 1px solid rgba(0,255,136,0.3);
+        }
+        .grade-ribbon.ribbon-a {
+            background: linear-gradient(135deg, rgba(0,204,102,0.12), rgba(0,204,102,0.04));
+            border: 1px solid rgba(0,204,102,0.3);
+        }
+        .grade-ribbon.ribbon-b {
+            background: linear-gradient(135deg, rgba(255,170,0,0.12), rgba(255,170,0,0.04));
+            border: 1px solid rgba(255,170,0,0.3);
+        }
+        .grade-ribbon.ribbon-c {
+            background: linear-gradient(135deg, rgba(255,102,102,0.12), rgba(255,102,102,0.04));
+            border: 1px solid rgba(255,102,102,0.3);
+        }
+        .grade-shield {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 48px;
+            height: 48px;
+            border-radius: 0.4rem;
+            flex-shrink: 0;
+        }
+        .grade-shield.shield-a-plus { background: rgba(0,255,136,0.2); }
+        .grade-shield.shield-a { background: rgba(0,204,102,0.2); }
+        .grade-shield.shield-b { background: rgba(255,170,0,0.2); }
+        .grade-shield.shield-c { background: rgba(255,102,102,0.2); }
+        .grade-shield .shield-letter {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.3rem;
+            font-weight: 800;
+            line-height: 1;
+        }
+        .grade-shield .shield-label {
+            font-size: 0.45rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            margin-top: 0.1rem;
+        }
+        .grade-ribbon-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .grade-ribbon-info .gr-quality-text {
+            font-size: 0.8rem;
+            font-weight: 700;
+            margin-bottom: 0.3rem;
+        }
+        .grade-ribbon-info .gr-bar-track {
+            height: 6px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .grade-ribbon-info .gr-bar-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.3s ease;
+        }
+
         .ladder-row {
             display: flex;
             align-items: center;
@@ -2788,6 +2861,11 @@
 
             // Grade class
             const gradeClass = ts.trade_quality === 'A+' ? 'grade-a-plus' : ts.trade_quality === 'A' ? 'grade-a' : ts.trade_quality === 'B' ? 'grade-b' : 'grade-c';
+            const ribbonClass = ts.trade_quality === 'A+' ? 'ribbon-a-plus' : ts.trade_quality === 'A' ? 'ribbon-a' : ts.trade_quality === 'B' ? 'ribbon-b' : 'ribbon-c';
+            const shieldClass = ts.trade_quality === 'A+' ? 'shield-a-plus' : ts.trade_quality === 'A' ? 'shield-a' : ts.trade_quality === 'B' ? 'shield-b' : 'shield-c';
+            const gradeColor = ts.trade_quality === 'A+' ? '#00ff88' : ts.trade_quality === 'A' ? '#00cc66' : ts.trade_quality === 'B' ? '#ffaa00' : '#ff6666';
+            const gradePercent = ts.trade_quality === 'A+' ? 95 : ts.trade_quality === 'A' ? 80 : ts.trade_quality === 'B' ? 60 : 40;
+            const gradeLabel = ts.trade_quality === 'A+' ? 'EXCELLENT SETUP' : ts.trade_quality === 'A' ? 'HIGH QUALITY' : ts.trade_quality === 'B' ? 'GOOD SETUP' : 'MODERATE';
 
             // Entry quality
             const eq = ts.entry_quality || 'OK';
@@ -2930,11 +3008,26 @@
                     </div>
                     ` : ''}
 
+                    <!-- GRADE RIBBON -->
+                    ${isDirectional && ts.trade_quality ? `
+                    <div class="grade-ribbon ${ribbonClass}">
+                        <div class="grade-shield ${shieldClass}">
+                            <span class="shield-letter" style="color:${gradeColor};">${ts.trade_quality}</span>
+                            <span class="shield-label">GRADE</span>
+                        </div>
+                        <div class="grade-ribbon-info">
+                            <div class="gr-quality-text" style="color:${gradeColor};">${gradeLabel}</div>
+                            <div class="gr-bar-track">
+                                <div class="gr-bar-fill" style="width:${gradePercent}%;background:${gradeColor};"></div>
+                            </div>
+                        </div>
+                    </div>
+                    ` : ''}
+
                     <!-- RANGE LADDER -->
                     <div class="range-ladder">
                         <div class="range-ladder-header">
                             <span class="rl-title">Trade Range</span>
-                            ${isDirectional && ts.trade_quality ? `<span class="rl-grade ${gradeClass}">Grade ${ts.trade_quality}</span>` : ''}
                         </div>
                         ${ladderHTML}
                     </div>
@@ -3242,6 +3335,11 @@
                     const isShort = signal.direction === 'SHORT';
                     const isDirectional = isLong || isShort;
                     const gradeClass = ts.trade_quality === 'A+' ? 'grade-a-plus' : ts.trade_quality === 'A' ? 'grade-a' : ts.trade_quality === 'B' ? 'grade-b' : 'grade-c';
+                    const ribbonClass = ts.trade_quality === 'A+' ? 'ribbon-a-plus' : ts.trade_quality === 'A' ? 'ribbon-a' : ts.trade_quality === 'B' ? 'ribbon-b' : 'ribbon-c';
+                    const shieldClass = ts.trade_quality === 'A+' ? 'shield-a-plus' : ts.trade_quality === 'A' ? 'shield-a' : ts.trade_quality === 'B' ? 'shield-b' : 'shield-c';
+                    const gradeColor = ts.trade_quality === 'A+' ? '#00ff88' : ts.trade_quality === 'A' ? '#00cc66' : ts.trade_quality === 'B' ? '#ffaa00' : '#ff6666';
+                    const gradePercent = ts.trade_quality === 'A+' ? 95 : ts.trade_quality === 'A' ? 80 : ts.trade_quality === 'B' ? 60 : 40;
+                    const gradeLabel = ts.trade_quality === 'A+' ? 'EXCELLENT SETUP' : ts.trade_quality === 'A' ? 'HIGH QUALITY' : ts.trade_quality === 'B' ? 'GOOD SETUP' : 'MODERATE';
                     const eq = ts.entry_quality || 'OK';
                     const eqClass = eq === 'OPTIMAL' ? 'eq-optimal' : eq === 'GOOD' ? 'eq-good' : eq === 'WAIT' ? 'eq-wait' : 'eq-ok';
                     const eqLabel = eq === 'OPTIMAL' ? '✓ OPTIMAL' : eq === 'GOOD' ? '✓ GOOD' : eq === 'WAIT' ? '⏳ WAIT' : '• OK';
@@ -3378,11 +3476,26 @@
                         </div>
                         ` : ''}
 
+                        <!-- GRADE RIBBON -->
+                        ${isDirectional && ts.trade_quality ? `
+                        <div class="grade-ribbon ${ribbonClass}" style="margin-bottom:1rem;">
+                            <div class="grade-shield ${shieldClass}" style="width:56px;height:56px;">
+                                <span class="shield-letter" style="color:${gradeColor};font-size:1.5rem;">${ts.trade_quality}</span>
+                                <span class="shield-label">GRADE</span>
+                            </div>
+                            <div class="grade-ribbon-info">
+                                <div class="gr-quality-text" style="color:${gradeColor};font-size:0.9rem;">${gradeLabel}</div>
+                                <div class="gr-bar-track" style="height:8px;">
+                                    <div class="gr-bar-fill" style="width:${gradePercent}%;background:${gradeColor};"></div>
+                                </div>
+                            </div>
+                        </div>
+                        ` : ''}
+
                         <!-- RANGE LADDER -->
                         <div class="analyzer-range-ladder">
                             <div class="range-ladder-header">
                                 <span class="rl-title">Trade Range</span>
-                                ${isDirectional && ts.trade_quality ? `<span class="rl-grade ${gradeClass}">Grade ${ts.trade_quality}</span>` : ''}
                             </div>
                             ${analyzerLadderHTML}
                         </div>
