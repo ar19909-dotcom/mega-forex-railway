@@ -5717,10 +5717,11 @@ def get_fxstreet_calendar():
     return None
 
 def get_forexfactory_calendar():
-    """Fetch calendar from Forex Factory with retry logic and multiple URLs"""
-    # Try multiple URLs in case one is blocked or rate-limited
+    """Fetch calendar from Forex Factory — this week + next week for 2-week coverage"""
+    # Fetch both this week and next week for broader coverage
     urls = [
-        "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
+        "https://nfs.faireconomy.media/ff_calendar_thisweek.json",
+        "https://nfs.faireconomy.media/ff_calendar_nextweek.json"
     ]
 
     headers = {
@@ -5730,6 +5731,8 @@ def get_forexfactory_calendar():
         'Cache-Control': 'no-cache'
     }
 
+    all_events = []
+
     for url in urls:
         for attempt in range(3):  # Retry up to 3 times per URL
             try:
@@ -5738,7 +5741,6 @@ def get_forexfactory_calendar():
 
                 if resp.status_code == 200:
                     data = resp.json()
-                    events = []
 
                     for item in data:
                         # Map impact to our format
@@ -5762,7 +5764,7 @@ def get_forexfactory_calendar():
                         except Exception:
                             event_datetime = datetime.now()
 
-                        events.append({
+                        all_events.append({
                             'country': item.get('country', 'US'),
                             'event': item.get('title', ''),
                             'impact': impact,
@@ -5772,13 +5774,8 @@ def get_forexfactory_calendar():
                             'time': event_datetime.isoformat()
                         })
 
-                    if len(events) > 0:
-                        logger.info(f"✅ Forex Factory: Got {len(events)} events with forecast/previous data")
-                        return {
-                            'events': events[:80],
-                            'data_quality': 'REAL',
-                            'source': 'FOREX_FACTORY'
-                        }
+                    logger.info(f"✅ Forex Factory: Got {len(data)} events from {url.split('/')[-1]}")
+                    break  # Success for this URL, move to next URL
 
                 elif resp.status_code == 429:  # Rate limited
                     logger.warning(f"⚠️ Forex Factory rate limited, waiting...")
@@ -5786,22 +5783,40 @@ def get_forexfactory_calendar():
                     time.sleep(2)
                 else:
                     logger.warning(f"⚠️ Forex Factory returned {resp.status_code}")
+                    break  # Don't retry on non-429 errors
 
             except Exception as e:
                 logger.warning(f"⚠️ Forex Factory attempt {attempt+1} failed: {e}")
                 import time
                 time.sleep(1)  # Brief wait before retry
 
+    if len(all_events) > 0:
+        # Deduplicate by event+country+time
+        seen = set()
+        unique = []
+        for e in all_events:
+            key = (e['event'], e['country'], e['time'][:16])
+            if key not in seen:
+                seen.add(key)
+                unique.append(e)
+        unique.sort(key=lambda x: x['time'])
+        logger.info(f"✅ Forex Factory total: {len(unique)} unique events (this week + next week)")
+        return {
+            'events': unique[:200],
+            'data_quality': 'REAL',
+            'source': 'FOREX_FACTORY'
+        }
+
     logger.warning("❌ All Forex Factory attempts failed")
     return None
 
 def get_myfxbook_calendar():
-    """Fetch calendar from MyFxBook (free, reliable)"""
+    """Fetch calendar from MyFxBook (free, reliable) — 30 days ahead"""
     try:
-        # MyFxBook community calendar
+        # MyFxBook community calendar — extended to 30 days
         today = datetime.now()
         from_date = today.strftime('%Y-%m-%d')
-        to_date = (today + timedelta(days=7)).strftime('%Y-%m-%d')
+        to_date = (today + timedelta(days=30)).strftime('%Y-%m-%d')
 
         url = f"https://www.myfxbook.com/api/get-economic-calendar.json"
         params = {
@@ -5840,7 +5855,7 @@ def get_myfxbook_calendar():
 
             if len(events) > 0:
                 return {
-                    'events': events[:80],
+                    'events': events[:300],
                     'data_quality': 'REAL',
                     'source': 'MYFXBOOK'
                 }
@@ -5889,7 +5904,7 @@ def get_tradingeconomics_calendar():
 
                 if len(events) > 0:
                     return {
-                        'events': events[:80],
+                        'events': events[:300],
                         'data_quality': 'REAL',
                         'source': 'TRADING_ECONOMICS'
                     }
@@ -6037,16 +6052,16 @@ def generate_weekly_calendar():
     # Get start of current week for weekly events
     start_of_week = today - timedelta(days=today.weekday())
 
-    # Add weekly events for current and next 2 weeks
-    for week_offset in [0, 1, 2]:
+    # Add weekly events for current and next 4 weeks (30 days coverage)
+    for week_offset in range(5):
         week_start = start_of_week + timedelta(weeks=week_offset)
 
         for event in weekly_schedule:
             event_date = week_start + timedelta(days=event['day'])
             event_time = event_date.replace(hour=event['hour'], minute=0, second=0, microsecond=0)
 
-            # Include events from yesterday to +14 days
-            if event_time >= today - timedelta(days=1) and event_time <= today + timedelta(days=14):
+            # Include events from yesterday to +30 days
+            if event_time >= today - timedelta(days=1) and event_time <= today + timedelta(days=30):
                 events.append({
                     'country': event['country'],
                     'event': event['event'],
@@ -6057,14 +6072,23 @@ def generate_weekly_calendar():
                     'time': event_time.isoformat()
                 })
 
-    # Add mid-month events
-    first_of_month = today.replace(day=1)
-    for event in mid_month_events:
-        event_date = first_of_month + timedelta(days=event['day_offset'])
-        event_time = event_date.replace(hour=event['hour'], minute=0, second=0, microsecond=0)
+    # Add mid-month events for current and next month
+    for month_offset in [0, 1]:
+        if month_offset == 0:
+            first_of_month = today.replace(day=1)
+        else:
+            # First day of next month
+            if today.month == 12:
+                first_of_month = today.replace(year=today.year + 1, month=1, day=1)
+            else:
+                first_of_month = today.replace(month=today.month + 1, day=1)
 
-        # Only include if within the next 14 days
-        if event_time >= today - timedelta(days=1) and event_time <= today + timedelta(days=14):
+        for event in mid_month_events:
+            event_date = first_of_month + timedelta(days=event['day_offset'])
+            event_time = event_date.replace(hour=event['hour'], minute=0, second=0, microsecond=0)
+
+            # Include if within the next 30 days
+            if event_time >= today - timedelta(days=1) and event_time <= today + timedelta(days=30):
             events.append({
                 'country': event['country'],
                 'event': event['event'],
@@ -6227,7 +6251,7 @@ def get_economic_calendar():
         try:
             today = datetime.now()
             from_date = today.strftime('%Y-%m-%d')
-            to_date = (today + timedelta(days=7)).strftime('%Y-%m-%d')
+            to_date = (today + timedelta(days=30)).strftime('%Y-%m-%d')
 
             url = "https://finnhub.io/api/v1/calendar/economic"
             params = {
@@ -6235,11 +6259,11 @@ def get_economic_calendar():
                 'to': to_date,
                 'token': FINNHUB_API_KEY
             }
-            resp = req_lib.get(url, params=params, timeout=10)
+            resp = req_lib.get(url, params=params, timeout=15)
 
             if resp.status_code == 200:
                 data = resp.json()
-                events = data.get('economicCalendar', [])[:50]
+                events = data.get('economicCalendar', [])[:300]
 
                 if events and len(events) > 0:
                     result = {
