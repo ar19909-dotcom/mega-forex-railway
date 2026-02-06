@@ -226,206 +226,332 @@
         /* Signal Cards */
         .signals-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(370px, 1fr));
             gap: 1rem;
         }
-        
+
+        /* ═══ v9.4.0 Range Ladder Card ═══ */
         .signal-card {
             background: var(--bg-card);
             border-radius: 0.75rem;
             border: 1px solid var(--border-color);
-            padding: 1.25rem;
+            padding: 1rem 1.1rem;
             transition: all 0.2s;
             position: relative;
             overflow: hidden;
         }
-        
-        /* BULLISH CARD - Green left border and subtle green glow */
         .signal-card.bullish-card {
             border-left: 4px solid var(--accent-green);
             box-shadow: inset 4px 0 20px rgba(16, 185, 129, 0.1);
         }
-        
         .signal-card.bullish-card:hover {
             border-color: var(--accent-green);
             box-shadow: 0 4px 20px rgba(16, 185, 129, 0.2), inset 4px 0 20px rgba(16, 185, 129, 0.15);
         }
-        
-        /* BEARISH CARD - Red left border and subtle red glow */
         .signal-card.bearish-card {
             border-left: 4px solid var(--accent-red);
             box-shadow: inset 4px 0 20px rgba(239, 68, 68, 0.1);
         }
-        
         .signal-card.bearish-card:hover {
             border-color: var(--accent-red);
             box-shadow: 0 4px 20px rgba(239, 68, 68, 0.2), inset 4px 0 20px rgba(239, 68, 68, 0.15);
         }
-        
-        /* NEUTRAL CARD - Default styling */
         .signal-card.neutral-card {
             border-left: 4px solid var(--text-muted);
         }
-        
         .signal-card:hover {
             transform: translateY(-2px);
         }
-        
+
+        /* Card Header */
         .card-header {
             display: flex;
             justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 1rem;
+            align-items: center;
+            margin-bottom: 0.6rem;
         }
-        
         .pair-info {
             display: flex;
             align-items: center;
-            gap: 0.75rem;
+            gap: 0.5rem;
         }
-        
         .pair-name {
             font-family: 'JetBrains Mono', monospace;
-            font-size: 1.25rem;
-            font-weight: 600;
+            font-size: 1.15rem;
+            font-weight: 700;
         }
-        
         .category-badge {
-            font-size: 0.625rem;
-            padding: 0.25rem 0.5rem;
-            border-radius: 0.25rem;
+            font-size: 0.55rem;
+            padding: 0.2rem 0.45rem;
+            border-radius: 0.2rem;
             font-weight: 600;
             text-transform: uppercase;
         }
-        
         .category-badge.major { background: var(--accent-blue); }
         .category-badge.cross { background: var(--accent-purple); }
         .category-badge.exotic { background: var(--accent-yellow); color: #000; }
         .category-badge.commodity { background: #f59e0b; color: #000; font-weight: 700; }
-        
-        .composite-score {
-            text-align: right;
+        .direction-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.3rem 0.7rem;
+            border-radius: 0.35rem;
+            font-weight: 700;
+            font-size: 0.8rem;
         }
-        
-        .score-value {
+        .direction-badge.long { background: var(--gradient-bull); color: white; }
+        .direction-badge.short { background: var(--gradient-bear); color: white; }
+        .direction-badge.neutral { background: var(--bg-hover); color: var(--text-secondary); }
+
+        /* Score + Stars row */
+        .card-score-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.6rem;
+        }
+        .card-score-left {
+            display: flex;
+            align-items: baseline;
+            gap: 0.5rem;
+        }
+        .card-score-left .stars {
+            color: var(--accent-yellow);
+            font-size: 0.8rem;
+        }
+        .card-score-left .score-num {
             font-family: 'JetBrains Mono', monospace;
-            font-size: 2rem;
+            font-size: 1.4rem;
             font-weight: 700;
         }
-        
-        .score-value.bullish { color: var(--accent-green); }
-        .score-value.bearish { color: var(--accent-red); }
-        .score-value.neutral { color: var(--text-secondary); }
-        
-        .stars {
-            color: var(--accent-yellow);
-            font-size: 0.875rem;
-        }
-        
-        .direction-badge {
-            display: inline-block;
-            padding: 0.375rem 1rem;
-            border-radius: 0.375rem;
-            font-weight: 600;
-            font-size: 0.875rem;
-            margin-bottom: 1rem;
-        }
-        
-        .direction-badge.long {
-            background: var(--gradient-bull);
-            color: white;
-        }
-        
-        .direction-badge.short {
-            background: var(--gradient-bear);
-            color: white;
-        }
-        
-        .direction-badge.neutral {
-            background: var(--bg-hover);
-            color: var(--text-secondary);
-        }
-        
-        /* Statistics Row */
-        .stats-row {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
+        .card-score-left .score-num.bullish { color: var(--accent-green); }
+        .card-score-left .score-num.bearish { color: var(--accent-red); }
+        .card-score-left .score-num.neutral { color: var(--text-secondary); }
+        .factor-summary {
+            display: flex;
             gap: 0.5rem;
-            margin-bottom: 1rem;
-            padding: 0.75rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .factor-summary .bull-count { color: var(--accent-green); }
+        .factor-summary .bear-count { color: var(--accent-red); }
+        .factor-summary .neut-count { color: var(--text-muted); }
+
+        /* Trading Time Banner */
+        .trading-time-banner {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.45rem 0.7rem;
+            border-radius: 0.4rem;
+            margin-bottom: 0.7rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .trading-time-banner.time-good {
+            background: rgba(16, 185, 129, 0.15);
+            border: 1px solid rgba(16, 185, 129, 0.4);
+            color: #10b981;
+        }
+        .trading-time-banner.time-moderate {
+            background: rgba(245, 158, 11, 0.15);
+            border: 1px solid rgba(245, 158, 11, 0.4);
+            color: #f59e0b;
+        }
+        .trading-time-banner.time-bad {
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            color: #ef4444;
+        }
+        .trading-time-banner .tt-label { flex: 1; }
+        .trading-time-banner .tt-session {
+            font-size: 0.65rem;
+            opacity: 0.8;
+            font-weight: 400;
+        }
+
+        /* ═══ Range Ladder ═══ */
+        .range-ladder {
             background: var(--bg-secondary);
             border-radius: 0.5rem;
+            padding: 0.7rem;
+            margin-bottom: 0.6rem;
         }
-        
-        .stat-box {
-            text-align: center;
-        }
-        
-        .stat-box .value {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 1rem;
-            font-weight: 600;
-        }
-        
-        .stat-box .label {
-            font-size: 0.625rem;
-            color: var(--text-muted);
-            text-transform: uppercase;
-        }
-        
-        /* Factor Grid — v9.0: 7 groups */
-        .factor-grid {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 0.25rem;
-            margin-bottom: 0.75rem;
-        }
-
-        .factor-item {
-            text-align: center;
-            padding: 0.3rem 0.15rem;
-            border-radius: 0.25rem;
-            font-size: 0.575rem;
-            font-weight: 600;
-        }
-
-        .factor-item.bullish { background: rgba(16, 185, 129, 0.2); color: var(--accent-green); }
-        .factor-item.bearish { background: rgba(239, 68, 68, 0.2); color: var(--accent-red); }
-        .factor-item.neutral { background: var(--bg-hover); color: var(--text-secondary); }
-
-        /* v9.0 Quality Gates */
-        .gates-row {
-            display: flex;
-            gap: 0.25rem;
-            margin-bottom: 0.75rem;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-        .gate-badge {
-            font-size: 0.55rem;
-            font-weight: 600;
-            padding: 0.15rem 0.35rem;
-            border-radius: 0.2rem;
-        }
-        .gate-badge.pass { background: rgba(16, 185, 129, 0.2); color: var(--accent-green); }
-        .gate-badge.fail { background: rgba(239, 68, 68, 0.2); color: var(--accent-red); }
-
-        /* v9.0 Conviction + Regime row */
-        .v9-meta-row {
+        .range-ladder-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 0.5rem;
-            padding: 0.4rem 0.6rem;
-            background: rgba(139, 92, 246, 0.1);
-            border-radius: 0.35rem;
-            border: 1px solid rgba(139, 92, 246, 0.2);
+        }
+        .range-ladder-header .rl-title {
             font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .range-ladder-header .rl-grade {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 0.15rem 0.5rem;
+            border-radius: 0.25rem;
+        }
+        .rl-grade.grade-a-plus { background: rgba(0,255,136,0.25); color: #00ff88; }
+        .rl-grade.grade-a { background: rgba(0,204,102,0.25); color: #00cc66; }
+        .rl-grade.grade-b { background: rgba(255,170,0,0.25); color: #ffaa00; }
+        .rl-grade.grade-c { background: rgba(255,102,102,0.25); color: #ff6666; }
+
+        .ladder-row {
+            display: flex;
+            align-items: center;
+            padding: 0.3rem 0;
+            gap: 0.5rem;
+        }
+        .ladder-row .lr-icon {
+            width: 24px;
+            text-align: center;
+            font-size: 0.8rem;
+            flex-shrink: 0;
+        }
+        .ladder-row .lr-label {
+            font-size: 0.65rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            width: 40px;
+            flex-shrink: 0;
+            color: var(--text-muted);
+        }
+        .ladder-row .lr-line {
+            flex: 1;
+            height: 1px;
+            border-top: 1px dashed var(--border-color);
+        }
+        .ladder-row .lr-price {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            font-weight: 600;
+            min-width: 75px;
+            text-align: right;
+        }
+        .ladder-row .lr-pips {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
+            font-weight: 600;
+            min-width: 55px;
+            text-align: right;
+        }
+        .ladder-row.sl-row .lr-price { color: var(--accent-red); }
+        .ladder-row.sl-row .lr-pips { color: var(--accent-red); }
+        .ladder-row.tp-row .lr-price { color: var(--accent-green); }
+        .ladder-row.tp-row .lr-pips { color: var(--accent-green); }
+
+        /* Entry Zone band */
+        .entry-zone {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 0.35rem;
+            padding: 0.35rem 0.5rem;
+            margin: 0.25rem 0;
+        }
+        .entry-zone-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.15rem;
+        }
+        .entry-zone-header .ez-label {
+            font-size: 0.65rem;
+            font-weight: 600;
+            color: var(--accent-blue);
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+        .entry-quality-badge {
+            font-size: 0.55rem;
+            padding: 0.1rem 0.4rem;
+            border-radius: 0.2rem;
+            font-weight: 700;
+        }
+        .eq-optimal { background: rgba(0,255,136,0.3); color: #00ff88; }
+        .eq-good { background: rgba(34,197,94,0.3); color: #22c55e; }
+        .eq-wait { background: rgba(245,158,11,0.3); color: #f59e0b; }
+        .eq-ok { background: rgba(156,163,175,0.3); color: #9ca3af; }
+        .entry-zone-prices {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .entry-zone-prices .ez-price {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--accent-blue);
+        }
+        .entry-zone-prices .ez-to {
+            font-size: 0.55rem;
+            color: var(--text-muted);
+            padding: 0 0.3rem;
+        }
+
+        /* Footer Row */
+        .card-footer-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.4rem 0.5rem;
+            background: var(--bg-secondary);
+            border-radius: 0.4rem;
+            margin-bottom: 0.5rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+        }
+        .card-footer-row .cfr-item {
+            text-align: center;
+        }
+        .card-footer-row .cfr-val {
+            font-weight: 700;
+        }
+        .card-footer-row .cfr-lbl {
+            font-size: 0.55rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        /* Factor Dots Row */
+        .factor-dots-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.25rem;
+            align-items: center;
+            justify-content: center;
+        }
+        .factor-dot {
+            font-size: 0.6rem;
+            font-weight: 700;
+            padding: 0.15rem 0.35rem;
+            border-radius: 0.2rem;
+            text-align: center;
+        }
+        .factor-dot.bullish { background: rgba(16, 185, 129, 0.2); color: var(--accent-green); }
+        .factor-dot.bearish { background: rgba(239, 68, 68, 0.2); color: var(--accent-red); }
+        .factor-dot.neutral { background: var(--bg-hover); color: var(--text-secondary); }
+        .card-bottom-meta {
+            display: flex;
+            justify-content: center;
+            gap: 0.75rem;
+            margin-top: 0.3rem;
+            font-size: 0.6rem;
+            color: var(--text-muted);
         }
         .regime-badge {
             padding: 0.15rem 0.4rem;
             border-radius: 0.2rem;
-            font-size: 0.6rem;
+            font-size: 0.55rem;
             font-weight: 600;
             text-transform: uppercase;
         }
@@ -433,41 +559,34 @@
         .regime-badge.ranging { background: rgba(251, 191, 36, 0.25); color: #fbbf24; }
         .regime-badge.volatile { background: rgba(239, 68, 68, 0.25); color: #f87171; }
         .regime-badge.quiet { background: rgba(156, 163, 175, 0.25); color: #9ca3af; }
-        
-        /* Trade Setup */
-        .trade-setup {
-            background: var(--bg-secondary);
-            padding: 0.75rem;
-            border-radius: 0.5rem;
-        }
-        
-        .setup-title {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            margin-bottom: 0.5rem;
-        }
-        
-        .setup-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 0.5rem;
-        }
-        
-        .setup-item {
-            text-align: center;
-        }
-        
-        .setup-item .label {
-            font-size: 0.625rem;
-            color: var(--text-muted);
-        }
-        
-        .setup-item .value {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.875rem;
-            font-weight: 500;
-        }
-        
+
+        /* Legacy classes kept for detail/analyzer view */
+        .composite-score { text-align: right; }
+        .score-value { font-family: 'JetBrains Mono', monospace; font-size: 2rem; font-weight: 700; }
+        .score-value.bullish { color: var(--accent-green); }
+        .score-value.bearish { color: var(--accent-red); }
+        .score-value.neutral { color: var(--text-secondary); }
+        .stars { color: var(--accent-yellow); font-size: 0.875rem; }
+        .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; margin-bottom: 1rem; padding: 0.75rem; background: var(--bg-secondary); border-radius: 0.5rem; }
+        .stat-box { text-align: center; }
+        .stat-box .value { font-family: 'JetBrains Mono', monospace; font-size: 1rem; font-weight: 600; }
+        .stat-box .label { font-size: 0.625rem; color: var(--text-muted); text-transform: uppercase; }
+        .factor-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.25rem; margin-bottom: 0.75rem; }
+        .factor-item { text-align: center; padding: 0.3rem 0.15rem; border-radius: 0.25rem; font-size: 0.575rem; font-weight: 600; }
+        .factor-item.bullish { background: rgba(16, 185, 129, 0.2); color: var(--accent-green); }
+        .factor-item.bearish { background: rgba(239, 68, 68, 0.2); color: var(--accent-red); }
+        .factor-item.neutral { background: var(--bg-hover); color: var(--text-secondary); }
+        .gates-row { display: flex; gap: 0.25rem; margin-bottom: 0.75rem; justify-content: center; flex-wrap: wrap; }
+        .gate-badge { font-size: 0.55rem; font-weight: 600; padding: 0.15rem 0.35rem; border-radius: 0.2rem; }
+        .gate-badge.pass { background: rgba(16, 185, 129, 0.2); color: var(--accent-green); }
+        .gate-badge.fail { background: rgba(239, 68, 68, 0.2); color: var(--accent-red); }
+        .v9-meta-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; padding: 0.4rem 0.6rem; background: rgba(139, 92, 246, 0.1); border-radius: 0.35rem; border: 1px solid rgba(139, 92, 246, 0.2); font-size: 0.7rem; }
+        .trade-setup { background: var(--bg-secondary); padding: 0.75rem; border-radius: 0.5rem; }
+        .setup-title { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem; }
+        .setup-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; }
+        .setup-item { text-align: center; }
+        .setup-item .label { font-size: 0.625rem; color: var(--text-muted); }
+        .setup-item .value { font-family: 'JetBrains Mono', monospace; font-size: 0.875rem; font-weight: 500; }
         .setup-item.entry .value { color: var(--accent-blue); }
         .setup-item.sl .value { color: var(--accent-red); }
         .setup-item.tp .value { color: var(--accent-green); }
@@ -854,55 +973,31 @@
                 grid-template-columns: 1fr;
                 gap: 0.75rem;
             }
-            
+
             .signal-card {
-                padding: 1rem;
+                padding: 0.85rem;
                 touch-action: manipulation;
             }
-            
-            .signal-header {
-                flex-wrap: wrap;
-                gap: 0.5rem;
-            }
-            
-            .pair-name {
-                font-size: 1.1rem;
-            }
-            
-            .direction-badge {
-                padding: 0.3rem 0.6rem;
-                font-size: 0.7rem;
-            }
-            
-            .score-circle {
-                width: 50px;
-                height: 50px;
-                font-size: 1rem;
-            }
-            
-            .signal-details {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 0.5rem;
-            }
-            
-            .detail-item {
-                padding: 0.5rem;
-            }
-            
-            .detail-value {
-                font-size: 0.85rem;
-            }
-            
-            .detail-label {
-                font-size: 0.65rem;
-            }
-            
+
+            .pair-name { font-size: 1rem; }
+            .direction-badge { padding: 0.25rem 0.5rem; font-size: 0.7rem; }
+            .card-score-left .score-num { font-size: 1.1rem; }
+            .card-score-left .stars { font-size: 0.7rem; }
+            .factor-summary { font-size: 0.65rem; }
+            .trading-time-banner { font-size: 0.7rem; padding: 0.4rem 0.5rem; }
+            .range-ladder { padding: 0.5rem; }
+            .ladder-row .lr-price { font-size: 0.8rem; min-width: 65px; }
+            .ladder-row .lr-pips { font-size: 0.6rem; min-width: 45px; }
+            .entry-zone-prices .ez-price { font-size: 0.8rem; }
+            .card-footer-row { font-size: 0.65rem; padding: 0.35rem 0.4rem; }
+            .factor-dot { font-size: 0.55rem; padding: 0.1rem 0.25rem; }
+
             /* Factors Grid - 3 columns on mobile */
             .factors-grid {
                 grid-template-columns: repeat(3, 1fr);
                 gap: 0.25rem;
             }
-            
+
             .factor-item {
                 padding: 0.4rem;
                 font-size: 0.65rem;
@@ -2354,154 +2449,216 @@
 
         // Create Signal Card
         function createSignalCard(signal) {
-            const pd = priceDecimals(signal.pair);  // v9.3.0: Dynamic decimals
-            const winRate = (signal.statistics?.win_rate || 50);
-            const scoreClass = winRate >= 60 ? 'bullish' : winRate <= 45 ? 'bearish' : 'neutral';
+            const pd = priceDecimals(signal.pair);
             const dirClass = signal.direction.toLowerCase();
             const cardClass = signal.direction === 'LONG' ? 'bullish-card' : signal.direction === 'SHORT' ? 'bearish-card' : 'neutral-card';
+            const scoreClass = signal.composite_score >= 60 ? 'bullish' : signal.composite_score <= 40 ? 'bearish' : 'neutral';
             const stars = '★'.repeat(signal.stars) + '☆'.repeat(5 - signal.stars);
-            
-            // Data quality indicator
+
+            // Data quality
             const dataQuality = signal.data_quality || signal.rate?.source || 'ESTIMATED';
             const isRealData = ['POLYGON', 'HIGH', 'MEDIUM', 'REAL'].includes(dataQuality);
-            const qualityBadge = isRealData 
-                ? '<span style="background: rgba(0,255,136,0.2); color: #00ff88; padding: 2px 6px; border-radius: 4px; font-size: 0.6rem; margin-left: 4px;">✓ LIVE</span>'
-                : '<span style="background: rgba(255,170,0,0.2); color: #ffaa00; padding: 2px 6px; border-radius: 4px; font-size: 0.6rem; margin-left: 4px;">~ EST</span>';
-            
-            const factorGrid = Object.entries(signal.factor_grid || {}).map(([key, value]) => 
-                `<div class="factor-item ${value}">${key}</div>`
-            ).join('');
-            
-            const stats = signal.statistics || {};
-            
+            const qualityBadge = isRealData
+                ? '<span style="background:rgba(0,255,136,0.2);color:#00ff88;padding:2px 5px;border-radius:3px;font-size:0.5rem;">✓ LIVE</span>'
+                : '<span style="background:rgba(255,170,0,0.2);color:#ffaa00;padding:2px 5px;border-radius:3px;font-size:0.5rem;">~ EST</span>';
+
+            // Factor counts
+            const factorEntries = Object.entries(signal.factor_grid || {});
+            const bullCount = factorEntries.filter(([,v]) => v === 'bullish').length;
+            const bearCount = factorEntries.filter(([,v]) => v === 'bearish').length;
+            const neutCount = factorEntries.filter(([,v]) => v === 'neutral').length;
+
+            // Trading time
+            const tt = signal.trading_time || {};
+            const ttClass = tt.color === 'GREEN' ? 'time-good' : tt.color === 'YELLOW' ? 'time-moderate' : 'time-bad';
+            const ttIcon = tt.color === 'GREEN' ? '✅' : tt.color === 'YELLOW' ? '⚠️' : tt.label === 'CLOSED' ? '⛔' : '❌';
+            const ttText = tt.color === 'GREEN' ? 'Good Time to Trade'
+                         : tt.color === 'YELLOW' ? 'Moderate Time to Trade'
+                         : tt.label === 'CLOSED' ? 'Market Closed'
+                         : 'Not Good Time to Trade';
+            const ttSession = tt.session || tt.reason || '';
+
+            // Trade setup
+            const ts = signal.trade_setup || {};
+            const isLong = signal.direction === 'LONG';
+            const isShort = signal.direction === 'SHORT';
+            const isDirectional = isLong || isShort;
+
+            // Grade class
+            const gradeClass = ts.trade_quality === 'A+' ? 'grade-a-plus' : ts.trade_quality === 'A' ? 'grade-a' : ts.trade_quality === 'B' ? 'grade-b' : 'grade-c';
+
+            // Entry quality
+            const eq = ts.entry_quality || 'OK';
+            const eqClass = eq === 'OPTIMAL' ? 'eq-optimal' : eq === 'GOOD' ? 'eq-good' : eq === 'WAIT' ? 'eq-wait' : 'eq-ok';
+            const eqLabel = eq === 'OPTIMAL' ? '✓ OPTIMAL' : eq === 'GOOD' ? '✓ GOOD' : eq === 'WAIT' ? '⏳ WAIT' : '• OK';
+
+            // Gates summary
+            const gatesPassed = signal.gates ? Object.values(signal.gates.details || {}).filter(g => g.passed).length : 0;
+            const gatesTotal = signal.gates ? Object.keys(signal.gates.details || {}).length : 10;
+
+            // Confidence color
+            const confScore = signal.confidence?.confidence_score || 0;
+            const confColor = confScore >= 70 ? '#00ff88' : confScore >= 50 ? '#ffaa00' : '#ff6666';
+
+            // Build range ladder rows depending on direction
+            // SHORT: SL top → Entry middle → TP1 → TP2 bottom
+            // LONG:  TP2 top → TP1 → Entry middle → SL bottom
+            let ladderHTML = '';
+            if (isDirectional) {
+                if (isShort) {
+                    ladderHTML = `
+                        <div class="ladder-row sl-row">
+                            <span class="lr-icon">🛑</span>
+                            <span class="lr-label">SL</span>
+                            <span class="lr-line"></span>
+                            <span class="lr-price">${ts.sl?.toFixed(pd) || 'N/A'}</span>
+                            <span class="lr-pips">+${ts.sl_pips?.toFixed(0) || 0} pip</span>
+                        </div>
+                        <div class="entry-zone">
+                            <div class="entry-zone-header">
+                                <span class="ez-label">📍 ENTRY ZONE</span>
+                                <span class="entry-quality-badge ${eqClass}">${eqLabel}</span>
+                            </div>
+                            <div class="entry-zone-prices">
+                                ${ts.entry_min && ts.entry_max ? `
+                                    <span class="ez-price">${ts.entry_max.toFixed(pd)}</span>
+                                    <span class="ez-to">▼</span>
+                                    <span class="ez-price">${ts.entry_min.toFixed(pd)}</span>
+                                ` : `<span class="ez-price">${ts.entry?.toFixed(pd) || 'N/A'}</span>`}
+                            </div>
+                        </div>
+                        <div class="ladder-row tp-row">
+                            <span class="lr-icon">🎯</span>
+                            <span class="lr-label">TP1</span>
+                            <span class="lr-line"></span>
+                            <span class="lr-price">${ts.tp1?.toFixed(pd) || 'N/A'}</span>
+                            <span class="lr-pips">-${ts.tp1_pips?.toFixed(0) || 0} pip</span>
+                        </div>
+                        <div class="ladder-row tp-row">
+                            <span class="lr-icon">🎯</span>
+                            <span class="lr-label">TP2</span>
+                            <span class="lr-line"></span>
+                            <span class="lr-price">${ts.tp2?.toFixed(pd) || 'N/A'}</span>
+                            <span class="lr-pips">-${ts.tp2_pips?.toFixed(0) || 0} pip</span>
+                        </div>`;
+                } else {
+                    // LONG: TP2 top → TP1 → Entry → SL bottom
+                    ladderHTML = `
+                        <div class="ladder-row tp-row">
+                            <span class="lr-icon">🎯</span>
+                            <span class="lr-label">TP2</span>
+                            <span class="lr-line"></span>
+                            <span class="lr-price">${ts.tp2?.toFixed(pd) || 'N/A'}</span>
+                            <span class="lr-pips">+${ts.tp2_pips?.toFixed(0) || 0} pip</span>
+                        </div>
+                        <div class="ladder-row tp-row">
+                            <span class="lr-icon">🎯</span>
+                            <span class="lr-label">TP1</span>
+                            <span class="lr-line"></span>
+                            <span class="lr-price">${ts.tp1?.toFixed(pd) || 'N/A'}</span>
+                            <span class="lr-pips">+${ts.tp1_pips?.toFixed(0) || 0} pip</span>
+                        </div>
+                        <div class="entry-zone">
+                            <div class="entry-zone-header">
+                                <span class="ez-label">📍 ENTRY ZONE</span>
+                                <span class="entry-quality-badge ${eqClass}">${eqLabel}</span>
+                            </div>
+                            <div class="entry-zone-prices">
+                                ${ts.entry_min && ts.entry_max ? `
+                                    <span class="ez-price">${ts.entry_min.toFixed(pd)}</span>
+                                    <span class="ez-to">▲</span>
+                                    <span class="ez-price">${ts.entry_max.toFixed(pd)}</span>
+                                ` : `<span class="ez-price">${ts.entry?.toFixed(pd) || 'N/A'}</span>`}
+                            </div>
+                        </div>
+                        <div class="ladder-row sl-row">
+                            <span class="lr-icon">🛑</span>
+                            <span class="lr-label">SL</span>
+                            <span class="lr-line"></span>
+                            <span class="lr-price">${ts.sl?.toFixed(pd) || 'N/A'}</span>
+                            <span class="lr-pips">-${ts.sl_pips?.toFixed(0) || 0} pip</span>
+                        </div>`;
+                }
+            } else {
+                // NEUTRAL: simple centered message
+                ladderHTML = `
+                    <div style="text-align:center;padding:1rem 0;color:var(--text-muted);font-size:0.8rem;">
+                        No directional trade — NEUTRAL signal
+                    </div>`;
+            }
+
             return `
                 <div class="signal-card ${cardClass}" onclick="analyzeSignal('${signal.pair}')">
+                    <!-- HEADER: Pair + Category + Quality | Direction Badge -->
                     <div class="card-header">
                         <div class="pair-info">
                             <span class="pair-name">${signal.pair}</span>
                             <span class="category-badge ${signal.category.toLowerCase()}">${signal.category}</span>
                             ${qualityBadge}
                         </div>
-                        <div class="composite-score">
-                            <div class="score-value ${scoreClass}">${winRate.toFixed(1)}%</div>
-                            <div class="stars">${stars}</div>
+                        <span class="direction-badge ${dirClass}">${signal.direction}${signal.strength_label === 'FILTERED' ? ' ⚡' : ''} ${signal.composite_score}</span>
+                    </div>
+
+                    <!-- SCORE ROW: Score + Stars | Factor Summary -->
+                    <div class="card-score-row">
+                        <div class="card-score-left">
+                            <span class="stars">${stars}</span>
+                            <span class="score-num ${scoreClass}">Score ${signal.composite_score}</span>
+                        </div>
+                        <div class="factor-summary">
+                            <span class="bull-count">▲${bullCount}</span>
+                            <span class="bear-count">▼${bearCount}</span>
+                            <span class="neut-count">●${neutCount}</span>
                         </div>
                     </div>
 
-                    <div class="percentage-scores" style="display: flex; justify-content: space-between; margin: 0.5rem 0; padding: 0.3rem; background: rgba(0,0,0,0.2); border-radius: 4px; font-size: 0.75rem;">
-                        <span style="color: var(--accent-green);">LONG: ${(signal.long_score || 0).toFixed(1)}%</span>
-                        <span style="color: var(--accent-red);">SHORT: ${(signal.short_score || 0).toFixed(1)}%</span>
-                    </div>
-
-                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; flex-wrap: wrap;">
-                        <span class="direction-badge ${dirClass}">${signal.direction}${signal.strength_label === 'FILTERED' ? ' (FILTERED)' : ''}</span>
-                        ${signal.regime ? `<span class="regime-badge ${signal.regime}">${signal.regime}</span>` : ''}
-                        ${signal.trading_time ? `
-                            <span style="background: ${signal.trading_time.color === 'GREEN' ? 'rgba(16, 185, 129, 0.3)' : signal.trading_time.color === 'YELLOW' ? 'rgba(245, 158, 11, 0.3)' : 'rgba(239, 68, 68, 0.3)'}; color: ${signal.trading_time.color === 'GREEN' ? '#10b981' : signal.trading_time.color === 'YELLOW' ? '#f59e0b' : '#ef4444'}; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.7rem; font-weight: 700; border: 1px solid ${signal.trading_time.color === 'GREEN' ? '#10b981' : signal.trading_time.color === 'YELLOW' ? '#f59e0b' : '#ef4444'};">
-                                ${signal.trading_time.color === 'GREEN' ? '🟢' : signal.trading_time.color === 'YELLOW' ? '🟡' : '🔴'} ${signal.trading_time.label}
-                            </span>
-                        ` : ''}
-                        ${signal.factor_groups?.geopolitical_risk?.risk_level === 'HIGH' ? `
-                            <span style="background: rgba(239, 68, 68, 0.3); color: #ff6666; padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.65rem; font-weight: 700; border: 1px solid #ef4444; animation: pulse 1.5s infinite;">
-                                ⚠️ GEO RISK
-                            </span>
-                        ` : ''}
-                    </div>
-
-                    <div class="stats-row">
-                        <div class="stat-box">
-                            <div class="value">${signal.composite_score}</div>
-                            <div class="label">SCORE</div>
-                        </div>
-                        <div class="stat-box">
-                            <div class="value">${signal.conviction_v9?.score?.toFixed(0) || '—'}</div>
-                            <div class="label">CONV</div>
-                        </div>
-                        <div class="stat-box" style="background: ${signal.confidence?.confidence_score >= 70 ? 'rgba(0,255,136,0.2)' : signal.confidence?.confidence_score >= 50 ? 'rgba(255,170,0,0.2)' : 'rgba(255,102,102,0.2)'}; border: 1px solid ${signal.confidence?.confidence_score >= 70 ? '#00ff88' : signal.confidence?.confidence_score >= 50 ? '#ffaa00' : '#ff6666'};">
-                            <div class="value" style="color: ${signal.confidence?.confidence_score >= 70 ? '#00ff88' : signal.confidence?.confidence_score >= 50 ? '#ffaa00' : '#ff6666'};">${signal.confidence?.confidence_score || '—'}%</div>
-                            <div class="label">CONF</div>
-                        </div>
-                        <div class="stat-box">
-                            <div class="value">${stats.hold_days || 3}D</div>
-                            <div class="label">HOLD</div>
-                        </div>
-                    </div>
-
-                    ${signal.gates ? `
-                    <div class="gates-row">
-                        ${Object.entries(signal.gates.details || {}).sort((a, b) => {
-                            const numA = parseInt(a[0].match(/\d+/)?.[0] || '0');
-                            const numB = parseInt(b[0].match(/\d+/)?.[0] || '0');
-                            return numA - numB;
-                        }).map(([key, g]) =>
-                            `<span class="gate-badge ${g.passed ? 'pass' : 'fail'}">${key.split('_')[0]} ${g.passed ? '✓' : '✗'}</span>`
-                        ).join('')}
+                    <!-- TRADING TIME BANNER -->
+                    ${signal.trading_time ? `
+                    <div class="trading-time-banner ${ttClass}">
+                        <span>${ttIcon}</span>
+                        <span class="tt-label">${ttText}</span>
+                        <span class="tt-session">${ttSession}</span>
                     </div>
                     ` : ''}
 
-                    <div class="factor-grid">${factorGrid}</div>
-                    
-                    <div class="trade-setup">
-                        <div class="setup-title">TRADE SETUP ${signal.trade_setup?.trade_quality ? `<span style="color: ${signal.trade_setup.trade_quality === 'A+' ? '#00ff88' : signal.trade_setup.trade_quality === 'A' ? '#00cc66' : signal.trade_setup.trade_quality === 'B' ? '#ffaa00' : '#ff6666'}; margin-left: 0.5rem;">[${signal.trade_setup.trade_quality}]</span>` : ''}</div>
-                        <div class="setup-grid" style="grid-template-columns: repeat(5, 1fr);">
-                            <div class="setup-item entry">
-                                <div class="label" style="display: flex; align-items: center; gap: 0.3rem; justify-content: center;">
-                                    ENTRY
-                                    ${signal.trade_setup?.entry_quality && signal.direction !== 'NEUTRAL' ? `
-                                    <span style="display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; font-size: 0.6rem; font-weight: 700; background: ${signal.trade_setup.entry_quality === 'OPTIMAL' ? '#166534' : signal.trade_setup.entry_quality === 'GOOD' ? '#22c55e' : signal.trade_setup.entry_quality === 'WAIT' ? '#a16207' : '#444'}; color: white; box-shadow: 0 0 8px ${signal.trade_setup.entry_quality === 'OPTIMAL' ? '#166534' : signal.trade_setup.entry_quality === 'GOOD' ? '#22c55e' : signal.trade_setup.entry_quality === 'WAIT' ? '#a16207' : '#444'};">${signal.trade_setup.entry_quality === 'OPTIMAL' ? '✓' : signal.trade_setup.entry_quality === 'GOOD' ? '✓' : signal.trade_setup.entry_quality === 'WAIT' ? '!' : '•'}</span>
-                                    ` : ''}
-                                </div>
-                                ${signal.trade_setup?.entry_min && signal.trade_setup?.entry_max && signal.direction !== 'NEUTRAL' ? `
-                                <div class="value" style="font-size: 0.7rem;">${signal.trade_setup.entry_min.toFixed(pd)}</div>
-                                <div style="font-size: 0.45rem; color: var(--text-muted);">to</div>
-                                <div class="value" style="font-size: 0.7rem;">${signal.trade_setup.entry_max.toFixed(pd)}</div>
-                                ` : `<div class="value">${signal.trade_setup?.entry?.toFixed(pd) || 'N/A'}</div>`}
-                            </div>
-                            <div class="setup-item sl">
-                                <div class="label">SL (${signal.trade_setup?.sl_pips?.toFixed(0) || 0}p)</div>
-                                <div class="value">${signal.trade_setup?.sl?.toFixed(pd) || 'N/A'}</div>
-                            </div>
-                            <div class="setup-item tp">
-                                <div class="label">TP1 (${signal.trade_setup?.tp1_pips?.toFixed(0) || 0}p)</div>
-                                <div class="value">${signal.trade_setup?.tp1?.toFixed(pd) || 'N/A'}</div>
-                            </div>
-                            <div class="setup-item tp">
-                                <div class="label">R:R</div>
-                                <div class="value">1:${signal.trade_setup?.risk_reward_1?.toFixed(1) || signal.trade_setup?.risk_reward?.toFixed(1) || '1.5'}</div>
-                            </div>
-                            <div class="setup-item" style="background: linear-gradient(135deg, rgba(139, 92, 246, 0.3), rgba(59, 130, 246, 0.3)); border: 1px solid rgba(139, 92, 246, 0.5);">
-                                <div class="label">⏱️ HOLD</div>
-                                <div class="value" style="color: #a78bfa;">${signal.holding_period?.range_text || signal.statistics?.hold_days + 'D' || '3-5D'}</div>
-                            </div>
+                    <!-- RANGE LADDER -->
+                    <div class="range-ladder">
+                        <div class="range-ladder-header">
+                            <span class="rl-title">Trade Range</span>
+                            ${ts.trade_quality ? `<span class="rl-grade ${gradeClass}">Grade ${ts.trade_quality}</span>` : ''}
                         </div>
-                        ${signal.holding_period ? `
-                        <div style="margin-top: 0.5rem; padding: 0.4rem 0.6rem; background: rgba(139, 92, 246, 0.15); border-radius: 0.3rem; border: 1px solid rgba(139, 92, 246, 0.3);">
-                            <div style="font-size: 0.7rem; color: #a78bfa; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
-                                <span>📅 ${signal.holding_period.timeframe}</span>
-                                <span>|</span>
-                                <span>Entry Window: ${signal.holding_period.entry_window}</span>
-                            </div>
+                        ${ladderHTML}
+                    </div>
+
+                    <!-- FOOTER: R:R | Conf | Hold | Gates -->
+                    <div class="card-footer-row">
+                        <div class="cfr-item">
+                            <div class="cfr-val" style="color:${(ts.risk_reward_1 || 1.5) >= 2 ? '#00ff88' : (ts.risk_reward_1 || 1.5) >= 1.5 ? '#00cc66' : '#ffaa00'};">1:${ts.risk_reward_1?.toFixed(1) || '1.5'}</div>
+                            <div class="cfr-lbl">R:R</div>
                         </div>
-                        ` : ''}
-                        ${signal.trade_setup?.market_context ? `
-                        <div style="margin-top: 0.5rem; font-size: 0.7rem; color: var(--text-muted); display: flex; gap: 0.5rem; justify-content: center;">
-                            <span>Vol: ${signal.trade_setup.market_context.volatility}</span>
-                            <span>|</span>
-                            <span>Trend: ${signal.trade_setup.market_context.trend}</span>
-                            <span>|</span>
-                            <span>Conf: ${signal.trade_setup.market_context.confidence}</span>
+                        <div class="cfr-item">
+                            <div class="cfr-val" style="color:${confColor};">${confScore}%</div>
+                            <div class="cfr-lbl">Conf</div>
                         </div>
-                        ` : ''}
-                        ${signal.patterns && signal.patterns.patterns && signal.patterns.patterns.length > 0 ? `
-                        <div style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid var(--border);">
-                            <div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.3rem;">🕯️ PATTERNS DETECTED</div>
-                            <div style="display: flex; flex-wrap: wrap; gap: 0.3rem; justify-content: center;">
-                                ${signal.patterns.patterns.slice(0, 3).map(p => `
-                                    <span style="font-size: 0.65rem; padding: 0.2rem 0.4rem; border-radius: 0.2rem; background: ${p.signal === 'BULLISH' ? 'rgba(0,255,136,0.2)' : p.signal === 'BEARISH' ? 'rgba(255,102,102,0.2)' : 'rgba(255,255,255,0.1)'}; color: ${p.signal === 'BULLISH' ? '#00ff88' : p.signal === 'BEARISH' ? '#ff6666' : '#999'};">${p.name.replace('_', ' ')}</span>
-                                `).join('')}
-                            </div>
+                        <div class="cfr-item">
+                            <div class="cfr-val" style="color:#a78bfa;">${signal.holding_period?.range_text || '3-5D'}</div>
+                            <div class="cfr-lbl">Hold</div>
                         </div>
-                        ` : ''}
+                        <div class="cfr-item">
+                            <div class="cfr-val" style="color:${gatesPassed >= 8 ? '#00ff88' : '#ffaa00'};">${gatesPassed}/${gatesTotal}</div>
+                            <div class="cfr-lbl">Gates</div>
+                        </div>
+                    </div>
+
+                    <!-- FACTOR DOTS + META -->
+                    <div class="factor-dots-row">
+                        ${factorEntries.map(([key, value]) =>
+                            `<span class="factor-dot ${value}">${key}</span>`
+                        ).join('')}
+                    </div>
+                    <div class="card-bottom-meta">
+                        ${signal.regime ? `<span class="regime-badge ${signal.regime}">${signal.regime}</span>` : ''}
+                        ${signal.factor_groups?.geopolitical_risk?.risk_level === 'HIGH' ? '<span style="color:#ff6666;font-weight:700;">⚠️ GEO RISK</span>' : ''}
                     </div>
                 </div>
             `;

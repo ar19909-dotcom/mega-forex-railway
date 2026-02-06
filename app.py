@@ -5093,11 +5093,13 @@ def calculate_market_depth(pair, rate_data=None, tech_data=None):
     if weekday >= 5:  # Saturday/Sunday
         trading_time = {
             'quality': 'POOR', 'color': 'RED', 'label': 'CLOSED',
-            'reason': 'Markets closed (weekend)', 'detail': 'Weekend - no trading'
+            'reason': 'Markets closed (weekend)',
+            'session': 'Weekend',
+            'detail': 'Weekend - no trading'
         }
     elif kz_quality >= 70 and is_kz:
         trading_time = {
-            'quality': 'GOOD', 'color': 'GREEN', 'label': 'TRADE',
+            'quality': 'GOOD', 'color': 'GREEN', 'label': 'GOOD',
             'reason': kz_name.replace('_', ' ').title(),
             'session': kz_name.replace('_', ' ').title(),
             'detail': f'Quality {kz_quality}% - Optimal session'
@@ -8721,7 +8723,7 @@ def generate_signal(pair):
         except Exception as depth_err:
             logger.warning(f"Market depth error for {pair}: {depth_err}")
             depth_data = {'score': 50, 'signal': 'NEUTRAL', 'details': ['Error - using neutral'],
-                          'trading_time': {'quality': 'MODERATE', 'color': 'YELLOW', 'label': 'MODERATE', 'reason': 'Calculation error'},
+                          'trading_time': {'quality': 'MODERATE', 'color': 'YELLOW', 'label': 'MODERATE', 'reason': 'Calculation error', 'session': 'Unknown'},
                           'session_quality': 0, 'killzone': 'UNKNOWN'}
         depth_weight = COMMODITY_FACTOR_WEIGHTS.get('market_depth', 5) if is_commodity(pair) else FACTOR_GROUP_WEIGHTS.get('market_depth', 4)
         factor_groups['market_depth'] = {
