@@ -6214,12 +6214,66 @@ def get_economic_calendar():
                     best_calendar_cache['timestamp'] = datetime.now()
                 return result
 
+    # Supplement real API data with weekly schedule for dates not covered
+    def supplement_with_schedule(result):
+        """Add weekly schedule events for dates beyond API coverage (up to 30 days)"""
+        try:
+            api_events = result.get('events', [])
+            if not api_events:
+                return result
+
+            # Find the latest date in API data
+            latest_api_date = None
+            for e in api_events:
+                try:
+                    edt = datetime.fromisoformat(e['time'].replace('Z', '+00:00').split('+')[0])
+                    if latest_api_date is None or edt > latest_api_date:
+                        latest_api_date = edt
+                except:
+                    pass
+
+            if latest_api_date is None:
+                return result
+
+            today = datetime.now()
+            target_end = today + timedelta(days=30)
+            days_covered = (latest_api_date - today).days
+
+            # If API covers less than 25 days, supplement with weekly schedule
+            if days_covered < 25:
+                schedule_events = generate_weekly_calendar()
+                if schedule_events:
+                    # Only add schedule events AFTER the API data ends
+                    supplement_start = latest_api_date + timedelta(hours=1)
+                    added = 0
+                    for se in schedule_events:
+                        try:
+                            se_dt = datetime.fromisoformat(se['time'])
+                            if se_dt > supplement_start and se_dt <= target_end:
+                                api_events.append(se)
+                                added += 1
+                        except:
+                            pass
+                    if added > 0:
+                        api_events.sort(key=lambda x: x['time'])
+                        result['events'] = api_events
+                        logger.info(f"📅 Supplemented with {added} scheduled events (days {days_covered+1}-30)")
+
+        except Exception as e:
+            logger.debug(f"Calendar supplement failed: {e}")
+
+        return result
+
     # Helper function to save and return calendar data
     def save_calendar(result, source_name):
         global best_calendar_cache
         quality = result.get('data_quality', 'UNKNOWN')
         quality_rank = QUALITY_RANK.get(quality, 0)
         best_rank = QUALITY_RANK.get(best_calendar_cache.get('quality'), 0)
+
+        # Supplement REAL API data with schedule for extended coverage
+        if quality in ('REAL', 'CACHED'):
+            result = supplement_with_schedule(result)
 
         # Only update cache if new data is same or better quality
         if quality_rank >= best_rank:
