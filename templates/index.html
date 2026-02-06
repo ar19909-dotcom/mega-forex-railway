@@ -693,6 +693,122 @@
         .analyzer-factor-table tr.row-bullish td { background: rgba(16, 185, 129, 0.08); }
         .analyzer-factor-table tr.row-bearish td { background: rgba(239, 68, 68, 0.08); }
 
+        /* ═══ AI Split Panel ═══ */
+        .ai-panel {
+            margin-bottom: 1.5rem;
+            border-radius: 0.75rem;
+            overflow: hidden;
+            border: 1px solid rgba(139, 92, 246, 0.3);
+        }
+        .ai-panel-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.85rem 1rem;
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(59, 130, 246, 0.15));
+            flex-wrap: wrap;
+        }
+        .ai-panel-header .ai-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        .ai-badge {
+            font-size: 0.7rem;
+            padding: 0.2rem 0.6rem;
+            border-radius: 1rem;
+            font-weight: 600;
+        }
+        .ai-badge.consistent { background: rgba(52, 211, 153, 0.2); color: #34d399; }
+        .ai-badge.flags { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+        .ai-badge.conf { background: rgba(255,255,255,0.08); color: var(--text-muted); }
+        .ai-badge.grade { background: rgba(139, 92, 246, 0.3); color: #a78bfa; }
+        .ai-panel-status {
+            display: flex;
+            gap: 0.5rem;
+            padding: 0.6rem 1rem;
+            background: rgba(0,0,0,0.15);
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .ai-panel-analysis {
+            padding: 0.85rem 1rem;
+            background: rgba(0,0,0,0.1);
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .ai-panel-analysis .ai-read-more {
+            color: #a78bfa;
+            cursor: pointer;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-left: 0.3rem;
+        }
+        .ai-split {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+        }
+        .ai-split-col {
+            padding: 0.85rem 1rem;
+        }
+        .ai-split-col.bull-col {
+            background: rgba(16, 185, 129, 0.06);
+            border-right: 1px solid rgba(255,255,255,0.05);
+        }
+        .ai-split-col.bear-col {
+            background: rgba(239, 68, 68, 0.06);
+        }
+        .ai-split-col .split-header {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-bottom: 0.6rem;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+        .ai-split-col.bull-col .split-header { color: #34d399; }
+        .ai-split-col.bear-col .split-header { color: #ef4444; }
+        .ai-split-col .split-strongest {
+            padding: 0.5rem 0.6rem;
+            border-radius: 0.4rem;
+            margin-bottom: 0.6rem;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+        .ai-split-col.bull-col .split-strongest {
+            background: rgba(52, 211, 153, 0.12);
+            border-left: 3px solid #34d399;
+        }
+        .ai-split-col.bear-col .split-strongest {
+            background: rgba(239, 68, 68, 0.12);
+            border-left: 3px solid #ef4444;
+        }
+        .ai-split-col .split-list {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+        .ai-split-col .split-list-item {
+            padding: 0.2rem 0;
+        }
+        .ai-panel-flags {
+            padding: 0.6rem 1rem;
+            background: rgba(239, 68, 68, 0.05);
+            border-top: 1px solid rgba(239, 68, 68, 0.2);
+        }
+        .ai-panel-flags .flag-item {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            padding: 0.25rem 0 0.25rem 0.75rem;
+            border-left: 2px solid #ef4444;
+            margin-bottom: 0.25rem;
+        }
+
         /* Legacy classes kept for detail/analyzer view */
         .composite-score { text-align: right; }
         .score-value { font-family: 'JetBrains Mono', monospace; font-size: 2rem; font-weight: 700; }
@@ -1173,6 +1289,13 @@
             .analyzer-stats-row .stat-cell .stat-val { font-size: 1rem; }
             .analyzer-market-ctx { gap: 0.75rem; }
             .analyzer-factor-table td, .analyzer-factor-table th { padding: 0.4rem 0.5rem; font-size: 0.75rem; }
+
+            /* AI Split Panel mobile */
+            .ai-split { grid-template-columns: 1fr; }
+            .ai-split-col.bull-col { border-right: none; border-bottom: 1px solid rgba(255,255,255,0.05); }
+            .ai-panel-header { font-size: 0.9rem; }
+            .ai-panel-status { flex-direction: column; gap: 0.3rem; }
+            .ai-panel-status span:last-child { margin-left: 0; }
 
             /* Result Cards - 2 columns */
             .backtest-results {
@@ -2995,70 +3118,53 @@
                         const tradeQuality = aiDet.trade_quality || '';
                         const factorAnalysis = aiVal.factor_analysis || {};
 
+                        // Build flags HTML
                         let flagsHtml = '';
                         if (aiFlags.length > 0) {
-                            flagsHtml = '<div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 0.75rem; margin-top: 0.75rem;">' +
-                                '<div style="font-size: 0.8rem; font-weight: 600; color: #fbbf24; margin-bottom: 0.4rem;">⚠️ Validation Flags:</div>' +
-                                aiFlags.map(f => '<div style="font-size: 0.8rem; color: var(--text-secondary); padding: 0.3rem 0 0.3rem 1rem; border-left: 2px solid #ef4444;">' + f + '</div>').join('') +
+                            flagsHtml = '<div class="ai-panel-flags">' +
+                                '<div style="font-size:0.75rem;font-weight:600;color:#fbbf24;margin-bottom:0.3rem;">⚠️ Validation Flags</div>' +
+                                aiFlags.map(f => '<div class="flag-item">' + f + '</div>').join('') +
                                 '</div>';
                         }
 
-                        // Key Drivers section
-                        let keyDriversHtml = '';
-                        if (keyDrivers.length > 0) {
-                            keyDriversHtml = '<div style="margin-top: 0.75rem; padding: 0.6rem; background: rgba(52, 211, 153, 0.1); border-radius: 0.5rem; border-left: 3px solid #34d399;">' +
-                                '<div style="font-size: 0.8rem; font-weight: 600; color: #34d399; margin-bottom: 0.4rem;">📈 Key Drivers:</div>' +
-                                keyDrivers.map(d => '<div style="font-size: 0.8rem; color: var(--text-secondary); padding: 0.2rem 0;">• ' + d + '</div>').join('') +
-                                '</div>';
-                        }
+                        // Truncate analysis text for display
+                        const maxLen = 200;
+                        const truncated = aiAnalysisText.length > maxLen;
+                        const displayText = truncated ? aiAnalysisText.substring(0, maxLen) + '...' : aiAnalysisText;
 
-                        // Risk Factors section
-                        let riskFactorsHtml = '';
-                        if (riskFactors.length > 0) {
-                            riskFactorsHtml = '<div style="margin-top: 0.75rem; padding: 0.6rem; background: rgba(239, 68, 68, 0.1); border-radius: 0.5rem; border-left: 3px solid #ef4444;">' +
-                                '<div style="font-size: 0.8rem; font-weight: 600; color: #ef4444; margin-bottom: 0.4rem;">⚡ Risk Factors:</div>' +
-                                riskFactors.map(r => '<div style="font-size: 0.8rem; color: var(--text-secondary); padding: 0.2rem 0;">• ' + r + '</div>').join('') +
-                                '</div>';
-                        }
-
-                        // Factor Analysis section
-                        let factorAnalysisHtml = '';
-                        if (factorAnalysis.strongest_bullish || factorAnalysis.strongest_bearish) {
-                            factorAnalysisHtml = '<div style="margin-top: 0.75rem; display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">';
-                            if (factorAnalysis.strongest_bullish) {
-                                factorAnalysisHtml += '<div style="padding: 0.5rem; background: rgba(52, 211, 153, 0.15); border-radius: 0.4rem;">' +
-                                    '<div style="font-size: 0.7rem; color: #34d399; font-weight: 600;">🟢 Strongest Bullish</div>' +
-                                    '<div style="font-size: 0.75rem; color: var(--text-secondary);">' + factorAnalysis.strongest_bullish + '</div></div>';
-                            }
-                            if (factorAnalysis.strongest_bearish) {
-                                factorAnalysisHtml += '<div style="padding: 0.5rem; background: rgba(239, 68, 68, 0.15); border-radius: 0.4rem;">' +
-                                    '<div style="font-size: 0.7rem; color: #ef4444; font-weight: 600;">🔴 Strongest Bearish</div>' +
-                                    '<div style="font-size: 0.75rem; color: var(--text-secondary);">' + factorAnalysis.strongest_bearish + '</div></div>';
-                            }
-                            factorAnalysisHtml += '</div>';
-                        }
-
-                        // Trade Quality badge
-                        const tradeQualityHtml = tradeQuality ?
-                            '<span style="font-size: 0.75rem; padding: 0.2rem 0.6rem; border-radius: 1rem; background: rgba(139, 92, 246, 0.3); color: #a78bfa; margin-left: 0.5rem;">Grade: ' + tradeQuality + '</span>' : '';
-
-                        aiValidationHtml = '<div style="margin-bottom: 1.5rem; padding: 1rem; background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(59, 130, 246, 0.1)); border: 1px solid ' + borderColor + '; border-radius: 0.75rem;">' +
-                            '<h4 style="margin: 0 0 0.75rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">' +
-                            '<span>🤖 AI Deep Analysis</span>' +
-                            '<span style="font-size: 0.75rem; padding: 0.2rem 0.6rem; border-radius: 1rem; background: ' + statusBg + '; color: ' + statusColor + '; font-weight: 600;">' + statusText + '</span>' +
-                            '<span style="font-size: 0.75rem; padding: 0.2rem 0.6rem; border-radius: 1rem; background: rgba(255,255,255,0.1); color: var(--text-muted);">Confidence: ' + aiConf + '</span>' +
-                            tradeQualityHtml +
-                            '</h4>' +
-                            '<div style="padding: 0.6rem; background: rgba(0,0,0,0.2); border-radius: 0.5rem; margin-bottom: 0.75rem;">' +
-                            '<div style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5;"><strong style="color: #a78bfa;">AI Analysis:</strong> ' + aiAnalysisText + '</div>' +
+                        // Build Split Panel
+                        aiValidationHtml = '<div class="ai-panel">' +
+                            // Header row
+                            '<div class="ai-panel-header">' +
+                            '<span class="ai-title">🤖 AI Insight</span>' +
+                            '<span class="ai-badge ' + (aiConsistent ? 'consistent' : 'flags') + '">' + statusText + '</span>' +
+                            '<span class="ai-badge conf">' + aiConf + '</span>' +
+                            (tradeQuality ? '<span class="ai-badge grade">Grade: ' + tradeQuality + '</span>' : '') +
                             '</div>' +
-                            '<div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">' +
-                            '<div style="font-size: 0.8rem; color: var(--text-muted);">AI Validation: <strong style="color: ' + aiDirColor + ';">' + aiDirDisplay + '</strong></div>' +
-                            '<div style="font-size: 0.8rem; color: var(--text-muted);">Factors: <strong>' + (aiVal.factors_checked || 11) + '</strong> | Groups: <strong>' + (aiVal.groups_checked || 10) + '</strong></div>' +
+                            // Status bar
+                            '<div class="ai-panel-status">' +
+                            '<span style="font-size:0.8rem;color:var(--text-muted);">AI Direction: <strong style="color:' + aiDirColor + ';">' + aiDirDisplay + '</strong></span>' +
+                            '<span style="font-size:0.75rem;color:var(--text-muted);margin-left:auto;">Factors: <strong>' + (aiVal.factors_checked || 11) + '</strong> | Groups: <strong>' + (aiVal.groups_checked || 10) + '</strong></span>' +
                             '</div>' +
-                            keyDriversHtml +
-                            riskFactorsHtml +
-                            factorAnalysisHtml +
+                            // Analysis text
+                            '<div class="ai-panel-analysis">' +
+                            '<span id="ai-text-short">' + displayText + (truncated ? ' <span class="ai-read-more" onclick="document.getElementById(\'ai-text-short\').style.display=\'none\';document.getElementById(\'ai-text-full\').style.display=\'inline\';">▸ Read More</span>' : '') + '</span>' +
+                            '<span id="ai-text-full" style="display:none;">' + aiAnalysisText + ' <span class="ai-read-more" onclick="document.getElementById(\'ai-text-full\').style.display=\'none\';document.getElementById(\'ai-text-short\').style.display=\'inline\';">▴ Less</span></span>' +
+                            '</div>' +
+                            // Split Panel: Bull vs Bear
+                            '<div class="ai-split">' +
+                            '<div class="ai-split-col bull-col">' +
+                            '<div class="split-header">▲ Bullish</div>' +
+                            (factorAnalysis.strongest_bullish ? '<div class="split-strongest">' + factorAnalysis.strongest_bullish + '</div>' : '<div class="split-strongest" style="opacity:0.5;">No strong bullish factor</div>') +
+                            (keyDrivers.length > 0 ? '<div style="font-size:0.7rem;font-weight:600;color:#34d399;margin-bottom:0.3rem;">Key Drivers</div><div class="split-list">' + keyDrivers.map(d => '<div class="split-list-item">• ' + d + '</div>').join('') + '</div>' : '') +
+                            '</div>' +
+                            '<div class="ai-split-col bear-col">' +
+                            '<div class="split-header">▼ Bearish</div>' +
+                            (factorAnalysis.strongest_bearish ? '<div class="split-strongest">' + factorAnalysis.strongest_bearish + '</div>' : '<div class="split-strongest" style="opacity:0.5;">No strong bearish factor</div>') +
+                            (riskFactors.length > 0 ? '<div style="font-size:0.7rem;font-weight:600;color:#ef4444;margin-bottom:0.3rem;">Risk Factors</div><div class="split-list">' + riskFactors.map(r => '<div class="split-list-item">• ' + r + '</div>').join('') + '</div>' : '') +
+                            '</div>' +
+                            '</div>' +
+                            // Flags (if any)
                             flagsHtml +
                             '</div>';
                     }
