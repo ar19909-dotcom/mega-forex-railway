@@ -3943,6 +3943,7 @@
         // Load Calendar
         async function loadCalendar(forceRefresh = false) {
             try {
+                calendarLastFetch = Date.now();
                 // ALWAYS add timestamp to bypass browser cache
                 const timestamp = new Date().getTime();
                 const url = forceRefresh
@@ -4112,7 +4113,7 @@
                                             <td style="text-align: center; font-weight: 600; color: ${e.actual ? (parseFloat(e.actual) > parseFloat(e.estimate) ? 'var(--accent-green)' : 'var(--accent-red)') : 'var(--text-muted)'};">
                                                 ${e.actual || 'Pending'}
                                             </td>
-                                            <td style="text-align: center; font-family: 'JetBrains Mono', monospace;">
+                                            <td style="text-align: center; font-family: 'JetBrains Mono', monospace;" data-event-time="${e.time}">
                                                 ${getCountdown(e.time)}
                                             </td>
                                         </tr>
@@ -4161,7 +4162,41 @@
         // Calendar filter listeners
         document.getElementById('calendar-impact').addEventListener('change', loadCalendar);
         document.getElementById('calendar-currency').addEventListener('change', loadCalendar);
-        
+
+        // Auto-refresh calendar: update countdowns every 60s, full refresh every 10 min
+        let calendarLastFetch = 0;
+        setInterval(() => {
+            const calTab = document.getElementById('tab-calendar');
+            if (!calTab || !calTab.classList.contains('active')) return;
+
+            const now = Date.now();
+            if (now - calendarLastFetch > 600000) {
+                // Full refresh every 10 minutes
+                calendarLastFetch = now;
+                loadCalendar(false);
+            } else {
+                // Update countdown cells in-place every 60s (no API call)
+                document.querySelectorAll('#calendar-container [data-event-time]').forEach(cell => {
+                    const eventDate = new Date(cell.dataset.eventTime);
+                    const diff = eventDate - new Date();
+                    if (diff < 0) {
+                        cell.innerHTML = '<span style="color: var(--accent-green);">Released</span>';
+                    } else {
+                        const hours = Math.floor(diff / 3600000);
+                        const minutes = Math.floor((diff % 3600000) / 60000);
+                        if (hours > 24) {
+                            const days = Math.floor(hours / 24);
+                            cell.innerHTML = `<span style="color: var(--text-secondary);">${days}d ${hours % 24}h</span>`;
+                        } else if (hours > 0) {
+                            cell.innerHTML = `<span style="color: var(--accent-yellow);">${hours}h ${minutes}m</span>`;
+                        } else {
+                            cell.innerHTML = `<span style="color: var(--accent-red);">${minutes}m</span>`;
+                        }
+                    }
+                });
+            }
+        }, 60000);
+
         // Load Weights
         async function loadWeights() {
             try {
