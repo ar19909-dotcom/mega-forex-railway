@@ -1075,6 +1075,102 @@
         
         .weights-total.valid { border: 2px solid var(--accent-green); }
         .weights-total.invalid { border: 2px solid var(--accent-red); }
+
+        /* ═══ Weight Comparison Layout ═══ */
+        .wc-container {
+            border-radius: 0.75rem;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+        }
+        .wc-header {
+            display: grid;
+            grid-template-columns: minmax(130px, 1.4fr) 1fr 1fr 50px;
+            padding: 0.65rem 1rem;
+            background: rgba(255,255,255,0.04);
+            border-bottom: 2px solid var(--border-color);
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            align-items: center;
+        }
+        .wc-row {
+            display: grid;
+            grid-template-columns: minmax(130px, 1.4fr) 1fr 1fr 50px;
+            padding: 0.55rem 1rem;
+            align-items: center;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+            transition: background 0.15s;
+        }
+        .wc-row:last-child { border-bottom: none; }
+        .wc-row:hover { background: rgba(255,255,255,0.05); }
+        .wc-row.wc-highlight { background: rgba(255,255,255,0.03); }
+        .wc-name {
+            font-weight: 600;
+            font-size: 0.85rem;
+            line-height: 1.3;
+        }
+        .wc-name .wc-sub {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            font-weight: 400;
+        }
+        .wc-bar-cell {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .wc-bar-track {
+            flex: 1;
+            height: 8px;
+            background: rgba(255,255,255,0.06);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .wc-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.4s ease;
+        }
+        .wc-bar-fill.forex-bar { background: linear-gradient(90deg, #00cc66, #00ff88); }
+        .wc-bar-fill.commodity-bar { background: linear-gradient(90deg, #d97706, #f59e0b); }
+        .wc-pct {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 0.85rem;
+            min-width: 30px;
+            text-align: right;
+        }
+        .wc-diff {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-align: center;
+        }
+        .wc-diff.diff-pos { color: #00ff88; }
+        .wc-diff.diff-neg { color: #f59e0b; }
+        .wc-diff.diff-zero { color: var(--text-muted); }
+        .wc-total {
+            display: grid;
+            grid-template-columns: minmax(130px, 1.4fr) 1fr 1fr 50px;
+            padding: 0.65rem 1rem;
+            background: rgba(255,255,255,0.05);
+            border-top: 2px solid var(--border-color);
+            font-weight: 700;
+            font-size: 0.85rem;
+            align-items: center;
+        }
+        @media (max-width: 580px) {
+            .wc-header, .wc-row, .wc-total {
+                grid-template-columns: minmax(100px, 1.2fr) 1fr 1fr;
+            }
+            .wc-header > :last-child,
+            .wc-diff { display: none; }
+            .wc-name { font-size: 0.75rem; }
+            .wc-pct { font-size: 0.75rem; min-width: 26px; }
+        }
         
         /* Audit */
         .audit-section {
@@ -2625,9 +2721,9 @@
             </div>
         </div>
         
-        <!-- Weights Editor Tab -->
+        <!-- Weights Tab -->
         <div class="tab-content" id="tab-weights">
-            <h2 style="margin-bottom: 1rem;">⚖️ Factor Group Weights Editor (v9.4.0)</h2>
+            <h2 style="margin-bottom: 1rem;">⚖️ Factor Group Weights (v9.4.0)</h2>
             <div class="weights-editor" id="weights-editor">
                 <div class="loading"><div class="spinner"></div>Loading weights...</div>
             </div>
@@ -4076,20 +4172,13 @@
                     const editor = document.getElementById('weights-editor');
                     const weights = data.weights;
 
-                    // v9.4.0: Commodity weights (read-only, with Geopolitical Risk + Supply & Demand)
-                    // Ordered alphabetically to match Forex weights display order
-                    const commodityWeights = [
-                        ['ai_synthesis', 8],
-                        ['calendar_risk', 7],
-                        ['fundamental', 8],
-                        ['geopolitical_risk', 8],  // IMF: geo stress drives gold, disrupts oil
-                        ['intermarket', 15],       // #2 commodity factor — cross-commodity correlations
-                        ['market_depth', 4],
-                        ['mean_reversion', 11],
-                        ['sentiment', 10],
-                        ['supply_demand', 7],  // Replaces currency_strength for commodities
-                        ['trend_momentum', 22] // #1 commodity factor — commodities trend hard
-                    ];
+                    // v9.4.0: Commodity weight map (keyed by forex group name)
+                    const commodityMap = {
+                        'trend_momentum': 22, 'fundamental': 8, 'sentiment': 10,
+                        'intermarket': 15, 'mean_reversion': 11, 'calendar_risk': 7,
+                        'ai_synthesis': 8, 'currency_strength': 7,
+                        'geopolitical_risk': 8, 'market_depth': 4
+                    };
 
                     const groupLabels = {
                         'trend_momentum': 'Trend & Momentum',
@@ -4100,44 +4189,55 @@
                         'calendar_risk': 'Calendar Risk',
                         'ai_synthesis': 'AI Synthesis',
                         'currency_strength': 'Currency Strength',
-                        'supply_demand': 'Supply & Demand',
                         'geopolitical_risk': 'Geopolitical Risk',
                         'market_depth': 'Market Depth'
                     };
+
+                    // Build comparison data sorted by forex weight descending
+                    const compData = Object.entries(weights).map(([key, fxVal]) => ({
+                        key,
+                        name: groupLabels[key] || key,
+                        fWeight: fxVal,
+                        cWeight: commodityMap[key] || 0,
+                        cName: key === 'currency_strength' ? 'Supply & Demand' : null
+                    })).sort((a, b) => b.fWeight - a.fWeight);
+
+                    const maxW = Math.max(...compData.map(g => Math.max(g.fWeight, g.cWeight)));
+                    const fxTotal = compData.reduce((s, g) => s + g.fWeight, 0);
+                    const cmTotal = compData.reduce((s, g) => s + g.cWeight, 0);
+
                     editor.innerHTML = `
-                        <h3 style="margin-bottom: 0.75rem; color: var(--accent-green);">📊 Forex Weights (45 pairs) — Editable</h3>
-                        ${Object.entries(weights).map(([name, value]) => `
-                            <div class="weight-row">
-                                <span class="weight-label">${groupLabels[name] || name.replace(/_/g, ' ').replace(/\b\\w/g, l => l.toUpperCase())}</span>
-                                <input type="range" class="weight-slider" id="weight-${name}" min="0" max="40" value="${value}"
-                                    oninput="updateWeightValue('${name}', this.value)">
-                                <span class="weight-value" id="value-${name}">${value}%</span>
+                        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem;">
+                            Research-backed weight profiles. Sorted by forex weight. Commodities use Supply & Demand instead of Currency Strength.
+                        </p>
+                        <div class="wc-container">
+                            <div class="wc-header">
+                                <span>Factor Group</span>
+                                <span style="color: #00ff88;">Forex (45)</span>
+                                <span style="color: #f59e0b;">Commodity (5)</span>
+                                <span>Diff</span>
                             </div>
-                        `).join('')}
-
-                        <div class="weights-total" id="weights-total">
-                            <span>Total:</span>
-                            <span id="total-weight">${Object.values(weights).reduce((a, b) => a + b, 0)}%</span>
-                        </div>
-
-                        <div style="display: flex; gap: 1rem; margin-top: 1rem;">
-                            <button onclick="saveWeights()">💾 Save Forex Weights</button>
-                            <button class="secondary" onclick="resetWeights()">🔄 Reset to Defaults</button>
-                        </div>
-
-                        <h3 style="margin-top: 2rem; margin-bottom: 0.75rem; color: #f59e0b;">🏗️ Commodity Weights (5 instruments) — Fixed Profile</h3>
-                        <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.75rem;">Commodity weights are optimized separately. Supply & Demand replaces Currency Strength.</p>
-                        ${commodityWeights.map(([name, value]) => `
-                            <div class="weight-row">
-                                <span class="weight-label">${groupLabels[name] || name.replace(/_/g, ' ').replace(/\b\\w/g, l => l.toUpperCase())}</span>
-                                <input type="range" class="weight-slider" min="0" max="40" value="${value}" disabled
-                                    style="opacity: 0.7; pointer-events: none;">
-                                <span class="weight-value" style="color: #f59e0b;">${value}%</span>
+                            ${compData.map(g => {
+                                const diff = g.fWeight - g.cWeight;
+                                const diffClass = diff > 0 ? 'diff-pos' : diff < 0 ? 'diff-neg' : 'diff-zero';
+                                const diffText = diff === 0 ? '=' : (diff > 0 ? '+' + diff : String(diff));
+                                const highlight = Math.abs(diff) >= 4 ? ' wc-highlight' : '';
+                                const fBar = (g.fWeight / maxW * 100).toFixed(0);
+                                const cBar = (g.cWeight / maxW * 100).toFixed(0);
+                                const sub = g.cName ? '<div class="wc-sub">Commodity: ' + g.cName + '</div>' : '';
+                                return '<div class="wc-row' + highlight + '">' +
+                                    '<div class="wc-name">' + g.name + sub + '</div>' +
+                                    '<div class="wc-bar-cell"><div class="wc-bar-track"><div class="wc-bar-fill forex-bar" style="width:' + fBar + '%"></div></div><span class="wc-pct" style="color:#00ff88;">' + g.fWeight + '%</span></div>' +
+                                    '<div class="wc-bar-cell"><div class="wc-bar-track"><div class="wc-bar-fill commodity-bar" style="width:' + cBar + '%"></div></div><span class="wc-pct" style="color:#f59e0b;">' + g.cWeight + '%</span></div>' +
+                                    '<div class="wc-diff ' + diffClass + '">' + diffText + '</div>' +
+                                '</div>';
+                            }).join('')}
+                            <div class="wc-total">
+                                <span>Total</span>
+                                <div style="text-align:right;"><span style="color:#00ff88;">${fxTotal}%</span></div>
+                                <div style="text-align:right;"><span style="color:#f59e0b;">${cmTotal}%</span></div>
+                                <div style="text-align:center;color:var(--text-muted);">${fxTotal === 100 && cmTotal === 100 ? '✓' : '!'}</div>
                             </div>
-                        `).join('')}
-                        <div class="weights-total" style="margin-top: 0.5rem;">
-                            <span>Total:</span>
-                            <span style="color: #f59e0b;">${commodityWeights.reduce((sum, [_, v]) => sum + v, 0)}%</span>
                         </div>
                     `;
                 }
