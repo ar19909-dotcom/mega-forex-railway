@@ -318,16 +318,8 @@
         }
         .card-score-left .stars {
             color: var(--accent-yellow);
-            font-size: 0.8rem;
+            font-size: 0.85rem;
         }
-        .card-score-left .score-num {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 1.4rem;
-            font-weight: 700;
-        }
-        .card-score-left .score-num.bullish { color: var(--accent-green); }
-        .card-score-left .score-num.bearish { color: var(--accent-red); }
-        .card-score-left .score-num.neutral { color: var(--text-secondary); }
         .factor-summary {
             display: flex;
             gap: 0.5rem;
@@ -450,11 +442,11 @@
 
         /* Entry Zone band */
         .entry-zone {
-            background: rgba(59, 130, 246, 0.1);
-            border: 1px solid rgba(59, 130, 246, 0.3);
-            border-radius: 0.35rem;
-            padding: 0.35rem 0.5rem;
-            margin: 0.25rem 0;
+            background: rgba(59, 130, 246, 0.12);
+            border: 1px solid rgba(59, 130, 246, 0.4);
+            border-radius: 0.4rem;
+            padding: 0.5rem 0.65rem;
+            margin: 0.3rem 0;
         }
         .entry-zone-header {
             display: flex;
@@ -488,7 +480,7 @@
             font-family: 'JetBrains Mono', monospace;
         }
         .entry-zone-prices .ez-price {
-            font-size: 0.9rem;
+            font-size: 1.15rem;
             font-weight: 700;
             color: var(--accent-blue);
         }
@@ -988,7 +980,7 @@
             .range-ladder { padding: 0.5rem; }
             .ladder-row .lr-price { font-size: 0.8rem; min-width: 65px; }
             .ladder-row .lr-pips { font-size: 0.6rem; min-width: 45px; }
-            .entry-zone-prices .ez-price { font-size: 0.8rem; }
+            .entry-zone-prices .ez-price { font-size: 1rem; }
             .card-footer-row { font-size: 0.65rem; padding: 0.35rem 0.4rem; }
             .factor-dot { font-size: 0.55rem; padding: 0.1rem 0.25rem; }
 
@@ -2603,7 +2595,6 @@
                     <div class="card-score-row">
                         <div class="card-score-left">
                             <span class="stars">${stars}</span>
-                            <span class="score-num ${scoreClass}">Score ${signal.composite_score}</span>
                         </div>
                         <div class="factor-summary">
                             <span class="bull-count">▲${bullCount}</span>
