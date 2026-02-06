@@ -490,6 +490,25 @@
             color: var(--text-muted);
             padding: 0 0.3rem;
         }
+        .ez-current-rate {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #e0e0e0;
+            text-align: center;
+            padding: 0.25rem 0 0.1rem;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .ez-current-rate .ez-now-label {
+            font-size: 0.5rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .ez-current-rate .ez-now-price {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #fbbf24;
+        }
 
         /* Footer Row */
         .card-footer-row {
@@ -2519,6 +2538,10 @@
                                     <span class="ez-price">${ts.entry_min.toFixed(pd)}</span>
                                 ` : `<span class="ez-price">${ts.entry?.toFixed(pd) || 'N/A'}</span>`}
                             </div>
+                            <div class="ez-current-rate">
+                                <span class="ez-now-label">NOW </span>
+                                <span class="ez-now-price">${signal.rate?.mid?.toFixed(pd) || ts.entry?.toFixed(pd) || '—'}</span>
+                            </div>
                         </div>
                         <div class="ladder-row tp-row">
                             <span class="lr-icon">🎯</span>
@@ -2562,6 +2585,10 @@
                                     <span class="ez-to">▲</span>
                                     <span class="ez-price">${ts.entry_max.toFixed(pd)}</span>
                                 ` : `<span class="ez-price">${ts.entry?.toFixed(pd) || 'N/A'}</span>`}
+                            </div>
+                            <div class="ez-current-rate">
+                                <span class="ez-now-label">NOW </span>
+                                <span class="ez-now-price">${signal.rate?.mid?.toFixed(pd) || ts.entry?.toFixed(pd) || '—'}</span>
                             </div>
                         </div>
                         <div class="ladder-row sl-row">
