@@ -1141,7 +1141,7 @@
             font-weight: 700;
             font-size: 0.85rem;
             min-width: 30px;
-            text-align: right;
+            text-align: left;
         }
         .wc-diff {
             font-family: 'JetBrains Mono', monospace;
@@ -4227,15 +4227,15 @@
                                 const sub = g.cName ? '<div class="wc-sub">Commodity: ' + g.cName + '</div>' : '';
                                 return '<div class="wc-row' + highlight + '">' +
                                     '<div class="wc-name">' + g.name + sub + '</div>' +
-                                    '<div class="wc-bar-cell"><div class="wc-bar-track"><div class="wc-bar-fill forex-bar" style="width:' + fBar + '%"></div></div><span class="wc-pct" style="color:#00ff88;">' + g.fWeight + '%</span></div>' +
-                                    '<div class="wc-bar-cell"><div class="wc-bar-track"><div class="wc-bar-fill commodity-bar" style="width:' + cBar + '%"></div></div><span class="wc-pct" style="color:#f59e0b;">' + g.cWeight + '%</span></div>' +
+                                    '<div class="wc-bar-cell"><span class="wc-pct" style="color:#00ff88;">' + g.fWeight + '%</span><div class="wc-bar-track"><div class="wc-bar-fill forex-bar" style="width:' + fBar + '%"></div></div></div>' +
+                                    '<div class="wc-bar-cell"><span class="wc-pct" style="color:#f59e0b;">' + g.cWeight + '%</span><div class="wc-bar-track"><div class="wc-bar-fill commodity-bar" style="width:' + cBar + '%"></div></div></div>' +
                                     '<div class="wc-diff ' + diffClass + '">' + diffText + '</div>' +
                                 '</div>';
                             }).join('')}
                             <div class="wc-total">
                                 <span>Total</span>
-                                <div style="text-align:right;"><span style="color:#00ff88;">${fxTotal}%</span></div>
-                                <div style="text-align:right;"><span style="color:#f59e0b;">${cmTotal}%</span></div>
+                                <div><span style="color:#00ff88;font-family:'JetBrains Mono',monospace;">${fxTotal}%</span></div>
+                                <div><span style="color:#f59e0b;font-family:'JetBrains Mono',monospace;">${cmTotal}%</span></div>
                                 <div style="text-align:center;color:var(--text-muted);">${fxTotal === 100 && cmTotal === 100 ? '✓' : '!'}</div>
                             </div>
                         </div>
