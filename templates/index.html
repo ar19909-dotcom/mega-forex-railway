@@ -2605,7 +2605,7 @@
             : window.location.origin;
         let signalsData = [];
         let refreshInterval;
-        let countdown = 120;  // 2 minutes auto-refresh
+        let countdown = 300;  // 5 minutes auto-refresh (was 120s - too aggressive, caused cache thrashing)
         
         // All 50 Instruments (45 Forex + 5 Commodities) for Pair Analyzer
         const ALL_PAIRS = [
@@ -2670,7 +2670,7 @@
             container.innerHTML = `<div class="loading"><div class="spinner"></div>${loadingText}</div>`;
 
             try {
-                // v9.2.4: Add refresh=true on auto-refresh to clear server cache
+                // v9.4.0: Only add refresh=true on MANUAL refresh (button click), not auto-refresh
                 const refreshParam = forceRefresh ? '&refresh=true' : '';
                 const response = await fetch(`${API_BASE}/signals?t=${Date.now()}${refreshParam}`);
                 const data = await response.json();
@@ -5316,13 +5316,13 @@
         document.getElementById('filter-grade').addEventListener('change', renderSignals);
         document.getElementById('rates-category').addEventListener('change', loadRates);
         
-        // Countdown timer - 120s auto-refresh
+        // Countdown timer - 300s auto-refresh (v9.4.0: was 120s, reduced to prevent cache thrashing)
         function updateCountdown() {
             countdown--;
             if (countdown <= 0) {
-                countdown = 120;
-                // v9.2.4: Force refresh to clear server cache on auto-refresh
-                loadSignals(true);
+                countdown = 300;
+                // v9.4.0: Auto-refresh uses cached data (fast) — only manual refresh forces regeneration
+                loadSignals(false);
             }
             document.getElementById('refresh-countdown').textContent = `${countdown}s`;
         }

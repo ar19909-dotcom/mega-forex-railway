@@ -1001,7 +1001,7 @@ CACHE_TTL = {
     'fundamental': 3600,
     'intermarket_data': 300,  # 5 minutes
     'positioning': 900,  # 15 minutes - IG sentiment doesn't change rapidly + avoid rate limits
-    'signals': 180,   # 3 minutes - balanced refresh rate (50 instruments)
+    'signals': 300,   # v9.4.0: 5 minutes (was 180s) - aligned with frontend 300s refresh interval
     'audit': 300      # 5 minutes - audit data doesn't change rapidly
 }
 
@@ -11454,7 +11454,7 @@ def get_rates_endpoint():
 def get_signals():
     """Get all trading signals with caching for fast loading"""
     try:
-        # v9.2.2: Force refresh parameter clears cache (used by auto-refresh)
+        # v9.4.0: Force refresh only on manual button click, not auto-refresh
         force_refresh = request.args.get('refresh', 'false').lower() == 'true'
 
         # Check cache first (thread-safe) - skip if force_refresh
@@ -11464,6 +11464,20 @@ def get_signals():
                 if cached:
                     logger.debug("📊 Signals: Returning cached data")
                     return jsonify(cached)
+
+        # v9.4.0: Stale-while-revalidate — serve stale cache if expired by < 10 minutes
+        # Beyond 10 minutes stale, force full regeneration for data freshness
+        if not force_refresh:
+            with cache_lock:
+                stale_data = cache.get('signals', {}).get('data')
+                stale_ts = cache.get('signals', {}).get('timestamp')
+            if stale_data and stale_ts:
+                stale_age = (datetime.now() - stale_ts).total_seconds()
+                if stale_age < 600:  # Less than 10 minutes old — still usable
+                    logger.info(f"📊 Signals: Serving stale cache ({int(stale_age)}s old, instant response)")
+                    return jsonify(stale_data)
+                else:
+                    logger.info(f"📊 Signals: Cache too old ({int(stale_age)}s), regenerating...")
 
         if force_refresh:
             logger.info("📊 Signals: Force refresh requested - regenerating all signals")
