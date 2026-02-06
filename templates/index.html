@@ -572,6 +572,127 @@
         .regime-badge.volatile { background: rgba(239, 68, 68, 0.25); color: #f87171; }
         .regime-badge.quiet { background: rgba(156, 163, 175, 0.25); color: #9ca3af; }
 
+        /* ═══ Analyzer Detail View ═══ */
+        .analyzer-hero {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        .analyzer-hero-left {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+        .analyzer-hero .pair-name {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.6rem;
+            font-weight: 700;
+        }
+        .analyzer-hero-meta {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        .analyzer-hero-right {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 0.4rem;
+        }
+        .analyzer-hero-right .direction-badge {
+            font-size: 1rem;
+            padding: 0.4rem 1rem;
+        }
+        .analyzer-hero-right .stars {
+            font-size: 1rem;
+        }
+        .analyzer-range-ladder {
+            background: var(--bg-secondary);
+            border-radius: 0.75rem;
+            padding: 1rem 1.2rem;
+            margin-bottom: 1rem;
+        }
+        .analyzer-range-ladder .ladder-row .lr-price { font-size: 1.1rem; }
+        .analyzer-range-ladder .ladder-row .lr-pips { font-size: 0.8rem; }
+        .analyzer-range-ladder .ladder-row .lr-label { font-size: 0.75rem; width: 45px; }
+        .analyzer-range-ladder .entry-zone { padding: 0.7rem 0.9rem; }
+        .analyzer-range-ladder .entry-zone-prices .ez-price { font-size: 1.4rem; }
+        .analyzer-range-ladder .ez-current-rate .ez-now-price { font-size: 1.2rem; }
+        .analyzer-range-ladder .entry-quality-badge { font-size: 0.8rem; padding: 0.25rem 0.7rem; }
+        .analyzer-stats-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+        .analyzer-stats-row .stat-cell {
+            text-align: center;
+            padding: 0.75rem;
+            background: var(--bg-secondary);
+            border-radius: 0.5rem;
+        }
+        .analyzer-stats-row .stat-cell .stat-val {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.2rem;
+            font-weight: 700;
+        }
+        .analyzer-stats-row .stat-cell .stat-lbl {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            margin-top: 0.2rem;
+        }
+        .analyzer-market-ctx {
+            display: flex;
+            gap: 1.5rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            padding: 0.75rem;
+            background: var(--bg-secondary);
+            border-radius: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .analyzer-market-ctx .ctx-item {
+            text-align: center;
+        }
+        .analyzer-market-ctx .ctx-lbl {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+        .analyzer-market-ctx .ctx-val {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        .analyzer-factor-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0 0.25rem;
+            margin-bottom: 1.5rem;
+        }
+        .analyzer-factor-table th {
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+        .analyzer-factor-table td {
+            padding: 0.6rem 0.75rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            background: var(--bg-secondary);
+        }
+        .analyzer-factor-table tr td:first-child { border-radius: 0.4rem 0 0 0.4rem; }
+        .analyzer-factor-table tr td:last-child { border-radius: 0 0.4rem 0.4rem 0; }
+        .analyzer-factor-table tr.row-bullish td { background: rgba(16, 185, 129, 0.08); }
+        .analyzer-factor-table tr.row-bearish td { background: rgba(239, 68, 68, 0.08); }
+
         /* Legacy classes kept for detail/analyzer view */
         .composite-score { text-align: right; }
         .score-value { font-family: 'JetBrains Mono', monospace; font-size: 2rem; font-weight: 700; }
@@ -1038,7 +1159,21 @@
                 grid-template-columns: 1fr;
                 gap: 0.75rem;
             }
-            
+
+            /* Analyzer detail view - mobile */
+            .analyzer-hero { flex-direction: column; gap: 0.5rem; }
+            .analyzer-hero .pair-name { font-size: 1.3rem; }
+            .analyzer-hero-right { align-items: flex-start; }
+            .analyzer-hero-right .direction-badge { font-size: 0.85rem; }
+            .analyzer-range-ladder { padding: 0.75rem; }
+            .analyzer-range-ladder .ladder-row .lr-price { font-size: 0.95rem; }
+            .analyzer-range-ladder .entry-zone-prices .ez-price { font-size: 1.15rem; }
+            .analyzer-range-ladder .ez-current-rate .ez-now-price { font-size: 1rem; }
+            .analyzer-stats-row { grid-template-columns: repeat(2, 1fr); gap: 0.5rem; }
+            .analyzer-stats-row .stat-cell .stat-val { font-size: 1rem; }
+            .analyzer-market-ctx { gap: 0.75rem; }
+            .analyzer-factor-table td, .analyzer-factor-table th { padding: 0.4rem 0.5rem; font-size: 0.75rem; }
+
             /* Result Cards - 2 columns */
             .backtest-results {
                 grid-template-columns: repeat(2, 1fr);
@@ -2940,58 +3075,251 @@
                         // Fresh data from server
                         cacheStatus = `<span style="color: var(--accent-purple);">🔄 Fresh data at ${fetchTime}</span>`;
                     }
+                    // Compute display values (matching card design)
+                    const pd = priceDecimals(signal.pair);
+                    const dirClass = signal.direction.toLowerCase();
+                    const stars = '★'.repeat(signal.stars || 0) + '☆'.repeat(5 - (signal.stars || 0));
+                    const dataQuality = signal.data_quality || signal.rate?.source || 'ESTIMATED';
+                    const isRealData = ['POLYGON', 'HIGH', 'MEDIUM', 'REAL'].includes(dataQuality);
+                    const qualityBadge = isRealData
+                        ? '<span style="background:rgba(0,255,136,0.2);color:#00ff88;padding:2px 6px;border-radius:3px;font-size:0.6rem;font-weight:600;">✓ LIVE</span>'
+                        : '<span style="background:rgba(255,170,0,0.2);color:#ffaa00;padding:2px 6px;border-radius:3px;font-size:0.6rem;font-weight:600;">~ EST</span>';
+                    const factorEntries = Object.entries(signal.factor_grid || {});
+                    const bullCount = factorEntries.filter(([,v]) => v === 'bullish').length;
+                    const bearCount = factorEntries.filter(([,v]) => v === 'bearish').length;
+                    const neutCount = factorEntries.filter(([,v]) => v === 'neutral').length;
+                    const tt = signal.trading_time || {};
+                    const ttClass = tt.color === 'GREEN' ? 'time-good' : tt.color === 'YELLOW' ? 'time-moderate' : 'time-bad';
+                    const ttIcon = tt.color === 'GREEN' ? '✅' : tt.color === 'YELLOW' ? '⚠️' : tt.label === 'CLOSED' ? '⛔' : '❌';
+                    const ttText = tt.color === 'GREEN' ? 'Good Time to Trade'
+                                 : tt.color === 'YELLOW' ? 'Moderate Time to Trade'
+                                 : tt.label === 'CLOSED' ? 'Market Closed'
+                                 : 'Not Good Time to Trade';
+                    const ttSession = tt.session || tt.reason || '';
+                    const ts = signal.trade_setup || {};
+                    const isLong = signal.direction === 'LONG';
+                    const isShort = signal.direction === 'SHORT';
+                    const isDirectional = isLong || isShort;
+                    const gradeClass = ts.trade_quality === 'A+' ? 'grade-a-plus' : ts.trade_quality === 'A' ? 'grade-a' : ts.trade_quality === 'B' ? 'grade-b' : 'grade-c';
+                    const eq = ts.entry_quality || 'OK';
+                    const eqClass = eq === 'OPTIMAL' ? 'eq-optimal' : eq === 'GOOD' ? 'eq-good' : eq === 'WAIT' ? 'eq-wait' : 'eq-ok';
+                    const eqLabel = eq === 'OPTIMAL' ? '✓ OPTIMAL' : eq === 'GOOD' ? '✓ GOOD' : eq === 'WAIT' ? '⏳ WAIT' : '• OK';
+                    const gatesPassed = signal.gates ? Object.values(signal.gates.details || {}).filter(g => g.passed).length : 0;
+                    const gatesTotal = signal.gates ? Object.keys(signal.gates.details || {}).length : 10;
+                    const confScore = signal.confidence?.confidence_score || 0;
+                    const confColor = confScore >= 70 ? '#00ff88' : confScore >= 50 ? '#ffaa00' : '#ff6666';
+                    const rsiVal = signal.technical?.rsi;
+                    const rsiColor = rsiVal > 70 ? '#ef4444' : rsiVal < 30 ? '#10b981' : 'var(--text-primary)';
+                    const adxVal = signal.technical?.adx;
+                    const adxColor = adxVal > 25 ? '#10b981' : '#ffaa00';
+
+                    // Build Range Ladder HTML (same logic as card)
+                    let analyzerLadderHTML = '';
+                    if (isDirectional) {
+                        if (isShort) {
+                            analyzerLadderHTML = `
+                                <div class="ladder-row sl-row">
+                                    <span class="lr-icon">🛑</span>
+                                    <span class="lr-label">SL</span>
+                                    <span class="lr-line"></span>
+                                    <span class="lr-price">${ts.sl?.toFixed(pd) || 'N/A'}</span>
+                                    <span class="lr-pips">+${ts.sl_pips?.toFixed(0) || 0} pip</span>
+                                </div>
+                                <div class="entry-zone">
+                                    <div class="entry-zone-header">
+                                        <span class="ez-label">📍 ENTRY ZONE</span>
+                                        <span class="entry-quality-badge ${eqClass}">${eqLabel}</span>
+                                    </div>
+                                    <div class="entry-zone-prices">
+                                        ${ts.entry_min && ts.entry_max ? `
+                                            <span class="ez-price">${ts.entry_max.toFixed(pd)}</span>
+                                            <span class="ez-to">▼</span>
+                                            <span class="ez-price">${ts.entry_min.toFixed(pd)}</span>
+                                        ` : `<span class="ez-price">${ts.entry?.toFixed(pd) || 'N/A'}</span>`}
+                                    </div>
+                                    <div class="ez-current-rate">
+                                        <span class="ez-now-label">NOW </span>
+                                        <span class="ez-now-price">${signal.rate?.mid?.toFixed(pd) || ts.entry?.toFixed(pd) || '—'}</span>
+                                    </div>
+                                </div>
+                                <div class="ladder-row tp-row">
+                                    <span class="lr-icon">🎯</span>
+                                    <span class="lr-label">TP1</span>
+                                    <span class="lr-line"></span>
+                                    <span class="lr-price">${ts.tp1?.toFixed(pd) || 'N/A'}</span>
+                                    <span class="lr-pips">-${ts.tp1_pips?.toFixed(0) || 0} pip</span>
+                                </div>
+                                <div class="ladder-row tp-row">
+                                    <span class="lr-icon">🎯</span>
+                                    <span class="lr-label">TP2</span>
+                                    <span class="lr-line"></span>
+                                    <span class="lr-price">${ts.tp2?.toFixed(pd) || 'N/A'}</span>
+                                    <span class="lr-pips">-${ts.tp2_pips?.toFixed(0) || 0} pip</span>
+                                </div>`;
+                        } else {
+                            analyzerLadderHTML = `
+                                <div class="ladder-row tp-row">
+                                    <span class="lr-icon">🎯</span>
+                                    <span class="lr-label">TP2</span>
+                                    <span class="lr-line"></span>
+                                    <span class="lr-price">${ts.tp2?.toFixed(pd) || 'N/A'}</span>
+                                    <span class="lr-pips">+${ts.tp2_pips?.toFixed(0) || 0} pip</span>
+                                </div>
+                                <div class="ladder-row tp-row">
+                                    <span class="lr-icon">🎯</span>
+                                    <span class="lr-label">TP1</span>
+                                    <span class="lr-line"></span>
+                                    <span class="lr-price">${ts.tp1?.toFixed(pd) || 'N/A'}</span>
+                                    <span class="lr-pips">+${ts.tp1_pips?.toFixed(0) || 0} pip</span>
+                                </div>
+                                <div class="entry-zone">
+                                    <div class="entry-zone-header">
+                                        <span class="ez-label">📍 ENTRY ZONE</span>
+                                        <span class="entry-quality-badge ${eqClass}">${eqLabel}</span>
+                                    </div>
+                                    <div class="entry-zone-prices">
+                                        ${ts.entry_min && ts.entry_max ? `
+                                            <span class="ez-price">${ts.entry_min.toFixed(pd)}</span>
+                                            <span class="ez-to">▲</span>
+                                            <span class="ez-price">${ts.entry_max.toFixed(pd)}</span>
+                                        ` : `<span class="ez-price">${ts.entry?.toFixed(pd) || 'N/A'}</span>`}
+                                    </div>
+                                    <div class="ez-current-rate">
+                                        <span class="ez-now-label">NOW </span>
+                                        <span class="ez-now-price">${signal.rate?.mid?.toFixed(pd) || ts.entry?.toFixed(pd) || '—'}</span>
+                                    </div>
+                                </div>
+                                <div class="ladder-row sl-row">
+                                    <span class="lr-icon">🛑</span>
+                                    <span class="lr-label">SL</span>
+                                    <span class="lr-line"></span>
+                                    <span class="lr-price">${ts.sl?.toFixed(pd) || 'N/A'}</span>
+                                    <span class="lr-pips">-${ts.sl_pips?.toFixed(0) || 0} pip</span>
+                                </div>`;
+                        }
+                    } else {
+                        analyzerLadderHTML = `
+                            <div style="text-align:center;padding:1.5rem 0;color:var(--text-muted);font-size:0.9rem;">
+                                No directional trade — NEUTRAL signal
+                            </div>`;
+                    }
+
                     detail.innerHTML = `
-                        <h3 style="margin-bottom: 0.5rem;">${signal.pair} Analysis</h3>
-                        <div style="font-size: 0.75rem; margin-bottom: 1rem;">${cacheStatus}</div>
-                        
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
-                            <div class="result-card">
-                                <div class="value ${signal.composite_score >= 60 ? '' : 'style="color: var(--accent-red)"'}">${signal.composite_score}</div>
-                                <div class="label">Composite Score</div>
+                        <!-- HERO HEADER -->
+                        <div class="analyzer-hero">
+                            <div class="analyzer-hero-left">
+                                <span class="pair-name">${signal.pair}</span>
+                                <div class="analyzer-hero-meta">
+                                    <span class="category-badge ${(signal.category || 'cross').toLowerCase()}">${signal.category || 'CROSS'}</span>
+                                    ${qualityBadge}
+                                    <span style="font-size:0.7rem;color:var(--text-muted);">${cacheStatus}</span>
+                                </div>
                             </div>
-                            <div class="result-card">
-                                <div class="value" style="color: ${signal.direction === 'LONG' ? 'var(--accent-green)' : 'var(--accent-red)'}">${signal.direction}</div>
-                                <div class="label">Direction</div>
+                            <div class="analyzer-hero-right">
+                                <span class="direction-badge ${dirClass}">${signal.direction}${signal.strength_label === 'FILTERED' ? ' ⚡' : ''} ${signal.composite_score}</span>
+                                <div style="display:flex;align-items:center;gap:0.5rem;">
+                                    <span class="stars">${stars}</span>
+                                    <div class="factor-summary">
+                                        <span class="bull-count">▲${bullCount}</span>
+                                        <span class="bear-count">▼${bearCount}</span>
+                                        <span class="neut-count">●${neutCount}</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
+                        <!-- TRADING TIME BANNER -->
                         ${signal.trading_time ? `
-                        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; padding: 0.6rem 1rem; border-radius: 8px; background: ${signal.trading_time.color === 'GREEN' ? 'rgba(16, 185, 129, 0.15)' : signal.trading_time.color === 'YELLOW' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(239, 68, 68, 0.15)'}; border: 1px solid ${signal.trading_time.color === 'GREEN' ? 'rgba(16, 185, 129, 0.4)' : signal.trading_time.color === 'YELLOW' ? 'rgba(245, 158, 11, 0.4)' : 'rgba(239, 68, 68, 0.4)'};">
-                            <span style="font-size: 1.5rem;">${signal.trading_time.color === 'GREEN' ? '🟢' : signal.trading_time.color === 'YELLOW' ? '🟡' : '🔴'}</span>
-                            <div>
-                                <div style="font-weight: 700; font-size: 0.95rem; color: ${signal.trading_time.color === 'GREEN' ? '#10b981' : signal.trading_time.color === 'YELLOW' ? '#f59e0b' : '#ef4444'};">${signal.trading_time.label}</div>
-                                <div style="font-size: 0.75rem; color: var(--text-secondary);">${signal.trading_time.session || ''} ${signal.trading_time.detail || ''}</div>
+                        <div class="trading-time-banner ${ttClass}" style="margin-bottom:1rem;font-size:0.85rem;">
+                            <span>${ttIcon}</span>
+                            <span class="tt-label">${ttText}</span>
+                            <span class="tt-session">${ttSession} ${tt.detail || ''}</span>
+                        </div>
+                        ` : ''}
+
+                        <!-- RANGE LADDER -->
+                        <div class="analyzer-range-ladder">
+                            <div class="range-ladder-header">
+                                <span class="rl-title">Trade Range</span>
+                                ${ts.trade_quality ? `<span class="rl-grade ${gradeClass}">Grade ${ts.trade_quality}</span>` : ''}
+                            </div>
+                            ${analyzerLadderHTML}
+                        </div>
+
+                        <!-- MARKET CONTEXT -->
+                        ${ts.market_context ? `
+                        <div class="analyzer-market-ctx">
+                            <div class="ctx-item">
+                                <div class="ctx-lbl">Volatility</div>
+                                <div class="ctx-val" style="color:${ts.market_context.volatility === 'HIGH' ? '#ff6666' : ts.market_context.volatility === 'LOW' ? '#66aaff' : '#00cc66'};">${ts.market_context.volatility}</div>
+                            </div>
+                            <div class="ctx-item">
+                                <div class="ctx-lbl">Trend</div>
+                                <div class="ctx-val" style="color:${ts.market_context.trend === 'STRONG' ? '#00ff88' : ts.market_context.trend === 'WEAK' ? '#ffaa00' : '#00cc66'};">${ts.market_context.trend}</div>
+                            </div>
+                            <div class="ctx-item">
+                                <div class="ctx-lbl">Confidence</div>
+                                <div class="ctx-val" style="color:${ts.market_context.confidence === 'HIGH' ? '#00ff88' : ts.market_context.confidence === 'LOW' ? '#ff6666' : '#ffaa00'};">${ts.market_context.confidence}</div>
+                            </div>
+                            <div class="ctx-item">
+                                <div class="ctx-lbl">SL Mult</div>
+                                <div class="ctx-val">${ts.sl_multiplier || '1.8'}x</div>
+                            </div>
+                            <div class="ctx-item">
+                                <div class="ctx-lbl">TP Mult</div>
+                                <div class="ctx-val">${ts.tp1_multiplier || '2.5'}x</div>
                             </div>
                         </div>
                         ` : ''}
 
-                        <h4 style="margin-bottom: 0.5rem;">v9.4.0 Factor Groups (10 Groups)</h4>
-                        <table class="data-table" style="margin-bottom: 1rem;">
+                        <!-- QUICK STATS ROW -->
+                        <div class="analyzer-stats-row">
+                            <div class="stat-cell">
+                                <div class="stat-val" style="color:${(ts.risk_reward_1 || 1.5) >= 2 ? '#00ff88' : (ts.risk_reward_1 || 1.5) >= 1.5 ? '#00cc66' : '#ffaa00'};">1:${ts.risk_reward_1?.toFixed(1) || '1.5'}</div>
+                                <div class="stat-lbl">R:R Ratio</div>
+                            </div>
+                            <div class="stat-cell">
+                                <div class="stat-val" style="color:${confColor};">${confScore}%</div>
+                                <div class="stat-lbl">Confidence</div>
+                            </div>
+                            <div class="stat-cell">
+                                <div class="stat-val" style="color:#a78bfa;">${signal.holding_period?.range_text || '3-5D'}</div>
+                                <div class="stat-lbl">Hold Period</div>
+                            </div>
+                            <div class="stat-cell">
+                                <div class="stat-val" style="color:${gatesPassed >= 8 ? '#00ff88' : '#ffaa00'};">${gatesPassed}/${gatesTotal}</div>
+                                <div class="stat-lbl">Gates Passed</div>
+                            </div>
+                        </div>
+
+                        <!-- FACTOR GROUPS TABLE -->
+                        <h4 style="margin-bottom:0.5rem;">Factor Groups (10 Groups)</h4>
+                        <table class="analyzer-factor-table">
                             <thead>
                                 <tr><th>Group</th><th>Weight</th><th>Score</th><th>Signal</th><th>Risk</th></tr>
                             </thead>
                             <tbody>
                                 ${Object.entries(signal.factor_groups || {}).map(([name, g]) => `
-                                    <tr style="${name === 'geopolitical_risk' && g.risk_level === 'HIGH' ? 'background: rgba(239, 68, 68, 0.2);' : ''}">
-                                        <td style="text-transform: capitalize;">${name.replace(/_/g, ' ')}${name === 'geopolitical_risk' && g.risk_level === 'HIGH' ? ' ⚠️' : ''}</td>
+                                    <tr class="${g.signal === 'BULLISH' ? 'row-bullish' : g.signal === 'BEARISH' ? 'row-bearish' : ''}">
+                                        <td style="text-transform:capitalize;font-weight:600;">${name.replace(/_/g, ' ')}${name === 'geopolitical_risk' && g.risk_level === 'HIGH' ? ' ⚠️' : ''}</td>
                                         <td>${g.weight || '-'}%</td>
-                                        <td style="color: ${g.score >= 58 ? 'var(--accent-green)' : g.score <= 42 ? 'var(--accent-red)' : 'var(--text-primary)'}; font-weight: 600;">${g.score}</td>
+                                        <td style="color:${g.score >= 58 ? 'var(--accent-green)' : g.score <= 42 ? 'var(--accent-red)' : 'var(--text-primary)'};font-weight:700;">${g.score}</td>
                                         <td><span class="status-badge ${g.signal === 'BULLISH' ? 'ok' : g.signal === 'BEARISH' ? 'error' : 'limited'}">${g.signal}</span></td>
-                                        <td>${name === 'geopolitical_risk' ? `<span style="color: ${g.risk_level === 'HIGH' ? '#ff6666' : g.risk_level === 'LOW' ? '#00ff88' : '#ffaa00'}; font-weight: 600;">${g.risk_level || '-'}</span>` : '-'}</td>
+                                        <td>${name === 'geopolitical_risk' ? `<span style="color:${g.risk_level === 'HIGH' ? '#ff6666' : g.risk_level === 'LOW' ? '#00ff88' : '#ffaa00'};font-weight:600;">${g.risk_level || '-'}</span>` : '-'}</td>
                                     </tr>
                                 `).join('')}
                             </tbody>
                         </table>
-                        <details style="margin-bottom: 1rem;">
-                            <summary style="cursor: pointer; color: var(--text-muted); font-size: 0.85rem;">Show 11 Individual Factors</summary>
-                            <table class="data-table" style="margin-top: 0.5rem;">
+                        <details style="margin-bottom:1.5rem;">
+                            <summary style="cursor:pointer;color:var(--text-muted);font-size:0.85rem;">Show ${Object.keys(signal.factors || {}).length} Individual Factors</summary>
+                            <table class="analyzer-factor-table" style="margin-top:0.5rem;">
                                 <thead>
                                     <tr><th>Factor</th><th>Score</th><th>Signal</th></tr>
                                 </thead>
                                 <tbody>
                                     ${Object.entries(signal.factors || {}).map(([name, data]) => `
-                                        <tr>
-                                            <td style="text-transform: capitalize;">${name}</td>
+                                        <tr class="${data.signal === 'BULLISH' ? 'row-bullish' : data.signal === 'BEARISH' ? 'row-bearish' : ''}">
+                                            <td style="text-transform:capitalize;">${name}</td>
                                             <td>${data.score?.toFixed(1) || 'N/A'}</td>
                                             <td><span class="status-badge ${data.signal === 'BULLISH' ? 'ok' : data.signal === 'BEARISH' ? 'error' : 'limited'}">${data.signal}</span></td>
                                         </tr>
@@ -3002,85 +3330,29 @@
 
                         ${aiValidationHtml}
 
-                        <h4 style="margin-bottom: 0.5rem;">Technical Indicators</h4>
-                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem;">
-                            <div class="result-card">
-                                <div class="value">${signal.technical?.rsi?.toFixed(1) || 'N/A'}</div>
-                                <div class="label">RSI</div>
+                        <!-- TECHNICAL INDICATORS -->
+                        <h4 style="margin-bottom:0.5rem;">Technical Indicators</h4>
+                        <div class="analyzer-stats-row" style="margin-bottom:1.5rem;">
+                            <div class="stat-cell">
+                                <div class="stat-val" style="color:${rsiColor};">${rsiVal?.toFixed(1) || 'N/A'}</div>
+                                <div class="stat-lbl">RSI ${rsiVal > 70 ? '(Overbought)' : rsiVal < 30 ? '(Oversold)' : ''}</div>
                             </div>
-                            <div class="result-card">
-                                <div class="value">${signal.technical?.adx?.toFixed(1) || 'N/A'}</div>
-                                <div class="label">ADX</div>
+                            <div class="stat-cell">
+                                <div class="stat-val" style="color:${adxColor};">${adxVal?.toFixed(1) || 'N/A'}</div>
+                                <div class="stat-lbl">ADX ${adxVal > 25 ? '(Trending)' : '(Weak)'}</div>
                             </div>
-                            <div class="result-card">
-                                <div class="value">${signal.technical?.atr?.toFixed(5) || 'N/A'}</div>
-                                <div class="label">ATR</div>
+                            <div class="stat-cell">
+                                <div class="stat-val">${signal.technical?.atr?.toFixed(pd) || 'N/A'}</div>
+                                <div class="stat-lbl">ATR</div>
                             </div>
-                        </div>
-                        
-                        <h4 style="margin: 1rem 0 0.5rem;">Smart Trade Setup ${signal.trade_setup?.trade_quality ? `<span style="color: ${signal.trade_setup.trade_quality === 'A+' ? '#00ff88' : signal.trade_setup.trade_quality === 'A' ? '#00cc66' : signal.trade_setup.trade_quality === 'B' ? '#ffaa00' : '#ff6666'}; font-size: 0.9rem;">[Grade: ${signal.trade_setup.trade_quality}]</span>` : ''}</h4>
-                        
-                        ${signal.trade_setup?.market_context ? `
-                        <div style="margin-bottom: 1rem; padding: 0.75rem; background: var(--bg-secondary); border-radius: 0.5rem; display: flex; gap: 1.5rem; justify-content: center; flex-wrap: wrap;">
-                            <div style="text-align: center;">
-                                <div style="font-size: 0.7rem; color: var(--text-muted);">VOLATILITY</div>
-                                <div style="font-weight: 600; color: ${signal.trade_setup.market_context.volatility === 'HIGH' ? '#ff6666' : signal.trade_setup.market_context.volatility === 'LOW' ? '#66aaff' : '#00cc66'};">${signal.trade_setup.market_context.volatility}</div>
-                            </div>
-                            <div style="text-align: center;">
-                                <div style="font-size: 0.7rem; color: var(--text-muted);">TREND</div>
-                                <div style="font-weight: 600; color: ${signal.trade_setup.market_context.trend === 'STRONG' ? '#00ff88' : signal.trade_setup.market_context.trend === 'WEAK' ? '#ffaa00' : '#00cc66'};">${signal.trade_setup.market_context.trend}</div>
-                            </div>
-                            <div style="text-align: center;">
-                                <div style="font-size: 0.7rem; color: var(--text-muted);">CONFIDENCE</div>
-                                <div style="font-weight: 600; color: ${signal.trade_setup.market_context.confidence === 'HIGH' ? '#00ff88' : signal.trade_setup.market_context.confidence === 'LOW' ? '#ff6666' : '#ffaa00'};">${signal.trade_setup.market_context.confidence}</div>
-                            </div>
-                            <div style="text-align: center;">
-                                <div style="font-size: 0.7rem; color: var(--text-muted);">SL MULT</div>
-                                <div style="font-weight: 600;">${signal.trade_setup.sl_multiplier || '1.8'}x</div>
-                            </div>
-                            <div style="text-align: center;">
-                                <div style="font-size: 0.7rem; color: var(--text-muted);">TP MULT</div>
-                                <div style="font-weight: 600;">${signal.trade_setup.tp1_multiplier || '2.5'}x</div>
+                            <div class="stat-cell">
+                                <div class="stat-val" style="color:#a78bfa;">${signal.regime || 'N/A'}</div>
+                                <div class="stat-lbl">Regime</div>
                             </div>
                         </div>
-                        ` : ''}
-                        
-                        <div class="trade-setup">
-                            <div class="setup-grid" style="grid-template-columns: repeat(5, 1fr);">
-                                <div class="setup-item entry">
-                                    <div class="label" style="display: flex; align-items: center; gap: 0.25rem; justify-content: center;">
-                                        ENTRY
-                                        ${signal.trade_setup?.entry_quality && signal.direction !== 'NEUTRAL' ? `
-                                        <span style="display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; font-size: 0.5rem; font-weight: 700; background: ${signal.trade_setup.entry_quality === 'OPTIMAL' ? '#166534' : signal.trade_setup.entry_quality === 'GOOD' ? '#22c55e' : signal.trade_setup.entry_quality === 'WAIT' ? '#a16207' : '#444'}; color: white;">${signal.trade_setup.entry_quality === 'OPTIMAL' ? '✓' : signal.trade_setup.entry_quality === 'GOOD' ? '✓' : signal.trade_setup.entry_quality === 'WAIT' ? '!' : '•'}</span>
-                                        ` : ''}
-                                    </div>
-                                    ${signal.trade_setup?.entry_min && signal.trade_setup?.entry_max && signal.direction !== 'NEUTRAL' ? `
-                                    <div class="value" style="font-size: 0.65rem;">${signal.trade_setup.entry_min.toFixed(5)}</div>
-                                    <div style="font-size: 0.4rem; color: var(--text-muted);">to</div>
-                                    <div class="value" style="font-size: 0.65rem;">${signal.trade_setup.entry_max.toFixed(5)}</div>
-                                    ` : `<div class="value">${signal.trade_setup?.entry?.toFixed(5) || 'N/A'}</div>`}
-                                </div>
-                                <div class="setup-item sl">
-                                    <div class="label">SL (${signal.trade_setup?.sl_pips?.toFixed(0) || 0}p)</div>
-                                    <div class="value">${signal.trade_setup?.sl?.toFixed(5) || 'N/A'}</div>
-                                </div>
-                                <div class="setup-item tp">
-                                    <div class="label">TP1 (${signal.trade_setup?.tp1_pips?.toFixed(0) || 0}p)</div>
-                                    <div class="value">${signal.trade_setup?.tp1?.toFixed(5) || 'N/A'}</div>
-                                </div>
-                                <div class="setup-item tp">
-                                    <div class="label">TP2 (${signal.trade_setup?.tp2_pips?.toFixed(0) || 0}p)</div>
-                                    <div class="value">${signal.trade_setup?.tp2?.toFixed(5) || 'N/A'}</div>
-                                </div>
-                                <div class="setup-item" style="background: var(--bg-secondary);">
-                                    <div class="label">R:R</div>
-                                    <div class="value" style="color: ${(signal.trade_setup?.risk_reward_1 || 1.5) >= 2 ? '#00ff88' : (signal.trade_setup?.risk_reward_1 || 1.5) >= 1.5 ? '#00cc66' : '#ffaa00'};">1:${signal.trade_setup?.risk_reward_1?.toFixed(1) || '1.5'}</div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Holding Period Section -->
-                        <h4 style="margin: 1.5rem 0 0.5rem;">⏱️ Recommended Holding Period</h4>
+
+                        <!-- HOLDING PERIOD -->
+                        <h4 style="margin-bottom:0.5rem;">Recommended Holding Period</h4>
                         <div style="background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(59, 130, 246, 0.2)); border: 1px solid rgba(139, 92, 246, 0.4); border-radius: 0.75rem; padding: 1rem; margin-bottom: 1rem;">
                             <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1rem;">
                                 <div style="text-align: center; padding: 0.75rem; background: rgba(0,0,0,0.2); border-radius: 0.5rem;">
