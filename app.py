@@ -6089,15 +6089,15 @@ def generate_weekly_calendar():
 
             # Include if within the next 30 days
             if event_time >= today - timedelta(days=1) and event_time <= today + timedelta(days=30):
-            events.append({
-                'country': event['country'],
-                'event': event['event'],
-                'impact': event['impact'],
-                'actual': None,
-                'estimate': None,
-                'previous': None,
-                'time': event_time.isoformat()
-            })
+                events.append({
+                    'country': event['country'],
+                    'event': event['event'],
+                    'impact': event['impact'],
+                    'actual': None,
+                    'estimate': None,
+                    'previous': None,
+                    'time': event_time.isoformat()
+                })
 
     # Remove duplicates and sort by time
     seen = set()
