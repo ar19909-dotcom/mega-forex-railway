@@ -1062,30 +1062,32 @@
         /* Positioning */
         .position-bar {
             display: flex;
-            height: 24px;
-            border-radius: 4px;
+            height: 32px;
+            border-radius: 6px;
             overflow: hidden;
-            margin: 0.5rem 0;
+            margin: 0.25rem 0;
         }
-        
+
         .position-long {
             background: var(--gradient-bull);
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
-            font-size: 0.75rem;
-            font-weight: 600;
+            font-size: 0.8rem;
+            font-weight: 700;
+            min-width: 60px;
         }
-        
+
         .position-short {
             background: var(--gradient-bear);
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
-            font-size: 0.75rem;
-            font-weight: 600;
+            font-size: 0.8rem;
+            font-weight: 700;
+            min-width: 60px;
         }
         
         /* Backtest */
@@ -3644,20 +3646,28 @@
                                 separator = '<div style="border-top: 2px solid var(--bg-tertiary); margin: 0.75rem 0; padding-top: 0.25rem; font-size: 0.7rem; color: var(--text-muted); text-align: center;">FOREX PAIRS</div>';
                             }
                             lastWasCommodity = isCommodity;
+                            // v9.4.0: Normalize percentages to fill 100% of the bar
+                            const rawLong = p.long_percentage || 50;
+                            const rawShort = p.short_percentage || 50;
+                            const total = rawLong + rawShort;
+                            const normLong = total > 0 ? (rawLong / total * 100) : 50;
+                            const normShort = total > 0 ? (rawShort / total * 100) : 50;
+                            // Format contrarian signal (replace underscores with spaces)
+                            const contrarian = (p.contrarian_signal || 'NEUTRAL').replace(/_/g, ' ');
                             return `${separator}
                             <div style="background: var(--bg-card); padding: 1rem; border-radius: 0.5rem; margin-bottom: 0.5rem; ${isCommodity ? 'border-left: 3px solid #f59e0b;' : ''}">
                                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
                                     <span style="font-weight: 600;">${p.pair}${isCommodity ? ' <span style="font-size:0.6rem;background:#f59e0b;color:#000;padding:1px 4px;border-radius:3px;">CMD</span>' : ''}</span>
                                     <div style="display: flex; gap: 0.5rem; align-items: center;">
                                         ${p.source === 'IG_REAL' ? '<span style="font-size: 0.7rem; color: var(--accent-green);">● IG</span>' : p.source === 'ESTIMATED' ? '<span style="font-size: 0.7rem; color: var(--text-muted);">~ Est</span>' : p.source === 'BLENDED' ? '<span style="font-size: 0.7rem; color: var(--accent-blue);">● Blended</span>' : ''}
-                                        <span class="status-badge ${p.contrarian_signal.includes('LONG') ? 'ok' : p.contrarian_signal.includes('SHORT') ? 'error' : 'limited'}">
-                                            Contrarian: ${p.contrarian_signal}
+                                        <span class="status-badge ${contrarian.includes('LONG') ? 'ok' : contrarian.includes('SHORT') ? 'error' : 'limited'}">
+                                            ${contrarian}
                                         </span>
                                     </div>
                                 </div>
                                 <div class="position-bar">
-                                    <div class="position-long" style="width: ${(p.long_percentage || 50).toFixed(1)}%">${(p.long_percentage || 50).toFixed(1)}% Long</div>
-                                    <div class="position-short" style="width: ${(p.short_percentage || 50).toFixed(1)}%">${(p.short_percentage || 50).toFixed(1)}% Short</div>
+                                    <div class="position-long" style="width: ${normLong.toFixed(1)}%">${rawLong.toFixed(1)}% Long</div>
+                                    <div class="position-short" style="width: ${normShort.toFixed(1)}%">${rawShort.toFixed(1)}% Short</div>
                                 </div>
                             </div>
                         `}).join('');
