@@ -734,12 +734,32 @@
         .ai-panel-footer {
             display: flex;
             gap: 1rem;
-            padding: 0.6rem 1rem;
-            background: rgba(0,0,0,0.15);
-            border-top: 1px solid rgba(255,255,255,0.05);
+            padding: 0.75rem 1rem;
+            background: rgba(0,0,0,0.25);
+            border-top: 1px solid rgba(255,255,255,0.08);
             flex-wrap: wrap;
             align-items: center;
+        }
+        .ai-panel-footer .ai-verdict {
+            font-size: 1.1rem;
+            font-weight: 700;
+            letter-spacing: 0.03em;
+        }
+        .ai-panel-footer .ai-verdict-label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+        .ai-panel-footer .ai-verdict-dir {
+            padding: 0.2rem 0.7rem;
+            border-radius: 0.35rem;
+            font-weight: 800;
+            font-size: 1.1rem;
+            letter-spacing: 0.04em;
+        }
+        .ai-panel-footer .ai-footer-meta {
             font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-left: auto;
         }
         .ai-panel-analysis {
             padding: 0.85rem 1rem;
@@ -1303,8 +1323,9 @@
             .ai-split { grid-template-columns: 1fr; }
             .ai-split-col.bull-col { border-right: none; border-bottom: 1px solid rgba(255,255,255,0.05); }
             .ai-badges-bar .ai-badge-cell .badge-val { font-size: 0.75rem; }
-            .ai-panel-footer { flex-direction: column; gap: 0.3rem; font-size: 0.75rem; }
-            .ai-panel-footer span:last-child { margin-left: 0; }
+            .ai-panel-footer { flex-direction: column; gap: 0.5rem; align-items: flex-start; }
+            .ai-panel-footer .ai-footer-meta { margin-left: 0; }
+            .ai-panel-footer .ai-verdict-dir { font-size: 0.95rem; }
 
             /* Result Cards - 2 columns */
             .backtest-results {
@@ -3173,8 +3194,8 @@
                             '</div>' +
                             // 5. Bottom bar: AI says + Factors + Groups
                             '<div class="ai-panel-footer">' +
-                            '<span style="color:var(--text-muted);">AI says: <strong style="color:' + aiDirColor + ';">' + aiDirDisplay + '</strong></span>' +
-                            '<span style="color:var(--text-muted);margin-left:auto;">Factors: <strong>' + (aiVal.factors_checked || 11) + '</strong> | Groups: <strong>' + (aiVal.groups_checked || 10) + '</strong></span>' +
+                            '<div class="ai-verdict"><span class="ai-verdict-label">AI says: </span><span class="ai-verdict-dir" style="color:' + aiDirColor + ';background:' + aiDirColor + '22;">' + aiDirDisplay + '</span></div>' +
+                            '<span class="ai-footer-meta">Factors: <strong>' + (aiVal.factors_checked || 11) + '</strong> | Groups: <strong>' + (aiVal.groups_checked || 10) + '</strong></span>' +
                             '</div>' +
                             // Flags (if any)
                             flagsHtml +
