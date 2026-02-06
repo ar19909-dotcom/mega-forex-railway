@@ -2111,7 +2111,7 @@ def calculate_signal_confidence(signal_data):
         direction = signal_data.get('direction', 'NEUTRAL')
         composite = signal_data.get('composite_score', 50)
         trade_setup = signal_data.get('trade_setup', {})
-        gates = trade_setup.get('quality_gates', {})
+        gates = signal_data.get('gates', {}).get('details', {})
 
         # 1. Factor Agreement (25 points max)
         factor_signals = []
@@ -10946,11 +10946,11 @@ def run_system_audit():
         },
         'calibration_notes': {
             'score_range': '5-95 (proper differentiation)',
-            'bullish_threshold': '>= 60 + 5 of 7 gates pass (LONG signal)',
-            'bearish_threshold': '<= 40 + 5 of 7 gates pass (SHORT signal)',
+            'bullish_threshold': '>= 60 + 8 of 10 gates pass (LONG signal)',
+            'bearish_threshold': '<= 40 + 8 of 10 gates pass (SHORT signal)',
             'neutral_zone': '41-59 or gate-filtered (no trade)',
             'conviction_metric': 'Separate breadth x strength score (0-100)',
-            'quality_gates': '7 gates: score threshold, breadth, trend confirm, R:R, calendar, ATR, AI alignment'
+            'quality_gates': '10 gates: score threshold, breadth, trend confirm, R:R, calendar, ATR, AI alignment, real data, geopolitical, market depth'
         }
     }
     
@@ -11420,8 +11420,8 @@ def run_ai_system_health_check(use_ai=True):
     # Check mandatory gates are configured
     mandatory_gates = ['G3', 'G5', 'G8']
     gates_check['details']['mandatory_gates'] = mandatory_gates
-    gates_check['details']['total_gates'] = 8
-    gates_check['details']['gates_required_to_pass'] = 5
+    gates_check['details']['total_gates'] = 10
+    gates_check['details']['gates_required_to_pass'] = 8
 
     health['checks']['quality_gates'] = gates_check
 
