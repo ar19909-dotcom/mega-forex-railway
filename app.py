@@ -110,6 +110,20 @@ def health_check():
         'timestamp': datetime.now().isoformat()
     })
 
+@app.route('/debug-signal')
+def debug_signal():
+    """Temporary debug endpoint - test single signal generation"""
+    pair = request.args.get('pair', 'EUR/USD')
+    import traceback
+    try:
+        result = generate_signal(pair)
+        if result:
+            return jsonify({'success': True, 'pair': pair, 'direction': result.get('direction'), 'score': result.get('composite_score')})
+        else:
+            return jsonify({'success': False, 'pair': pair, 'error': 'generate_signal returned None - check logs'})
+    except Exception as e:
+        return jsonify({'success': False, 'pair': pair, 'error': str(e), 'traceback': traceback.format_exc()})
+
 @app.route('/manifest.json')
 def serve_manifest():
     """Serve PWA manifest"""
