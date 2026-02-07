@@ -477,11 +477,12 @@ TRIANGLE_SETS = [
     ('NZD/USD', 'USD/JPY', 'NZD/JPY'),  # NZD triangle
 ]
 
-def calculate_currency_strength(rates_dict):
+def calculate_currency_strength(rates_dict, candle_cache=None):
     """
     Calculate relative strength of each currency and commodity based on all pairs.
     Returns dict with symbol -> strength score (0-100, 50=neutral)
     v9.3.0: Includes commodities (XAU, XAG, XPT, WTI, BRENT)
+    v9.5.0: Magnitude-based scoring using daily % change + 5-day momentum
     """
     currencies = ['USD', 'EUR', 'GBP', 'JPY', 'CHF', 'AUD', 'NZD', 'CAD']
     strength = {c: [] for c in currencies}
@@ -505,10 +506,65 @@ def calculate_currency_strength(rates_dict):
         if base not in currencies or quote not in currencies:
             continue
 
-        # Track relative performance based on price level
-        # Higher price = base stronger relative to quote
-        strength[base].append(55)   # Base currency score
-        strength[quote].append(45)  # Quote currency score
+        # v9.5.0: Magnitude-based scoring — use actual daily % change
+        daily_change = None
+        momentum_5d = None
+
+        try:
+            # Primary: candle data (most accurate)
+            if candle_cache:
+                cache_key = f"{pair}_day_100"
+                pair_candles = candle_cache.get(cache_key)
+                if pair_candles and len(pair_candles) >= 1:
+                    last_candle = pair_candles[-1]
+                    if last_candle.get('open', 0) > 0:
+                        daily_change = (last_candle['close'] - last_candle['open']) / last_candle['open'] * 100
+
+                    # 5-day average momentum
+                    if len(pair_candles) >= 5:
+                        changes_5d = []
+                        for c in pair_candles[-5:]:
+                            if c.get('open', 0) > 0:
+                                changes_5d.append((c['close'] - c['open']) / c['open'] * 100)
+                        if changes_5d:
+                            momentum_5d = sum(changes_5d) / len(changes_5d)
+
+            # Secondary: open/close from rate data (Polygon rates include these)
+            if daily_change is None and isinstance(rate_data, dict):
+                rate_open = rate_data.get('open')
+                rate_close = rate_data.get('close', rate_data.get('mid'))
+                if rate_open and rate_close and rate_open > 0:
+                    daily_change = (rate_close - rate_open) / rate_open * 100
+        except Exception:
+            daily_change = None
+            momentum_5d = None
+
+        if daily_change is not None:
+            # Scale: 1% move = 8 points offset from 50
+            scale = 8.0
+            today_base = 50 + daily_change * scale
+            today_quote = 50 - daily_change * scale
+
+            if momentum_5d is not None:
+                # Blend: 70% today, 30% five-day momentum
+                mom_base = 50 + momentum_5d * scale
+                mom_quote = 50 - momentum_5d * scale
+                base_score = today_base * 0.7 + mom_base * 0.3
+                quote_score = today_quote * 0.7 + mom_quote * 0.3
+            else:
+                base_score = today_base
+                quote_score = today_quote
+
+            # Clamp per-pair scores
+            base_score = max(20, min(80, base_score))
+            quote_score = max(20, min(80, quote_score))
+
+            strength[base].append(base_score)
+            strength[quote].append(quote_score)
+        else:
+            # Fallback to binary scoring
+            strength[base].append(55)
+            strength[quote].append(45)
 
     # Calculate average strength per currency
     result = {}
@@ -564,9 +620,10 @@ def calculate_currency_strength(rates_dict):
     return result
 
 
-def get_currency_strength_score(pair, rates_dict=None):
+def get_currency_strength_score(pair, rates_dict=None, candle_cache=None):
     """
     v9.2.2: Calculate currency strength factor score for a pair.
+    v9.5.0: Magnitude-based scoring + cross-pair correlation confirmation
     Uses 45-pair data to determine if base currency is stronger than quote.
 
     Returns: dict with score (0-100), signal, and details
@@ -647,8 +704,14 @@ def get_currency_strength_score(pair, rates_dict=None):
 
         base, quote = pair.split('/')
 
-        # Calculate strength for all currencies
-        currency_strength = calculate_currency_strength(rates_dict)
+        # v9.5.0: Pass candle cache for magnitude-based scoring
+        if candle_cache is None:
+            try:
+                with cache_lock:
+                    candle_cache = cache.get('candles', {}).get('data', {})
+            except Exception:
+                candle_cache = {}
+        currency_strength = calculate_currency_strength(rates_dict, candle_cache=candle_cache)
 
         base_strength = currency_strength.get(base, 50)
         quote_strength = currency_strength.get(quote, 50)
@@ -659,6 +722,15 @@ def get_currency_strength_score(pair, rates_dict=None):
         # Convert to 0-100 score
         # Max differential is typically ±10, scale to ±25 points from 50
         score = 50 + (differential * 2.5)
+
+        # v9.5.0: Cross-pair correlation confirmation
+        corr_adj, corr_note = 0, "N/A"
+        try:
+            corr_adj, corr_note = get_correlation_confirmation(pair, rates_dict, candle_cache)
+            score += corr_adj
+        except Exception:
+            pass
+
         score = max(15, min(85, score))  # Clamp to reasonable range
 
         # Determine signal
@@ -675,11 +747,98 @@ def get_currency_strength_score(pair, rates_dict=None):
             'base_strength': round(base_strength, 1),
             'quote_strength': round(quote_strength, 1),
             'differential': round(differential, 1),
-            'details': f"{base}={base_strength:.0f} vs {quote}={quote_strength:.0f}"
+            'correlation': corr_note,
+            'details': f"{base}={base_strength:.0f} vs {quote}={quote_strength:.0f} | {corr_note}"
         }
     except Exception as e:
         logger.warning(f"Currency strength calc failed for {pair}: {e}")
         return {'score': 50, 'signal': 'NEUTRAL', 'base_strength': 50, 'quote_strength': 50, 'details': 'Error'}
+
+
+def _get_pair_daily_change(pair, rates_dict, candle_cache=None):
+    """v9.5.0: Get daily % change for a pair from candles or rate OHLC data."""
+    try:
+        if candle_cache:
+            cache_key = f"{pair}_day_100"
+            pair_candles = candle_cache.get(cache_key)
+            if pair_candles and len(pair_candles) >= 1:
+                last = pair_candles[-1]
+                if last.get('open', 0) > 0:
+                    return (last['close'] - last['open']) / last['open'] * 100
+
+        rate_data = rates_dict.get(pair, {})
+        if isinstance(rate_data, dict):
+            rate_open = rate_data.get('open')
+            rate_close = rate_data.get('close', rate_data.get('mid'))
+            if rate_open and rate_close and rate_open > 0:
+                return (rate_close - rate_open) / rate_open * 100
+        return None
+    except Exception:
+        return None
+
+
+def get_correlation_confirmation(pair, rates_dict, candle_cache=None):
+    """
+    v9.5.0: Check if correlated pairs confirm or contradict the pair's direction.
+    Uses raw price changes (not completed signals) for parallel-safe operation.
+    Returns: (adjustment, note) where adjustment is -5 to +5.
+    """
+    try:
+        if not rates_dict or '/' not in pair:
+            return 0, "No data"
+
+        target_change = _get_pair_daily_change(pair, rates_dict, candle_cache)
+        if target_change is None or abs(target_change) < 0.01:
+            return 0, "Target pair neutral"
+
+        target_direction = 'UP' if target_change > 0 else 'DOWN'
+        confirmations = 0
+        contradictions = 0
+        checked = []
+
+        for (p1, p2), corr in PAIR_CORRELATIONS.items():
+            related_pair = None
+            if p1 == pair:
+                related_pair = p2
+            elif p2 == pair:
+                related_pair = p1
+
+            if related_pair and related_pair in rates_dict:
+                related_change = _get_pair_daily_change(related_pair, rates_dict, candle_cache)
+                if related_change is None or abs(related_change) < 0.01:
+                    continue
+
+                related_direction = 'UP' if related_change > 0 else 'DOWN'
+                checked.append(related_pair)
+
+                if corr > 0:
+                    if target_direction == related_direction:
+                        confirmations += 1
+                    else:
+                        contradictions += 1
+                else:  # Negative correlation
+                    if target_direction != related_direction:
+                        confirmations += 1
+                    else:
+                        contradictions += 1
+
+        if not checked:
+            return 0, "No correlated pairs found"
+
+        net = confirmations - contradictions
+        adjustment = max(-5, min(5, net * 2))
+
+        if net > 0:
+            note = f"Corr confirms ({confirmations}/{len(checked)} agree)"
+        elif net < 0:
+            note = f"Corr contradicts ({contradictions}/{len(checked)} disagree)"
+        else:
+            note = f"Corr mixed ({confirmations} confirm, {contradictions} contradict)"
+
+        return adjustment, note
+    except Exception as e:
+        logger.debug(f"Correlation confirmation failed for {pair}: {e}")
+        return 0, "Error"
 
 
 def detect_triangle_deviation(rates_dict, threshold=0.002):
@@ -7126,14 +7285,80 @@ def get_seasonality_factor(pair, current_date=None):
         'day': day
     }
 
+def get_dynamic_intermarket_baselines():
+    """
+    v9.5.0: Calculate dynamic baselines from 20-day SMA of intermarket assets.
+    Uses pre-fetched candle cache (zero new API calls).
+    Falls back to static baselines if candle data unavailable.
+    Also computes 5-day momentum (rate-of-change) for each asset.
+    """
+    baselines = {
+        'dxy': 100, 'gold': 2000, 'oil': 75, 'vix': 18, 'us_10y': 4.0,
+        'yield_spread_us_eu': 2.0, 'yield_spread_us_jp': 3.5,
+        'gold_momentum': 0, 'oil_momentum': 0, 'dxy_momentum': 0, 'vix_momentum': 0
+    }
+    try:
+        # Gold baseline + momentum from XAU/USD candles
+        gold_candles = get_polygon_candles('XAU/USD', 'day', 100)
+        if gold_candles and len(gold_candles) >= 20:
+            gold_closes = [c['close'] for c in gold_candles[-20:]]
+            baselines['gold'] = sum(gold_closes) / len(gold_closes)
+            if len(gold_candles) >= 5:
+                c5 = [c['close'] for c in gold_candles[-5:]]
+                c5_prev = gold_candles[-6]['close'] if len(gold_candles) >= 6 else c5[0]
+                if c5_prev > 0:
+                    baselines['gold_momentum'] = (c5[-1] - c5_prev) / c5_prev * 100
+
+        # Oil baseline + momentum from WTI/USD candles
+        oil_candles = get_polygon_candles('WTI/USD', 'day', 100)
+        if oil_candles and len(oil_candles) >= 20:
+            oil_closes = [c['close'] for c in oil_candles[-20:]]
+            baselines['oil'] = sum(oil_closes) / len(oil_closes)
+            if len(oil_candles) >= 5:
+                c5 = [c['close'] for c in oil_candles[-5:]]
+                c5_prev = oil_candles[-6]['close'] if len(oil_candles) >= 6 else c5[0]
+                if c5_prev > 0:
+                    baselines['oil_momentum'] = (c5[-1] - c5_prev) / c5_prev * 100
+
+        # DXY momentum from EUR/USD candles (inverse proxy)
+        eur_candles = get_polygon_candles('EUR/USD', 'day', 100)
+        if eur_candles and len(eur_candles) >= 5:
+            c5 = [c['close'] for c in eur_candles[-5:]]
+            c5_prev = eur_candles[-6]['close'] if len(eur_candles) >= 6 else c5[0]
+            if c5_prev > 0:
+                baselines['dxy_momentum'] = -((c5[-1] - c5_prev) / c5_prev * 100)
+
+        # DXY level baseline from FRED (most accurate)
+        fundamental = get_fundamental_data()
+        dxy_val = fundamental.get('dxy')
+        if dxy_val and 80 < dxy_val < 130:
+            baselines['dxy'] = dxy_val * 0.95 + 100 * 0.05  # 95% current + 5% anchor
+
+        # Yield baselines from FRED
+        us_10y = fundamental.get('us_10y')
+        eu_10y = fundamental.get('eu_10y', 2.3)
+        jp_10y = fundamental.get('jp_10y', 0.9)
+        if us_10y and us_10y > 0:
+            baselines['us_10y'] = us_10y * 0.9 + 4.0 * 0.1  # 90% current + 10% anchor
+            baselines['yield_spread_us_eu'] = us_10y - eu_10y
+            baselines['yield_spread_us_jp'] = us_10y - jp_10y
+
+    except Exception as e:
+        logger.debug(f"Dynamic baselines fallback: {e}")
+
+    return baselines
+
+
 def analyze_intermarket(pair):
     """
     REAL Intermarket Analysis for a currency pair
     Uses actual correlations and real-time data
+    v9.5.0: Dynamic baselines + momentum signals
     """
     base, quote = pair.split('/')
     intermarket = get_real_intermarket_data()
-    
+    dynamic = get_dynamic_intermarket_baselines()
+
     score = 50  # Neutral default
     signals = []
     correlations = {}
@@ -7147,54 +7372,85 @@ def analyze_intermarket(pair):
     # DXY Correlation (Dollar Index)
     # High DXY = Strong USD = Bearish for XXX/USD, Bullish for USD/XXX
     # ═══════════════════════════════════════════════════════════════════════════
-    dxy_baseline = 100  # Historical average
-    dxy_strength = (dxy - dxy_baseline) / dxy_baseline * 100  # % deviation
-    
+    dxy_baseline = dynamic.get('dxy', 100)  # v9.5.0: Dynamic 20d SMA baseline
+    dxy_strength = (dxy - dxy_baseline) / max(dxy_baseline, 1) * 100  # % deviation from recent avg
+
     if quote == 'USD':
-        # Pair like EUR/USD - Strong DXY is BEARISH for this pair
         dxy_impact = -dxy_strength * 2
-        signals.append(f"DXY at {dxy:.1f}: {'Strong' if dxy > 102 else 'Weak'} USD")
+        signals.append(f"DXY at {dxy:.1f} (base {dxy_baseline:.1f}): {'Strong' if dxy > dxy_baseline else 'Weak'} USD")
     elif base == 'USD':
-        # Pair like USD/JPY - Strong DXY is BULLISH for this pair
         dxy_impact = dxy_strength * 2
-        signals.append(f"DXY at {dxy:.1f}: {'Strong' if dxy > 102 else 'Weak'} USD")
+        signals.append(f"DXY at {dxy:.1f} (base {dxy_baseline:.1f}): {'Strong' if dxy > dxy_baseline else 'Weak'} USD")
     else:
-        # Cross pairs - minimal DXY impact
         dxy_impact = 0
-    
-    correlations['dxy'] = {'value': dxy, 'impact': dxy_impact}
+
+    correlations['dxy'] = {'value': dxy, 'impact': dxy_impact, 'baseline': dxy_baseline}
     score += dxy_impact
+
+    # v9.5.0: DXY momentum — rising DXY has more impact than static high DXY
+    try:
+        dxy_mom = dynamic.get('dxy_momentum', 0)
+        if abs(dxy_mom) > 0.1:
+            mom_impact = max(-8, min(8, dxy_mom * 1.5))
+            if quote == 'USD':
+                score -= mom_impact
+            elif base == 'USD':
+                score += mom_impact
+            if abs(mom_impact) > 2:
+                signals.append(f"DXY momentum: {'+' if dxy_mom > 0 else ''}{dxy_mom:.1f}%/5d")
+    except Exception:
+        pass
     
     # ═══════════════════════════════════════════════════════════════════════════
     # Gold Correlation (Risk Sentiment)
     # High gold = Risk-off = Bearish for risk currencies (AUD, NZD), Bullish for JPY, CHF
     # ═══════════════════════════════════════════════════════════════════════════
     if gold and pair != 'XAU/USD' and pair != 'XAG/USD' and pair != 'XPT/USD':  # v9.3.0: Skip self-reference for metals
-        gold_baseline = 2000  # Recent average
-        gold_sentiment = (gold - gold_baseline) / gold_baseline * 100
-        
+        gold_baseline = dynamic.get('gold', 2000)  # v9.5.0: Dynamic 20d SMA
+        gold_sentiment = (gold - gold_baseline) / max(gold_baseline, 1) * 100
+
         risk_currencies = ['AUD', 'NZD', 'CAD']
         safe_havens = ['JPY', 'CHF']
-        
+
         gold_impact = 0
         if base in risk_currencies:
-            gold_impact = -gold_sentiment * 0.5  # Risk-off hurts AUD, NZD
+            gold_impact = -gold_sentiment * 0.5
         elif base in safe_havens:
-            gold_impact = gold_sentiment * 0.5  # Risk-off helps JPY, CHF
+            gold_impact = gold_sentiment * 0.5
         elif quote in risk_currencies:
             gold_impact = gold_sentiment * 0.5
         elif quote in safe_havens:
             gold_impact = -gold_sentiment * 0.5
-        
-        correlations['gold'] = {'value': gold, 'impact': gold_impact}
+
+        correlations['gold'] = {'value': gold, 'impact': gold_impact, 'baseline': gold_baseline}
         score += gold_impact
-        signals.append(f"Gold at ${gold:.0f}: {'Risk-off' if gold > gold_baseline else 'Risk-on'}")
+        signals.append(f"Gold at ${gold:.0f} (base ${gold_baseline:.0f}): {'Risk-off' if gold > gold_baseline else 'Risk-on'}")
+
+        # v9.5.0: Gold momentum — rising gold signals increasing risk-off
+        try:
+            gold_mom = dynamic.get('gold_momentum', 0)
+            if abs(gold_mom) > 0.5:
+                gold_mom_impact = 0
+                if base in risk_currencies:
+                    gold_mom_impact = -gold_mom * 0.3
+                elif base in safe_havens:
+                    gold_mom_impact = gold_mom * 0.3
+                elif quote in risk_currencies:
+                    gold_mom_impact = gold_mom * 0.3
+                elif quote in safe_havens:
+                    gold_mom_impact = -gold_mom * 0.3
+                gold_mom_impact = max(-6, min(6, gold_mom_impact))
+                score += gold_mom_impact
+                if abs(gold_mom_impact) > 1:
+                    signals.append(f"Gold momentum: {'+' if gold_mom > 0 else ''}{gold_mom:.1f}%/5d")
+        except Exception:
+            pass
     
     # ═══════════════════════════════════════════════════════════════════════════
     # US 10Y Yield (Interest Rate Differential)
     # Higher yields = Stronger USD
     # ═══════════════════════════════════════════════════════════════════════════
-    yield_baseline = 4.0
+    yield_baseline = dynamic.get('us_10y', 4.0)  # v9.5.0: Dynamic baseline
     yield_impact = (us_10y - yield_baseline) * 3
     
     if 'USD' in pair:
@@ -7211,16 +7467,30 @@ def analyze_intermarket(pair):
     # Higher oil = Bullish for CAD
     # ═══════════════════════════════════════════════════════════════════════════
     if oil and ('CAD' in pair or 'NOK' in pair):
-        oil_baseline = 75
-        oil_impact = (oil - oil_baseline) / oil_baseline * 20
+        oil_baseline = dynamic.get('oil', 75)  # v9.5.0: Dynamic 20d SMA
+        oil_impact = (oil - oil_baseline) / max(oil_baseline, 1) * 20
 
         if base in ['CAD', 'NOK']:
             score += oil_impact
         elif quote in ['CAD', 'NOK']:
             score -= oil_impact
 
-        correlations['oil'] = {'value': oil, 'impact': oil_impact}
-        signals.append(f"Oil at ${oil:.1f}: {'High' if oil > 80 else 'Low'}")
+        correlations['oil'] = {'value': oil, 'impact': oil_impact, 'baseline': oil_baseline}
+        signals.append(f"Oil at ${oil:.1f} (base ${oil_baseline:.1f}): {'High' if oil > oil_baseline else 'Low'}")
+
+        # v9.5.0: Oil momentum for CAD/NOK
+        try:
+            oil_mom = dynamic.get('oil_momentum', 0)
+            if abs(oil_mom) > 1:
+                oil_mom_impact = max(-5, min(5, oil_mom * 0.4))
+                if base in ['CAD', 'NOK']:
+                    score += oil_mom_impact
+                elif quote in ['CAD', 'NOK']:
+                    score -= oil_mom_impact
+                if abs(oil_mom_impact) > 1:
+                    signals.append(f"Oil momentum: {'+' if oil_mom > 0 else ''}{oil_mom:.1f}%/5d")
+        except Exception:
+            pass
 
     # ═══════════════════════════════════════════════════════════════════════════
     # v9.2.4: VIX Correlation (Fear Index)
@@ -7286,8 +7556,7 @@ def analyze_intermarket(pair):
 
     spread_impact = 0
     if 'EUR' in pair and 'USD' in pair:
-        # Wider US-EU spread = bullish USD/bearish EUR
-        spread_baseline = 2.0
+        spread_baseline = dynamic.get('yield_spread_us_eu', 2.0)  # v9.5.0: Dynamic
         if base == 'USD':
             spread_impact = (us_eu_spread - spread_baseline) * 2
         else:
@@ -7295,7 +7564,7 @@ def analyze_intermarket(pair):
         correlations['yield_spread'] = {'value': us_eu_spread, 'impact': spread_impact}
 
     elif 'JPY' in pair and 'USD' in pair:
-        spread_baseline = 3.5
+        spread_baseline = dynamic.get('yield_spread_us_jp', 3.5)  # v9.5.0: Dynamic
         if base == 'USD':
             spread_impact = (us_jp_spread - spread_baseline) * 1.5
         else:
@@ -7380,7 +7649,19 @@ def analyze_intermarket(pair):
             'eu_10y': eu_10y,
             'jp_10y': jp_10y,
             'us_eu_spread': round(us_eu_spread, 2),
-            'us_jp_spread': round(us_jp_spread, 2)
+            'us_jp_spread': round(us_jp_spread, 2),
+            'dynamic_baselines': {
+                'dxy': round(dynamic.get('dxy', 100), 1),
+                'gold': round(dynamic.get('gold', 2000), 0),
+                'oil': round(dynamic.get('oil', 75), 1),
+                'us_10y': round(dynamic.get('us_10y', 4.0), 2)
+            },
+            'momentum': {
+                'dxy': round(dynamic.get('dxy_momentum', 0), 2),
+                'gold': round(dynamic.get('gold_momentum', 0), 2),
+                'oil': round(dynamic.get('oil_momentum', 0), 2),
+                'vix': round(dynamic.get('vix_momentum', 0), 2)
+            }
         }
     }
 
@@ -8231,7 +8512,33 @@ def calculate_factor_scores(pair):
         quant_score -= 5
     
     quant_score = max(10, min(90, quant_score))
-    
+
+    # v9.5.0: Triangle deviation bonus (mean-reversion signal from mispricing)
+    triangle_info = None
+    try:
+        with cache_lock:
+            _tri_rates = cache.get('rates', {}).get('data', {})
+        if _tri_rates:
+            tri_devs = detect_triangle_deviation(_tri_rates, threshold=0.002)
+            for tri in tri_devs:
+                if tri.get('target_pair') == pair:
+                    dev_pct = tri.get('deviation', 0)  # Already in % (e.g., 0.35 = 0.35%)
+                    tri_bonus = min(5, abs(dev_pct) * 10)  # 0.5% = 5pts
+                    if tri.get('direction') == 'LONG':
+                        quant_score += tri_bonus
+                    elif tri.get('direction') == 'SHORT':
+                        quant_score -= tri_bonus
+                    triangle_info = {
+                        'triangle': list(tri.get('triangle', [])),
+                        'deviation_pct': round(dev_pct, 3),
+                        'direction': tri.get('direction'),
+                        'bonus': round(tri_bonus, 1)
+                    }
+                    break
+        quant_score = max(10, min(90, quant_score))  # Re-clamp after triangle
+    except Exception:
+        pass
+
     factors['quantitative'] = {
         'score': round(quant_score, 1),
         'signal': 'BULLISH' if quant_score >= 58 else 'BEARISH' if quant_score <= 42 else 'NEUTRAL',
@@ -8239,7 +8546,8 @@ def calculate_factor_scores(pair):
             'zscore': zscore,
             'zscore_mean': zscore_data['mean'],
             'bb_percent': bb_pct,
-            'mean_reversion_signal': zscore_data['signal']
+            'mean_reversion_signal': zscore_data['signal'],
+            'triangle_deviation': triangle_info
         }
     }
     
@@ -8764,7 +9072,8 @@ def generate_signal(pair):
         try:
             with cache_lock:
                 _cached_rates = cache.get('rates', {}).get('data', {})
-            currency_strength_data = get_currency_strength_score(pair, rates_dict=_cached_rates if _cached_rates else None)
+                _cached_candles = cache.get('candles', {}).get('data', {})
+            currency_strength_data = get_currency_strength_score(pair, rates_dict=_cached_rates if _cached_rates else None, candle_cache=_cached_candles)
         except Exception as cs_err:
             logger.warning(f"Currency strength error for {pair}: {cs_err}")
             currency_strength_data = {'score': 50, 'signal': 'NEUTRAL', 'details': ['Error - using neutral'], 'base_strength': 50, 'quote_strength': 50}
