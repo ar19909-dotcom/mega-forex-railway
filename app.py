@@ -20,7 +20,7 @@
 ╠══════════════════════════════════════════════════════════════════════════════╣
 ║  FOREX SCORING (45 pairs) - 10-Group Gated AI-Enhanced (v9.5.0)              ║
 ║  - Trend & Momentum (22%): RSI/MACD/Stoch/CCI/Div/Patterns/ROC/Vol + MTF    ║
-║  - Fundamental (14%): Interest rate differentials + FRED macro               ║
+║  - Fundamental (14%): Rates + Yield Curve + CPI/Employment/Payroll Momentum  ║
 ║  - Mean Reversion (12%): Z-Score, Bollinger %B + S/R structure               ║
 ║  - Sentiment (11%): IG positioning + enhanced news analysis                  ║
 ║  - Intermarket (10%): DXY, Gold, Yields, Oil correlations                    ║
@@ -1148,7 +1148,8 @@ cache = {
     'intermarket_data': {'data': {}, 'timestamp': None},
     'positioning': {'data': None, 'timestamp': None},  # IG positioning cache
     'signals': {'data': None, 'timestamp': None},      # Signals cache for fast loading
-    'audit': {'data': None, 'timestamp': None}         # Audit cache for performance
+    'audit': {'data': None, 'timestamp': None},        # Audit cache for performance
+    'expanded_fundamental': {'data': None, 'timestamp': None}  # v9.5.0: FRED macro data
 }
 
 # Thread lock for cache access (prevents race conditions in ThreadPoolExecutor)
@@ -1163,7 +1164,8 @@ CACHE_TTL = {
     'intermarket_data': 300,  # 5 minutes
     'positioning': 900,  # 15 minutes - IG sentiment doesn't change rapidly + avoid rate limits
     'signals': 300,   # v9.4.0: 5 minutes (was 180s) - aligned with frontend 300s refresh interval
-    'audit': 300      # 5 minutes - audit data doesn't change rapidly
+    'audit': 300,     # 5 minutes - audit data doesn't change rapidly
+    'expanded_fundamental': 3600  # v9.5.0: 1 hour - FRED data updates daily at most
 }
 
 # Store the best quality calendar data separately (never overwrite with worse data)
@@ -5692,6 +5694,139 @@ def analyze_sentiment(pair):
     }
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# v9.5.0: FUNDAMENTAL NEWS EXTRACTION (separate from sentiment)
+# Filters high-impact economic data releases from cached news
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Fundamental-specific keywords: economic DATA RELEASES, not general market news
+FUND_NEWS_BULLISH = {
+    'rate hike': 10, 'raises rates': 10, 'rate increase': 10, 'hawkish surprise': 9,
+    'nfp beats': 9, 'payrolls beat': 9, 'jobs beat': 8, 'employment surges': 8,
+    'unemployment falls': 8, 'unemployment drops': 8, 'jobless claims fall': 7,
+    'gdp beats': 8, 'gdp exceeds': 8, 'gdp grows': 7, 'growth beats': 7,
+    'cpi lower than expected': 8, 'inflation falls': 7, 'inflation eases': 7, 'cpi drops': 7,
+    'pmi beats': 6, 'manufacturing expands': 6, 'services expand': 6,
+    'trade surplus': 5, 'retail sales beat': 6, 'consumer confidence rises': 5,
+}
+
+FUND_NEWS_BEARISH = {
+    'rate cut': 10, 'cuts rates': 10, 'rate reduction': 10, 'dovish surprise': 9,
+    'nfp misses': 9, 'payrolls miss': 9, 'jobs miss': 8, 'employment falls': 8,
+    'unemployment rises': 8, 'unemployment jumps': 8, 'jobless claims surge': 7,
+    'gdp misses': 8, 'gdp contracts': 9, 'recession': 9, 'growth misses': 7,
+    'cpi higher than expected': 8, 'inflation surges': 7, 'inflation spikes': 7, 'cpi jumps': 7,
+    'pmi misses': 6, 'manufacturing contracts': 7, 'pmi below 50': 6,
+    'trade deficit widens': 5, 'retail sales miss': 6, 'consumer confidence falls': 5,
+}
+
+FUND_CURRENCY_KEYWORDS = {
+    'USD': ['dollar', 'usd', 'fed', 'federal reserve', 'fomc', 'powell', 'us economy', 'american'],
+    'EUR': ['euro', 'eur', 'ecb', 'lagarde', 'eurozone', 'european'],
+    'GBP': ['pound', 'gbp', 'boe', 'bank of england', 'uk economy', 'british'],
+    'JPY': ['yen', 'jpy', 'boj', 'bank of japan', 'ueda', 'japanese'],
+    'AUD': ['aussie', 'aud', 'rba', 'australia', 'reserve bank of australia'],
+    'CAD': ['loonie', 'cad', 'boc', 'bank of canada', 'canadian'],
+    'NZD': ['kiwi', 'nzd', 'rbnz', 'new zealand'],
+    'CHF': ['franc', 'chf', 'snb', 'swiss', 'switzerland'],
+    'MXN': ['peso', 'mxn', 'banxico', 'mexico'],
+    'ZAR': ['rand', 'zar', 'sarb', 'south africa'],
+}
+
+def extract_fundamental_news(pair, news_articles=None):
+    """
+    v9.5.0: Extract high-impact FUNDAMENTAL economic news.
+    Focuses on data releases (NFP, CPI, GDP, rate decisions) not general sentiment.
+    Returns: {'score_adjustment': ±7, 'recent_events': [...], 'impact_summary': str}
+    """
+    try:
+        if not news_articles:
+            news_articles = get_finnhub_news() or []
+        if not news_articles:
+            return {'score_adjustment': 0, 'recent_events': [], 'impact_summary': 'NO_NEWS', 'event_count': 0}
+
+        base, quote = pair.split('/')
+        base_kw = FUND_CURRENCY_KEYWORDS.get(base, [base.lower()])
+        quote_kw = FUND_CURRENCY_KEYWORDS.get(quote, [quote.lower()])
+
+        fund_score = 0
+        events = []
+        cutoff = datetime.now() - timedelta(hours=24)
+
+        for article in news_articles:
+            try:
+                art_ts = article.get('datetime', 0)
+                if isinstance(art_ts, (int, float)):
+                    art_time = datetime.fromtimestamp(art_ts)
+                else:
+                    continue
+                if art_time < cutoff:
+                    continue
+
+                headline = (article.get('headline', '') or '').lower()
+                summary = (article.get('summary', '') or '').lower()
+                text = f"{headline} {summary}"
+
+                base_hit = any(kw in text for kw in base_kw)
+                quote_hit = any(kw in text for kw in quote_kw)
+                if not (base_hit or quote_hit):
+                    continue
+
+                # Time decay
+                hours_old = (datetime.now() - art_time).total_seconds() / 3600
+                decay = 1.0 if hours_old < 4 else 0.7 if hours_old < 12 else 0.4
+
+                art_score = 0
+                matched = []
+
+                for kw, weight in FUND_NEWS_BULLISH.items():
+                    if kw in text:
+                        matched.append(kw)
+                        if base_hit:
+                            art_score += weight * decay
+                        if quote_hit:
+                            art_score -= weight * decay
+
+                for kw, weight in FUND_NEWS_BEARISH.items():
+                    if kw in text:
+                        matched.append(kw)
+                        if base_hit:
+                            art_score -= weight * decay
+                        if quote_hit:
+                            art_score += weight * decay
+
+                if matched:
+                    fund_score += art_score
+                    events.append({
+                        'headline': article.get('headline', ''),
+                        'keywords': matched[:5],
+                        'impact': round(art_score, 1)
+                    })
+            except Exception:
+                continue
+
+        # Normalize to ±7
+        adj = max(-7, min(7, fund_score / 10))
+        summary = 'NEUTRAL'
+        if adj >= 4:
+            summary = 'STRONG_BULLISH'
+        elif adj >= 2:
+            summary = 'BULLISH'
+        elif adj <= -4:
+            summary = 'STRONG_BEARISH'
+        elif adj <= -2:
+            summary = 'BEARISH'
+
+        return {
+            'score_adjustment': round(adj, 1),
+            'recent_events': events[:5],
+            'impact_summary': summary,
+            'event_count': len(events)
+        }
+    except Exception as e:
+        logger.debug(f"Fundamental news extraction failed for {pair}: {e}")
+        return {'score_adjustment': 0, 'recent_events': [], 'impact_summary': 'ERROR', 'event_count': 0}
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # ECONOMIC CALENDAR - MULTI-SOURCE WITH FALLBACK
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -6918,6 +7053,166 @@ def get_fundamental_data():
         cache['fundamental']['data'] = data
         cache['fundamental']['timestamp'] = datetime.now()
     return data
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# v9.5.0: EXPANDED FRED MACRO DATA ENGINE
+# 13 FRED series + 3 historical lookups for momentum analysis
+# ═══════════════════════════════════════════════════════════════════════════════
+
+FRED_MACRO_SERIES = {
+    'FEDFUNDS': {'name': 'US Fed Funds Rate', 'default': 4.5},
+    'DGS2': {'name': 'US 2Y Treasury Yield', 'default': 4.3},
+    'DGS10': {'name': 'US 10Y Treasury Yield', 'default': 4.5},
+    'T10Y2Y': {'name': 'US 10Y-2Y Spread', 'default': 0.2},
+    'UNRATE': {'name': 'US Unemployment Rate', 'default': 4.1},
+    'CPIAUCSL': {'name': 'US CPI', 'default': 308},
+    'PAYEMS': {'name': 'US Nonfarm Payrolls (thousands)', 'default': 157000},
+    'DTWEXBGS': {'name': 'Trade Weighted USD Index (DXY)', 'default': 104},
+    'GDP': {'name': 'US GDP', 'default': 27000},
+    'VIXCLS': {'name': 'VIX Volatility Index', 'default': 18.0},
+    'IRLTLT01EZM156N': {'name': 'EU 10Y Yield', 'default': 2.3},
+    'IRLTLT01GBM156N': {'name': 'UK 10Y Yield', 'default': 4.2},
+    'IRLTLT01JPM156N': {'name': 'Japan 10Y Yield', 'default': 0.9},
+}
+
+def get_fred_data_historical(series_id, months_ago=3):
+    """Fetch FRED data from N months ago for momentum analysis"""
+    if not FRED_API_KEY:
+        return None
+    try:
+        target_date = (datetime.now() - timedelta(days=months_ago * 30)).strftime('%Y-%m-%d')
+        end_date = (datetime.now() - timedelta(days=months_ago * 30 - 15)).strftime('%Y-%m-%d')
+        url = "https://api.stlouisfed.org/fred/series/observations"
+        params = {
+            'series_id': series_id,
+            'api_key': FRED_API_KEY,
+            'file_type': 'json',
+            'observation_start': target_date,
+            'observation_end': end_date,
+            'sort_order': 'desc',
+            'limit': 5
+        }
+        resp = req_lib.get(url, params=params, timeout=10)
+        if resp.status_code == 200:
+            data = resp.json()
+            obs = data.get('observations', [])
+            for ob in obs:
+                val = ob.get('value', '.')
+                if val != '.':
+                    return float(val)
+    except Exception as e:
+        logger.debug(f"FRED historical fetch failed for {series_id} ({months_ago}mo): {e}")
+    return None
+
+def get_expanded_fundamental_data():
+    """
+    v9.5.0: Fetch comprehensive FRED macro data with parallel execution.
+    Returns dict with all macro indicators + momentum analysis.
+    Cache: 3600s (1 hour) - FRED data updates daily at most.
+    """
+    if is_cache_valid('expanded_fundamental'):
+        with cache_lock:
+            data = cache.get('expanded_fundamental', {}).get('data')
+            if data:
+                return data
+
+    macro_data = {}
+
+    # Parallel FRED fetch (5 workers to respect ~120/min rate limit)
+    def fetch_series(series_id, config):
+        try:
+            value = get_fred_data(series_id)
+            return series_id, value if value is not None else config['default']
+        except Exception:
+            return series_id, config['default']
+
+    try:
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            futures = {
+                executor.submit(fetch_series, sid, cfg): sid
+                for sid, cfg in FRED_MACRO_SERIES.items()
+            }
+            for future in as_completed(futures):
+                try:
+                    series_id, value = future.result(timeout=15)
+                    macro_data[series_id] = value
+                except Exception:
+                    sid = futures[future]
+                    macro_data[sid] = FRED_MACRO_SERIES[sid]['default']
+    except Exception as e:
+        logger.warning(f"FRED batch fetch failed: {e}")
+        macro_data = {sid: cfg['default'] for sid, cfg in FRED_MACRO_SERIES.items()}
+
+    # Historical lookups for momentum (parallel)
+    try:
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            hist_futures = {
+                executor.submit(get_fred_data_historical, 'FEDFUNDS', 6): 'fedfunds_6mo',
+                executor.submit(get_fred_data_historical, 'CPIAUCSL', 3): 'cpi_3mo',
+                executor.submit(get_fred_data_historical, 'UNRATE', 3): 'unrate_3mo',
+                executor.submit(get_fred_data_historical, 'PAYEMS', 3): 'payems_3mo',
+            }
+            for future in as_completed(hist_futures):
+                key = hist_futures[future]
+                try:
+                    macro_data[key] = future.result(timeout=15)
+                except Exception:
+                    macro_data[key] = None
+    except Exception as e:
+        logger.debug(f"FRED historical batch failed: {e}")
+
+    # Calculate derived metrics
+    try:
+        # Yield curve (pre-calculated from FRED T10Y2Y, or manual)
+        macro_data['us_yield_curve'] = macro_data.get('T10Y2Y', 0.2)
+
+        # Inflation momentum: % change in CPI vs 3 months ago
+        curr_cpi = macro_data.get('CPIAUCSL', 308)
+        hist_cpi = macro_data.get('cpi_3mo')
+        if hist_cpi and hist_cpi > 0:
+            macro_data['cpi_momentum'] = ((curr_cpi - hist_cpi) / hist_cpi) * 100
+        else:
+            macro_data['cpi_momentum'] = 0
+
+        # Employment momentum: unemployment change (positive = rising = bad)
+        curr_unemp = macro_data.get('UNRATE', 4.1)
+        hist_unemp = macro_data.get('unrate_3mo')
+        if hist_unemp is not None:
+            macro_data['unemployment_momentum'] = curr_unemp - hist_unemp
+        else:
+            macro_data['unemployment_momentum'] = 0
+
+        # Payroll momentum: change in nonfarm payrolls (thousands)
+        curr_payems = macro_data.get('PAYEMS', 157000)
+        hist_payems = macro_data.get('payems_3mo')
+        if hist_payems is not None:
+            macro_data['payroll_change'] = curr_payems - hist_payems
+        else:
+            macro_data['payroll_change'] = 0
+
+        # Rate change momentum: 6-month fed funds trajectory
+        curr_rate = macro_data.get('FEDFUNDS', 4.5)
+        hist_rate = macro_data.get('fedfunds_6mo')
+        if hist_rate is not None:
+            macro_data['rate_change_momentum'] = curr_rate - hist_rate
+        else:
+            macro_data['rate_change_momentum'] = 0
+
+    except Exception as e:
+        logger.warning(f"FRED derived metrics failed: {e}")
+        macro_data.setdefault('us_yield_curve', 0.2)
+        macro_data.setdefault('cpi_momentum', 0)
+        macro_data.setdefault('unemployment_momentum', 0)
+        macro_data.setdefault('payroll_change', 0)
+        macro_data.setdefault('rate_change_momentum', 0)
+
+    # Cache results
+    with cache_lock:
+        cache['expanded_fundamental']['data'] = macro_data
+        cache['expanded_fundamental']['timestamp'] = datetime.now()
+
+    logger.info(f"📊 FRED expanded macro data fetched: {len(macro_data)} indicators, yield curve={macro_data.get('us_yield_curve', 'N/A')}")
+    return macro_data
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # REAL INTERMARKET ANALYSIS
@@ -8646,16 +8941,184 @@ def calculate_factor_scores(pair):
         else:
             fund_score = 50
 
-        # v9.2: Central Bank Policy Bias adjustments
+        # v9.5.0: Central Bank Policy Bias (reduced weight, rate momentum supplements)
         base_policy = CENTRAL_BANK_POLICY_BIAS.get(base, {'bias': 'NEUTRAL', 'score_adj': 0})
         quote_policy = CENTRAL_BANK_POLICY_BIAS.get(quote, {'bias': 'NEUTRAL', 'score_adj': 0})
-        policy_adjustment = base_policy['score_adj'] - quote_policy['score_adj']
+        policy_adjustment = int((base_policy['score_adj'] - quote_policy['score_adj']) * 0.7)
         fund_score += policy_adjustment
+
+        # v9.5.0: Get expanded FRED macro data for new enhancements
+        macro = {}
+        try:
+            macro = get_expanded_fundamental_data() or {}
+        except Exception:
+            macro = {}
+
+        # ── F5: Rate Change Momentum (±6 pts) ────────────────────────────────
+        rate_momentum_adj = 0
+        try:
+            rate_momentum = macro.get('rate_change_momentum', 0)
+            if rate_momentum > 0.5:
+                momentum_adj = 6
+            elif rate_momentum > 0.25:
+                momentum_adj = 3
+            elif rate_momentum < -0.5:
+                momentum_adj = -6
+            elif rate_momentum < -0.25:
+                momentum_adj = -3
+            else:
+                momentum_adj = 0
+            # Apply directionally for USD pairs
+            if base == 'USD':
+                rate_momentum_adj = momentum_adj
+            elif quote == 'USD':
+                rate_momentum_adj = -momentum_adj
+            fund_score += rate_momentum_adj
+        except Exception:
+            rate_momentum_adj = 0
+
+        # ── F2: Yield Curve Analysis (±8 pts) ────────────────────────────────
+        yield_curve_adj = 0
+        try:
+            us_curve = macro.get('us_yield_curve', 0.2)
+            # Determine which currency benefits from US yield curve shape
+            # Inverted = recession risk = defensive USD / bearish risk currencies
+            # Steep = growth optimism = bullish risk currencies
+            usd_is_base = (base == 'USD')
+            usd_is_quote = (quote == 'USD')
+            risk_currencies = {'AUD', 'NZD', 'MXN', 'ZAR', 'CAD', 'NOK', 'SEK'}
+            safe_currencies = {'USD', 'JPY', 'CHF'}
+
+            if us_curve < -0.5:
+                # Deeply inverted: recession → safe-haven demand
+                if base in safe_currencies and quote in risk_currencies:
+                    yield_curve_adj = 8
+                elif base in risk_currencies and quote in safe_currencies:
+                    yield_curve_adj = -8
+                elif usd_is_base:
+                    yield_curve_adj = 5
+                elif usd_is_quote:
+                    yield_curve_adj = -5
+            elif us_curve < 0:
+                # Slightly inverted: caution
+                if base in safe_currencies and quote in risk_currencies:
+                    yield_curve_adj = 4
+                elif base in risk_currencies and quote in safe_currencies:
+                    yield_curve_adj = -4
+                elif usd_is_base:
+                    yield_curve_adj = 2
+                elif usd_is_quote:
+                    yield_curve_adj = -2
+            elif us_curve > 1.5:
+                # Very steep: strong growth → risk-on
+                if base in risk_currencies and quote in safe_currencies:
+                    yield_curve_adj = 6
+                elif base in safe_currencies and quote in risk_currencies:
+                    yield_curve_adj = -6
+                elif usd_is_base:
+                    yield_curve_adj = -3
+                elif usd_is_quote:
+                    yield_curve_adj = 3
+            elif us_curve > 0.8:
+                # Moderately steep: mild growth
+                if base in risk_currencies and quote in safe_currencies:
+                    yield_curve_adj = 3
+                elif base in safe_currencies and quote in risk_currencies:
+                    yield_curve_adj = -3
+            fund_score += yield_curve_adj
+        except Exception:
+            yield_curve_adj = 0
 
         # v9.2.4: Economic Fundamentals (GDP, Inflation, Current Account)
         econ_diff = get_economic_differential(base, quote)
         econ_adjustment = econ_diff['score_adj']
         fund_score += econ_adjustment
+
+        # ── F3: Inflation Momentum (±6 pts) ──────────────────────────────────
+        inflation_momentum_adj = 0
+        try:
+            cpi_mom = macro.get('cpi_momentum', 0)
+            if base == 'USD':
+                if cpi_mom > 0.8:
+                    inflation_momentum_adj = 6
+                elif cpi_mom > 0.3:
+                    inflation_momentum_adj = 3
+                elif cpi_mom < -0.5:
+                    inflation_momentum_adj = -4
+            elif quote == 'USD':
+                if cpi_mom > 0.8:
+                    inflation_momentum_adj = -6
+                elif cpi_mom > 0.3:
+                    inflation_momentum_adj = -3
+                elif cpi_mom < -0.5:
+                    inflation_momentum_adj = 4
+            fund_score += inflation_momentum_adj
+        except Exception:
+            inflation_momentum_adj = 0
+
+        # ── F3: Employment Momentum (±6 pts) ─────────────────────────────────
+        employment_adj = 0
+        try:
+            unemp_mom = macro.get('unemployment_momentum', 0)
+            if base == 'USD':
+                if unemp_mom < -0.3:
+                    employment_adj = 6
+                elif unemp_mom < -0.1:
+                    employment_adj = 3
+                elif unemp_mom > 0.3:
+                    employment_adj = -5
+                elif unemp_mom > 0.1:
+                    employment_adj = -2
+            elif quote == 'USD':
+                if unemp_mom < -0.3:
+                    employment_adj = -6
+                elif unemp_mom < -0.1:
+                    employment_adj = -3
+                elif unemp_mom > 0.3:
+                    employment_adj = 5
+                elif unemp_mom > 0.1:
+                    employment_adj = 2
+            fund_score += employment_adj
+        except Exception:
+            employment_adj = 0
+
+        # ── F4: Payroll Strength Signal (±5 pts) ─────────────────────────────
+        payroll_adj = 0
+        try:
+            payroll_change = macro.get('payroll_change', 0)
+            if base == 'USD':
+                if payroll_change > 500:
+                    payroll_adj = 5
+                elif payroll_change > 200:
+                    payroll_adj = 3
+                elif payroll_change < -500:
+                    payroll_adj = -5
+                elif payroll_change < -200:
+                    payroll_adj = -4
+            elif quote == 'USD':
+                if payroll_change > 500:
+                    payroll_adj = -5
+                elif payroll_change > 200:
+                    payroll_adj = -3
+                elif payroll_change < -500:
+                    payroll_adj = 5
+                elif payroll_change < -200:
+                    payroll_adj = 4
+            fund_score += payroll_adj
+        except Exception:
+            payroll_adj = 0
+
+        # ── F6: Fundamental News Pulse (±7 pts) ──────────────────────────────
+        fund_news_adj = 0
+        fund_news_data = {'score_adjustment': 0, 'recent_events': [], 'impact_summary': 'NEUTRAL', 'event_count': 0}
+        try:
+            fund_news_data = extract_fundamental_news(pair)
+            fund_news_adj = fund_news_data.get('score_adjustment', 0)
+            fund_score += fund_news_adj
+        except Exception:
+            fund_news_adj = 0
+
+        # ── END v9.5.0 FUNDAMENTAL ENHANCEMENTS ─────────────────────────────
 
         # Clamp to valid range
         fund_score = max(10, min(90, fund_score))
@@ -8681,7 +9144,20 @@ def calculate_factor_scores(pair):
                 'base_inflation': econ_diff['base_inflation'],
                 'quote_inflation': econ_diff['quote_inflation'],
                 'current_account_diff': econ_diff['ca_diff'],
-                'economic_adjustment': econ_adjustment
+                'economic_adjustment': econ_adjustment,
+                'yield_curve': macro.get('us_yield_curve', 'N/A'),
+                'yield_curve_adj': yield_curve_adj,
+                'cpi_momentum': round(macro.get('cpi_momentum', 0), 2),
+                'inflation_momentum_adj': inflation_momentum_adj,
+                'unemployment_momentum': round(macro.get('unemployment_momentum', 0), 2),
+                'employment_adj': employment_adj,
+                'payroll_change': macro.get('payroll_change', 0),
+                'payroll_adj': payroll_adj,
+                'rate_change_momentum': round(macro.get('rate_change_momentum', 0), 3),
+                'rate_momentum_adj': rate_momentum_adj,
+                'fundamental_news': fund_news_data.get('impact_summary', 'N/A'),
+                'news_adj': fund_news_adj,
+                'recent_events': fund_news_data.get('event_count', 0)
             }
         }
     
@@ -10606,7 +11082,7 @@ def run_system_audit():
     # ═══════════════════════════════════════════════════════════════════════════
     audit['scoring_methodology'] = {
         'version': '9.5.0 PRO',
-        'description': 'v9.5.0 — 10 factor groups, enhanced T&M (candlestick patterns, ADX-adaptive RSI, swing divergence, ROC, EMA recency, BB squeeze, volume confirmation), dynamic intermarket baselines, magnitude-based currency strength, cross-pair correlation, triangle deviation, 10-gate quality filter (G3/G5/G8 mandatory), 50 instruments',
+        'description': 'v9.5.0 — 10 factor groups, enhanced T&M (10 sub-components), enhanced Fundamental (FRED macro engine: yield curve, CPI/employment/payroll momentum, rate trajectory, fundamental news), dynamic intermarket baselines, magnitude currency strength, cross-pair correlation, triangle deviation, 10-gate quality filter, 50 instruments',
         'score_range': {
             'min': 5,
             'max': 95,
@@ -10618,7 +11094,7 @@ def run_system_audit():
         'total_weight': 100,
         'factor_groups': {
             'trend_momentum': {'weight': 22, 'sources': 'Technical (RSI/MACD/Stoch/CCI/Divergence/Patterns/ROC/EMA/Squeeze/Volume + ADX multiplier) 60% + MTF (H1/H4/D1) 40% — #1 return driver'},
-            'fundamental': {'weight': 14, 'sources': 'Interest rate differentials + FRED macro data — #2 FX factor (carry)'},
+            'fundamental': {'weight': 14, 'sources': 'v9.5.0: Rate diff + Yield curve + CPI/Employment/Payroll momentum + Rate change trajectory + Fundamental news (13 FRED series, 3 historical lookups)'},
             'mean_reversion': {'weight': 12, 'sources': 'Quantitative (Z-Score/Bollinger) 55% + Structure (S/R) 45%'},
             'sentiment': {'weight': 11, 'sources': 'IG positioning 65% + Options proxy 35% — confirmation + alpha booster'},
             'intermarket': {'weight': 10, 'sources': 'DXY, Gold, Yields, Oil correlations'},
@@ -10748,24 +11224,23 @@ def run_system_audit():
         'fundamental': {
             'weight': 15,
             'weight_percent': '100% of Fundamental (14%)',
-            'description': 'Interest rate differentials and carry trade analysis',
-            'data_sources': ['Central bank rates database', 'FRED API'],
-            'score_range': '15-85',
-            'calculation': 'Base currency rate - Quote currency rate',
-            'scoring': [
-                {'differential': '>= 4.0%', 'score': 85, 'meaning': 'Very strong carry trade'},
-                {'differential': '>= 3.0%', 'score': 78, 'meaning': 'Strong carry trade'},
-                {'differential': '>= 2.0%', 'score': 70, 'meaning': 'Moderate carry trade'},
-                {'differential': '>= 1.0%', 'score': 62, 'meaning': 'Slight carry advantage'},
-                {'differential': '>= 0.5%', 'score': 55, 'meaning': 'Minor advantage'},
-                {'differential': '-0.5 to 0.5%', 'score': 50, 'meaning': 'Neutral'},
-                {'differential': '<= -0.5%', 'score': 45, 'meaning': 'Minor disadvantage'},
-                {'differential': '<= -1.0%', 'score': 38, 'meaning': 'Slight disadvantage'},
-                {'differential': '<= -2.0%', 'score': 30, 'meaning': 'Moderate disadvantage'},
-                {'differential': '<= -3.0%', 'score': 22, 'meaning': 'Strong disadvantage'},
-                {'differential': '<= -4.0%', 'score': 15, 'meaning': 'Very strong disadvantage'}
-            ],
-            'central_bank_rates': CENTRAL_BANK_RATES,
+            'description': 'v9.5.0: Enhanced with FRED macro engine — carry trade + yield curve + CPI/employment/payroll momentum + rate trajectory + fundamental news',
+            'data_sources': ['Central bank rates database', 'FRED API (13 series + 3 historical)', 'Finnhub/RSS news (fundamental keywords)'],
+            'score_range': '10-90 (±88.5 raw, clamped)',
+            'components': {
+                'Interest_Rate_Diff': {'points': '±25', 'description': 'Carry trade differential from central bank rates'},
+                'Policy_Bias': {'points': '±10.5', 'description': 'Static CB bias (0.7x weight, supplemented by rate momentum)'},
+                'Economic_Diff': {'points': '±15', 'description': 'GDP, inflation, current account differentials'},
+                'Yield_Curve': {'points': '±8', 'description': 'v9.5.0: US 10Y-2Y spread from FRED T10Y2Y — inverted=recession, steep=growth'},
+                'Inflation_Momentum': {'points': '±6', 'description': 'v9.5.0: CPI trend (3-month change) — rising=hawkish'},
+                'Employment_Momentum': {'points': '±6', 'description': 'v9.5.0: Unemployment trend (3-month change) — falling=strong'},
+                'Payroll_Strength': {'points': '±5', 'description': 'v9.5.0: Nonfarm payrolls 3-month change from FRED PAYEMS'},
+                'Rate_Change_Momentum': {'points': '±6', 'description': 'v9.5.0: Fed funds 6-month trajectory — hiking/cutting cycle'},
+                'Fundamental_News': {'points': '±7', 'description': 'v9.5.0: Economic data release keywords from RSS/Finnhub (24h window)'}
+            },
+            'fred_series_count': 13,
+            'historical_lookups': 3,
+            'cache_ttl': '3600s (1 hour)',
             'signal_thresholds': {'bullish': '>= 58', 'bearish': '<= 42', 'neutral': '43-57'}
         },
         'sentiment': {
