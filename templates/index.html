@@ -784,7 +784,7 @@
         }
         .ai-badges-bar {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(4, 1fr);
             border-bottom: 1px solid rgba(255,255,255,0.05);
         }
         .ai-badges-bar .ai-badge-cell {
@@ -909,6 +909,66 @@
             padding: 0.25rem 0 0.25rem 0.75rem;
             border-left: 2px solid #ef4444;
             margin-bottom: 0.25rem;
+        }
+        /* v9.5.0: Pair Insight + Entry Reasoning section */
+        .ai-panel-insights {
+            padding: 0.75rem 1rem;
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.08), rgba(59, 130, 246, 0.06));
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .ai-panel-insights .insight-row {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+            padding: 0.25rem 0;
+        }
+        .ai-panel-insights .insight-label {
+            font-size: 0.65rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: #a78bfa;
+            letter-spacing: 0.04em;
+        }
+        /* v9.5.0: A1-A10 sub-component pills */
+        .ai-sub-components {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.35rem;
+            padding: 0.65rem 1rem;
+            background: rgba(0,0,0,0.15);
+            border-top: 1px solid rgba(255,255,255,0.05);
+            align-items: center;
+        }
+        .ai-sub-components .sub-label {
+            font-size: 0.65rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            margin-right: 0.2rem;
+        }
+        .sub-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.15rem;
+            padding: 0.15rem 0.4rem;
+            border-radius: 0.3rem;
+            font-size: 0.65rem;
+            font-weight: 600;
+            font-family: 'JetBrains Mono', monospace;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+        .sub-pill .pill-name { color: var(--text-muted); }
+        .sub-pill .pill-val.pos { color: #34d399; }
+        .sub-pill .pill-val.neg { color: #ef4444; }
+        .sub-pill .pill-val.zero { color: var(--text-muted); }
+        .sub-pill-total {
+            padding: 0.15rem 0.5rem;
+            border-radius: 0.3rem;
+            font-size: 0.7rem;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+            margin-left: 0.3rem;
         }
 
         /* Legacy classes kept for detail/analyzer view */
@@ -3333,11 +3393,14 @@
                             aiDirColor = '#f97316';
                         }
 
-                        // v9.2.4: Enhanced AI analysis details
+                        // v9.5.0: Enhanced AI analysis details
                         const keyDrivers = aiDet.key_drivers || [];
                         const riskFactors = aiDet.risk_factors || [];
                         const tradeQuality = aiDet.trade_quality || '';
                         const factorAnalysis = aiVal.factor_analysis || {};
+                        const pairInsight = aiDet.pair_insight || '';
+                        const entryReasoning = aiDet.entry_reasoning || '';
+                        const convictionPct = aiDet.conviction_pct || 0;
 
                         // Build flags HTML
                         let flagsHtml = '';
@@ -3348,29 +3411,74 @@
                                 '</div>';
                         }
 
-                        // Truncate analysis text for display
-                        const maxLen = 200;
+                        // v9.5.0: Build A1-A10 sub-component pills
+                        const subComps = [
+                            {name: 'A1', val: aiDet.confidence_scaling || 0},
+                            {name: 'A2', val: aiDet.trade_quality_adj || 0},
+                            {name: 'A3', val: aiDet.risk_severity || 0},
+                            {name: 'A4', val: aiDet.validation_consistency || 0},
+                            {name: 'A5', val: aiDet.directional_alignment || 0},
+                            {name: 'A6', val: aiDet.driver_strength || 0},
+                            {name: 'A7', val: aiDet.direction_match || 0},
+                            {name: 'A8', val: aiDet.data_quality_adj || 0},
+                            {name: 'A9', val: aiDet.a9_conviction_alignment || 0},
+                            {name: 'A10', val: aiDet.a10_pair_insight_quality || 0}
+                        ];
+                        const subTotal = aiDet.sub_components_total || 0;
+                        const subTotalColor = subTotal > 0 ? '#34d399' : subTotal < 0 ? '#ef4444' : 'var(--text-muted)';
+                        const subTotalBg = subTotal > 0 ? 'rgba(52,211,153,0.15)' : subTotal < 0 ? 'rgba(239,68,68,0.15)' : 'rgba(255,255,255,0.06)';
+                        let subPillsHtml = '<div class="ai-sub-components">' +
+                            '<span class="sub-label">Sub-Components</span>' +
+                            subComps.map(s => {
+                                const cls = s.val > 0 ? 'pos' : s.val < 0 ? 'neg' : 'zero';
+                                const prefix = s.val > 0 ? '+' : '';
+                                return '<span class="sub-pill"><span class="pill-name">' + s.name + '</span><span class="pill-val ' + cls + '">' + prefix + s.val + '</span></span>';
+                            }).join('') +
+                            '<span class="sub-pill-total" style="color:' + subTotalColor + ';background:' + subTotalBg + ';">Σ ' + (subTotal > 0 ? '+' : '') + subTotal + '</span>' +
+                            '</div>';
+
+                        // v9.5.0: Conviction badge color
+                        const convColor = convictionPct >= 70 ? '#34d399' : convictionPct >= 50 ? '#fbbf24' : '#ef4444';
+
+                        // v9.5.0: Truncate analysis text — increased from 200 to 400
+                        const maxLen = 400;
                         const truncated = aiAnalysisText.length > maxLen;
                         const displayText = truncated ? aiAnalysisText.substring(0, maxLen) + '...' : aiAnalysisText;
 
-                        // Build Split Panel (matching mockup layout)
+                        // v9.5.0: Build Pair Insight + Entry Reasoning section
+                        let insightsHtml = '';
+                        if (pairInsight || entryReasoning) {
+                            insightsHtml = '<div class="ai-panel-insights">';
+                            if (pairInsight) {
+                                insightsHtml += '<div class="insight-row"><span class="insight-label">Pair Insight</span><br>' + pairInsight + '</div>';
+                            }
+                            if (entryReasoning) {
+                                insightsHtml += '<div class="insight-row"><span class="insight-label">Entry Reasoning</span><br>' + entryReasoning + '</div>';
+                            }
+                            insightsHtml += '</div>';
+                        }
+
+                        // Build Split Panel (v9.5.0 enhanced layout)
                         aiValidationHtml = '<div class="ai-panel">' +
                             // 1. Title row
                             '<div class="ai-panel-header">' +
                             '<span class="ai-title">🤖 AI Deep Analysis</span>' +
                             '</div>' +
-                            // 2. Status badges - 3-column bar
+                            // 2. Status badges - 4-column bar (v9.5.0: added Conviction)
                             '<div class="ai-badges-bar">' +
                             '<div class="ai-badge-cell"><div class="badge-val" style="color:' + statusColor + ';">' + (aiConsistent ? '✅' : '⚠️') + ' ' + statusText + '</div><div class="badge-lbl">Validation</div></div>' +
                             '<div class="ai-badge-cell"><div class="badge-val" style="color:var(--text-primary);">' + aiConf + '</div><div class="badge-lbl">Confidence</div></div>' +
                             '<div class="ai-badge-cell"><div class="badge-val" style="color:#a78bfa;">' + (tradeQuality || 'N/A') + '</div><div class="badge-lbl">Grade</div></div>' +
+                            '<div class="ai-badge-cell"><div class="badge-val" style="color:' + convColor + ';">' + convictionPct + '%</div><div class="badge-lbl">Conviction</div></div>' +
                             '</div>' +
                             // 3. Analysis text with Read More
                             '<div class="ai-panel-analysis">' +
                             '<span id="ai-text-short">' + displayText + (truncated ? ' <span class="ai-read-more" onclick="document.getElementById(\'ai-text-short\').style.display=\'none\';document.getElementById(\'ai-text-full\').style.display=\'inline\';">▾ Read More</span>' : '') + '</span>' +
                             '<span id="ai-text-full" style="display:none;">' + aiAnalysisText + ' <span class="ai-read-more" onclick="document.getElementById(\'ai-text-full\').style.display=\'none\';document.getElementById(\'ai-text-short\').style.display=\'inline\';">▴ Less</span></span>' +
                             '</div>' +
-                            // 4. Split Panel: BULLISH ▲ vs BEARISH ▼
+                            // 4. v9.5.0: Pair Insight + Entry Reasoning
+                            insightsHtml +
+                            // 5. Split Panel: BULLISH ▲ vs BEARISH ▼
                             '<div class="ai-split">' +
                             '<div class="ai-split-col bull-col">' +
                             '<div class="split-header">▲ BULLISH</div>' +
@@ -3383,12 +3491,14 @@
                             (riskFactors.length > 0 ? '<div style="font-size:0.7rem;font-weight:600;color:#ef4444;margin-bottom:0.3rem;">Risk Factors:</div><div class="split-list">' + riskFactors.map(r => '<div class="split-list-item">• ' + r + '</div>').join('') + '</div>' : '') +
                             '</div>' +
                             '</div>' +
-                            // 5. Bottom bar: AI says + Factors + Groups
+                            // 6. v9.5.0: A1-A10 Sub-Component pills
+                            subPillsHtml +
+                            // 7. Bottom bar: AI says + Factors + Groups
                             '<div class="ai-panel-footer">' +
                             '<div class="ai-verdict"><span class="ai-verdict-label">AI says: </span><span class="ai-verdict-dir" style="color:' + aiDirColor + ';background:' + aiDirColor + '22;">' + aiDirDisplay + '</span></div>' +
                             '<span class="ai-footer-meta">Factors: <strong>' + (aiVal.factors_checked || 11) + '</strong> | Groups: <strong>' + (aiVal.groups_checked || 10) + '</strong></span>' +
                             '</div>' +
-                            // Flags (if any)
+                            // 8. Flags (if any)
                             flagsHtml +
                             '</div>';
                     }

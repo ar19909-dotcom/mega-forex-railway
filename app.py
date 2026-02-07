@@ -8199,9 +8199,212 @@ def analyze_intermarket(pair):
     }
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# AI FACTOR - GPT-4o-mini Analysis (v8.5)
+# v9.5.0: AI CONTEXT BUILDER — Enriched pair-specific context for GPT prompt
+# Uses ONLY existing cached data — ZERO additional API calls
 # ═══════════════════════════════════════════════════════════════════════════════
-def calculate_ai_factor(pair, tech_data, sentiment_data, rate_data, preliminary_score=50, all_factors=None):
+def build_ai_context(pair, tech_data, candles, structure_data, calendar_data, fundamental_data, patterns):
+    """
+    Build enriched context sections for GPT prompt.
+    Sections: Price Action, Extended Technicals, Structure, Pair-Specific, Calendar.
+    All data already in scope — no API calls.
+    """
+    sections = []
+    current_price = 0
+    try:
+        # --- A. Pair Classification & Price Action ---
+        pair_type = 'UNKNOWN'
+        for cat, pairs_list in PAIR_CATEGORIES.items():
+            if pair in pairs_list:
+                pair_type = cat
+                break
+
+        price_action = f"PAIR TYPE: {pair_type}"
+        if candles and len(candles) >= 20:
+            current_price = candles[-1].get('close', 0)
+            price_5d_ago = candles[-5].get('close', current_price) if len(candles) >= 5 else current_price
+            price_20d_ago = candles[-20].get('close', current_price)
+            high_20d = max(c.get('high', 0) for c in candles[-20:])
+            low_20d = min(c.get('low', float('inf')) for c in candles[-20:])
+
+            pct_5d = ((current_price - price_5d_ago) / price_5d_ago * 100) if price_5d_ago else 0
+            pct_20d = ((current_price - price_20d_ago) / price_20d_ago * 100) if price_20d_ago else 0
+            range_pos = ((current_price - low_20d) / (high_20d - low_20d) * 100) if (high_20d - low_20d) > 0 else 50
+
+            price_action += f" | 5d Change: {pct_5d:+.2f}% | 20d Change: {pct_20d:+.2f}%"
+            price_action += f" | Position in 20d Range: {range_pos:.0f}% (0=Low, 100=High)"
+        elif candles and len(candles) >= 5:
+            current_price = candles[-1].get('close', 0)
+            price_5d_ago = candles[-5].get('close', current_price)
+            pct_5d = ((current_price - price_5d_ago) / price_5d_ago * 100) if price_5d_ago else 0
+            price_action += f" | 5d Change: {pct_5d:+.2f}%"
+
+        sections.append(price_action)
+    except Exception:
+        sections.append(f"PAIR TYPE: {pair_type if 'pair_type' in dir() else 'UNKNOWN'}")
+
+    try:
+        # --- B. Extended Technicals ---
+        ext_tech = []
+        if candles and len(candles) >= 14:
+            closes = [c.get('close', 0) for c in candles]
+            highs = [c.get('high', 0) for c in candles]
+            lows = [c.get('low', 0) for c in candles]
+
+            # Stochastic %K (14-period)
+            recent_highs = highs[-14:]
+            recent_lows = lows[-14:]
+            highest = max(recent_highs) if recent_highs else 0
+            lowest = min(recent_lows) if recent_lows else 0
+            if highest - lowest > 0:
+                stoch_k = (closes[-1] - lowest) / (highest - lowest) * 100
+                ext_tech.append(f"Stochastic %K(14): {stoch_k:.1f}")
+
+            # CCI (20-period)
+            if len(candles) >= 20:
+                typical_prices = [(c.get('high', 0) + c.get('low', 0) + c.get('close', 0)) / 3 for c in candles[-20:]]
+                tp_mean = sum(typical_prices) / len(typical_prices)
+                mean_dev = sum(abs(tp - tp_mean) for tp in typical_prices) / len(typical_prices)
+                if mean_dev > 0:
+                    cci = (typical_prices[-1] - tp_mean) / (0.015 * mean_dev)
+                    ext_tech.append(f"CCI(20): {cci:.1f}")
+
+            # ROC-10
+            if len(closes) >= 11:
+                roc10 = (closes[-1] - closes[-11]) / closes[-11] * 100 if closes[-11] else 0
+                ext_tech.append(f"ROC(10): {roc10:+.2f}%")
+
+            # EMA20/50 signal
+            if len(closes) >= 50:
+                ema20 = closes[-1]  # Simplified: use SMA as proxy
+                ema50 = closes[-1]
+                # Calculate proper EMAs
+                ema20 = sum(closes[-20:]) / 20
+                ema50 = sum(closes[-50:]) / 50
+                ema_spread = (ema20 - ema50) / ema50 * 100 if ema50 else 0
+                ema_signal = "BULLISH" if ema20 > ema50 else "BEARISH"
+                ext_tech.append(f"EMA20/50: {ema_signal} (spread {ema_spread:+.3f}%)")
+
+        # Candlestick patterns
+        if patterns and isinstance(patterns, dict):
+            pattern_list = patterns.get('patterns', [])
+            if pattern_list:
+                pattern_names = [p.get('name', p) if isinstance(p, dict) else str(p) for p in pattern_list[:3]]
+                ext_tech.append(f"Candle Patterns: {', '.join(pattern_names)}")
+
+        if ext_tech:
+            sections.append("EXTENDED TECHNICALS: " + " | ".join(ext_tech))
+    except Exception:
+        pass
+
+    try:
+        # --- C. Structure Context ---
+        if structure_data and isinstance(structure_data, dict):
+            struct_parts = []
+            ns = structure_data.get('nearest_support')
+            nr = structure_data.get('nearest_resistance')
+            ds = structure_data.get('dist_to_support_pct')
+            dr = structure_data.get('dist_to_resistance_pct')
+            if ns and ds is not None:
+                struct_parts.append(f"Support: {ns:.5f} ({ds:.2f}% away)")
+            if nr and dr is not None:
+                struct_parts.append(f"Resistance: {nr:.5f} ({dr:.2f}% away)")
+
+            pivot = structure_data.get('pivot')
+            r1 = structure_data.get('pivot_r1')
+            s1 = structure_data.get('pivot_s1')
+            if pivot:
+                struct_parts.append(f"Pivot: {pivot:.5f} (S1={s1:.5f}, R1={r1:.5f})")
+
+            ob = structure_data.get('order_block')
+            if ob and isinstance(ob, dict) and ob.get('signal') != 'NEUTRAL':
+                struct_parts.append(f"Order Block: {ob.get('signal', 'NEUTRAL')} at {ob.get('level', 'N/A')}")
+            elif isinstance(ob, str) and ob != 'NEUTRAL':
+                struct_parts.append(f"Order Block: {ob}")
+
+            fvg = structure_data.get('fair_value_gap')
+            if fvg and isinstance(fvg, dict) and fvg.get('signal') != 'NEUTRAL':
+                struct_parts.append(f"FVG: {fvg.get('signal', 'NEUTRAL')}")
+            elif isinstance(fvg, str) and fvg != 'NEUTRAL':
+                struct_parts.append(f"FVG: {fvg}")
+
+            liq = structure_data.get('liquidity_zone')
+            if liq and isinstance(liq, dict) and liq.get('signal') != 'NEUTRAL':
+                struct_parts.append(f"Liquidity Zone: {liq.get('signal', 'NEUTRAL')}")
+            elif isinstance(liq, str) and liq != 'NEUTRAL':
+                struct_parts.append(f"Liquidity Zone: {liq}")
+
+            fib_pos = structure_data.get('fib_position', '')
+            if fib_pos:
+                struct_parts.append(f"Fib Position: {fib_pos}")
+
+            if struct_parts:
+                sections.append("STRUCTURE: " + " | ".join(struct_parts))
+    except Exception:
+        pass
+
+    try:
+        # --- D. Pair-Specific Context ---
+        base, quote = pair.split('/')
+        pair_specific = []
+
+        if is_commodity(pair):
+            # Commodity-specific context
+            if pair in ('XAU/USD', 'XAG/USD', 'XPT/USD'):
+                pair_specific.append("TYPE: Precious Metal — inverse correlation with USD & real yields, safe-haven demand in crisis")
+                if fundamental_data and isinstance(fundamental_data, dict):
+                    us10y = fundamental_data.get('us_10y')
+                    inflation = fundamental_data.get('inflation')
+                    if us10y and inflation:
+                        real_yield = us10y - inflation
+                        pair_specific.append(f"Real Yield: {real_yield:+.2f}% (negative = bullish metals)")
+            elif pair in ('WTI/USD', 'BRENT/USD'):
+                pair_specific.append("TYPE: Energy — supply/demand driven, OPEC+ decisions, geopolitical risk premium")
+        else:
+            # Forex — carry trade context
+            base_rate = CENTRAL_BANK_RATES.get(base, 0)
+            quote_rate = CENTRAL_BANK_RATES.get(quote, 0)
+            carry = base_rate - quote_rate
+            base_bias = CENTRAL_BANK_POLICY_BIAS.get(base, {})
+            quote_bias = CENTRAL_BANK_POLICY_BIAS.get(quote, {})
+            pair_specific.append(f"Carry: {base} {base_rate}% vs {quote} {quote_rate}% = {carry:+.2f}% ({'LONG carry' if carry > 0 else 'SHORT carry' if carry < 0 else 'Flat'})")
+            if base_bias:
+                pair_specific.append(f"{base} Policy: {base_bias.get('bias', 'N/A')} — {base_bias.get('outlook', '')}")
+            if quote_bias:
+                pair_specific.append(f"{quote} Policy: {quote_bias.get('bias', 'N/A')} — {quote_bias.get('outlook', '')}")
+
+            # Exotic warning
+            for cat, cat_pairs in PAIR_CATEGORIES.items():
+                if pair in cat_pairs and cat == 'EXOTIC':
+                    pair_specific.append("WARNING: Exotic pair — wider spreads, lower liquidity, intervention risk")
+                    break
+
+        if pair_specific:
+            sections.append("PAIR CONTEXT: " + " | ".join(pair_specific))
+    except Exception:
+        pass
+
+    try:
+        # --- E. Calendar Risk ---
+        if calendar_data and isinstance(calendar_data, dict):
+            high_impact = calendar_data.get('high_impact_count', 0)
+            imminent = calendar_data.get('imminent_events', calendar_data.get('imminent_count', 0))
+            if high_impact or imminent:
+                sections.append(f"CALENDAR: {high_impact} high-impact events, {imminent} imminent")
+            else:
+                sections.append("CALENDAR: Clear — no high-impact events")
+        else:
+            sections.append("CALENDAR: Data unavailable")
+    except Exception:
+        pass
+
+    return "\n".join(sections)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# AI FACTOR - GPT-4o-mini Analysis (v9.5.0 Enhanced)
+# ═══════════════════════════════════════════════════════════════════════════════
+def calculate_ai_factor(pair, tech_data, sentiment_data, rate_data, preliminary_score=50, all_factors=None,
+                        candles=None, patterns=None, structure_data=None, calendar_data=None, fundamental_data=None):
     """
     AI-powered market analysis using GPT-4o-mini — DUAL ROLE:
 
@@ -8315,57 +8518,53 @@ def calculate_ai_factor(pair, tech_data, sentiment_data, rate_data, preliminary_
                 factor_summary = f"  (Factor summary unavailable: {str(e)[:80]})"
                 logger.warning(f"AI Factor: Could not build factor summary: {e}")
 
-        # Build enhanced prompt for GPT-4o-mini with COMPREHENSIVE ANALYSIS
-        prompt = f"""You are an expert forex analyst providing COMPREHENSIVE market analysis.
+        # v9.5.0: Build enriched pair-specific context
+        vix = intermarket.get('vix') or 20.0
+        pair_context = ''
+        try:
+            pair_context = build_ai_context(
+                pair, tech_data, candles, structure_data,
+                calendar_data, fundamental_data, patterns
+            )
+        except Exception as e:
+            logger.debug(f"AI context builder failed for {pair}: {e}")
+            pair_context = ''
 
-═══════════════════════════════════════
-PAIR: {pair}
-CURRENT PRICE: {current_price:.5f}
-MARKET REGIME: {market_regime.upper()}
-═══════════════════════════════════════
+        # v9.5.0: Enhanced prompt with scoring checklist and enriched context
+        prompt = f"""PAIR: {pair} | PRICE: {current_price:.5f} | REGIME: {market_regime.upper()}
 
-RAW MARKET DATA:
-- RSI (14): {rsi:.1f} (Oversold <30, Overbought >70)
-- MACD Histogram: {macd_hist:.6f} (Positive = Bullish momentum)
-- ADX: {adx:.1f} (>25 = Strong trend, <15 = Weak/ranging)
-- Bollinger %B: {bb_pct:.1f}% (0% = Lower band touch, 100% = Upper band)
-- ATR: {atr:.5f} (Volatility measure)
-- DXY (USD Index): {dxy:.1f} (>104 = Strong USD)
-- Gold: ${gold:.0f} (Risk-off indicator, inverse to USD)
-- US 10Y Yield: {us_10y:.2f}% (Higher = USD strength)
-- Oil: ${oil:.1f} (Affects CAD, NOK)
-- Sentiment: {sentiment_signal} (Score: {sentiment_score}/100)
+{pair_context}
 
-═══════════════════════════════════════
-CURRENT FACTOR SCORES:
+--- TECHNICAL INDICATORS ---
+RSI(14): {rsi:.1f} | MACD Hist: {macd_hist:.6f} | ADX: {adx:.1f} | BB%B: {bb_pct:.1f}% | ATR: {atr:.5f}
+
+--- INTERMARKET ---
+DXY: {dxy:.1f} | Gold: ${gold:.0f} | US 10Y: {us_10y:.2f}% | Oil: ${oil:.1f} | VIX: {vix:.1f}
+Sentiment: {sentiment_signal} (Score: {sentiment_score}/100)
+
+--- FACTOR SCORES ---
 {factor_summary}
-
 PRELIMINARY COMPOSITE: {preliminary_score:.1f}/100
-═══════════════════════════════════════
 
-YOUR TASKS:
-1. VALIDATE each factor score against raw data - flag any inconsistencies
-2. Provide DETAILED analysis explaining WHY each major factor supports or conflicts
-3. Identify the KEY DRIVERS for this trade
-4. Assess overall TRADE QUALITY and RISK LEVEL
-5. Give your INDEPENDENT recommendation
-
-SCORING RULES:
-- Score >58 = BULLISH, <42 = BEARISH, 42-58 = NEUTRAL
-- RSI <30 = oversold (bullish bounce), RSI >70 = overbought (bearish)
-- ADX >25 amplifies trend confidence
-- High DXY = Bearish for EUR,GBP vs USD; Bullish for USD/xxx pairs
-- Contrarian sentiment: retail majority LONG = lean SHORT
+SCORING CHECKLIST (evaluate each systematically):
+1. Trend alignment — Do RSI, MACD, EMA, ADX agree on direction? Strength?
+2. Structure — Is price near key S/R, order block, or FVG? Reversal or continuation zone?
+3. Fundamental — Does carry trade and central bank policy support the direction?
+4. Risk — Calendar events nearby? Extreme positioning? Intermarket divergence?
+5. Confluence — How many factors agree vs disagree? Any critical contradictions?
 
 Respond in EXACT JSON format:
 {{
   "score": 65,
   "signal": "LONG",
   "confidence": "HIGH",
-  "analysis": "2-3 sentence comprehensive analysis covering key factors and reasoning",
-  "key_drivers": ["Driver 1: explanation", "Driver 2: explanation"],
-  "risk_factors": ["Risk 1", "Risk 2"],
-  "trade_quality": "A/B/C grade with reason",
+  "analysis": "5-7 sentence analysis: cover trend state, structure context, fundamental backdrop, key risks, and overall trade thesis. Reference actual indicator values.",
+  "pair_insight": "1 sentence pair-specific insight (carry trade for forex, supply/demand for commodities, spread dynamics for exotics)",
+  "entry_reasoning": "1-2 sentences on optimal entry logic: what level, what confirmation, what invalidates",
+  "key_drivers": ["Driver 1: explanation", "Driver 2: explanation", "Driver 3: explanation", "Driver 4: explanation"],
+  "risk_factors": ["Risk 1: specific", "Risk 2: specific", "Risk 3: specific"],
+  "trade_quality": "A/B/C",
+  "conviction_pct": 72,
   "validation": {{
     "consistent": true,
     "flags": ["Any inconsistency found"],
@@ -8387,11 +8586,11 @@ Respond in EXACT JSON format:
         payload = {
             'model': AI_FACTOR_CONFIG.get('model', 'gpt-4o-mini'),
             'messages': [
-                {'role': 'system', 'content': 'You are an expert forex analyst providing comprehensive market analysis. Validate all factor scores against raw data, identify key drivers and risks, and provide detailed trading insights. Be thorough but concise. Always respond in valid JSON format.'},
+                {'role': 'system', 'content': 'Quantitative forex analyst. Analyze systematically using the scoring checklist. Reference actual indicator values and price levels. Be specific — not generic. Always respond in valid JSON.'},
                 {'role': 'user', 'content': prompt}
             ],
-            'max_tokens': 600,  # v9.2.4: Increased for detailed analysis
-            'temperature': 0.3  # Slightly higher for more insightful analysis
+            'max_tokens': 1000,   # v9.5.0: Increased for enriched analysis
+            'temperature': 0.2    # v9.5.0: Lower for more consistent scoring
         }
 
         # Rate limiting delay
@@ -8446,6 +8645,15 @@ Respond in EXACT JSON format:
                 risk_factors = ai_data.get('risk_factors', [])
                 trade_quality = ai_data.get('trade_quality', '')
 
+                # v9.5.0: Extract new enriched fields
+                pair_insight = ai_data.get('pair_insight', '')
+                entry_reasoning = ai_data.get('entry_reasoning', '')
+                conviction_raw = ai_data.get('conviction_pct', 50)
+                try:
+                    conviction_pct = max(0, min(100, int(conviction_raw)))
+                except (ValueError, TypeError):
+                    conviction_pct = 50
+
                 ai_result = {
                     'score': max(0, min(100, float(ai_data.get('score', 50)))),
                     'signal': ai_data.get('signal', 'NEUTRAL').upper(),
@@ -8455,12 +8663,15 @@ Respond in EXACT JSON format:
                     'key_drivers': key_drivers[:4] if key_drivers else [],  # Limit to 4 drivers
                     'risk_factors': risk_factors[:3] if risk_factors else [],  # Limit to 3 risks
                     'trade_quality': trade_quality,
+                    'pair_insight': str(pair_insight)[:200] if pair_insight else '',
+                    'entry_reasoning': str(entry_reasoning)[:300] if entry_reasoning else '',
+                    'conviction_pct': conviction_pct,
                     'validation': {
                         'consistent': is_consistent,
                         'flags': flags[:5] if flags else [],  # Limit to 5 flags
                         'recommended_direction': recommended_dir.upper() if isinstance(recommended_dir, str) else 'NEUTRAL',
-                        'factors_checked': 11,  # All 11 individual factors (Tech, Fund, Sent, Inter, Quant, MTF, Struct, Cal, Candle, CurrStr, Options)
-                        'groups_checked': 9,  # 9 factor groups in scoring system (including geopolitical_risk)
+                        'factors_checked': 11,
+                        'groups_checked': 10,  # v9.5.0: 10 factor groups
                         'factor_analysis': {
                             'strongest_bullish': factor_analysis.get('strongest_bullish', ''),
                             'strongest_bearish': factor_analysis.get('strongest_bearish', ''),
@@ -10634,7 +10845,8 @@ def calculate_factor_scores(pair):
 
     # ═══════════════════════════════════════════════════════════════════════════
     # 10. AI FACTOR (9%) - GPT-4o-mini Analysis - ENHANCED v9.5.0
-    #     Sub-components: A1-A8 (±52 raw budget, clamped [10,90])
+    #     Sub-components: A1-A10 (±61 raw budget, clamped [10,90])
+    #     v9.5.0: Enriched prompt, pair context, A9 conviction, A10 insight
     #     ZERO additional API calls — post-processes existing GPT response
     # ═══════════════════════════════════════════════════════════════════════════
 
@@ -10652,7 +10864,13 @@ def calculate_factor_scores(pair):
         preliminary_score = 50
 
     # Call AI factor with ALL factors for cross-validation (v9.0 dual-role)
-    ai_result = calculate_ai_factor(pair, tech, sentiment, rate, preliminary_score, all_factors=factors)
+    ai_result = calculate_ai_factor(
+        pair, tech, sentiment, rate, preliminary_score, all_factors=factors,
+        candles=candles, patterns=patterns,
+        structure_data=factors.get('structure', {}).get('details', {}),
+        calendar_data=factors.get('calendar', {}).get('details', {}),
+        fundamental_data=fundamental
+    )
 
     # Base score from GPT
     ai_score = ai_result['score']
@@ -10667,6 +10885,8 @@ def calculate_factor_scores(pair):
     a6_driver_adj = 0
     a7_direction_adj = 0
     a8_dataquality_adj = 0
+    a9_conviction_adj = 0
+    a10_insight_adj = 0
 
     # Only process sub-components when GPT actually returned real analysis
     if ai_data_quality in ('AI_REAL', 'AI_PARTIAL'):
@@ -10813,9 +11033,68 @@ def calculate_factor_scores(pair):
         except Exception as e:
             logger.debug(f"A8 data quality failed for {pair}: {e}")
 
+        # --- A9: Conviction Alignment (±5 pts) — v9.5.0 ---
+        try:
+            a9_conviction = ai_result.get('conviction_pct', 50)
+            try:
+                a9_conviction = int(a9_conviction)
+            except (ValueError, TypeError):
+                a9_conviction = 50
+
+            score_strength = abs(ai_score - 50)
+
+            if a9_conviction >= 70 and score_strength >= 10:
+                a9_conviction_adj = 5    # High conviction + strong directional score
+            elif a9_conviction >= 60 and score_strength >= 5:
+                a9_conviction_adj = 2    # Moderate conviction + some direction
+            elif a9_conviction < 40 and score_strength >= 8:
+                a9_conviction_adj = -4   # Low conviction but strong score — unreliable
+            elif a9_conviction >= 70 and score_strength < 5:
+                a9_conviction_adj = -3   # High conviction but neutral score — confused
+
+            ai_score += a9_conviction_adj
+        except Exception as e:
+            logger.debug(f"A9 conviction alignment failed for {pair}: {e}")
+
+        # --- A10: Pair Insight Quality (±4 pts) — v9.5.0 ---
+        try:
+            a10_pair_insight = ai_result.get('pair_insight', '')
+            a10_entry_reasoning = ai_result.get('entry_reasoning', '')
+            a10_criteria_met = 0
+
+            # Criterion 1: pair_insight has meaningful content
+            if isinstance(a10_pair_insight, str) and len(a10_pair_insight) > 20:
+                a10_criteria_met += 1
+
+            # Criterion 2: entry_reasoning has meaningful content
+            if isinstance(a10_entry_reasoning, str) and len(a10_entry_reasoning) > 30:
+                a10_criteria_met += 1
+
+            # Criterion 3: contains pair-relevant terms
+            pair_terms = pair.split('/')
+            combined_text = (str(a10_pair_insight) + ' ' + str(a10_entry_reasoning)).upper()
+            if any(term in combined_text for term in pair_terms):
+                a10_criteria_met += 1
+
+            if a10_criteria_met >= 3:
+                a10_insight_adj = 4
+            elif a10_criteria_met >= 2:
+                a10_insight_adj = 2
+            elif a10_criteria_met == 0:
+                a10_insight_adj = -2
+
+            ai_score += a10_insight_adj
+        except Exception as e:
+            logger.debug(f"A10 pair insight quality failed for {pair}: {e}")
+
     # Final clamp and signal
     ai_score = max(10, min(90, round(ai_score, 1)))
     ai_signal = 'BULLISH' if ai_score >= 58 else 'BEARISH' if ai_score <= 42 else 'NEUTRAL'
+
+    # v9.5.0: Sum all sub-component adjustments
+    sub_total = (a1_confidence_adj + a2_quality_adj + a3_risk_adj + a4_validation_adj +
+                 a5_alignment_adj + a6_driver_adj + a7_direction_adj + a8_dataquality_adj +
+                 a9_conviction_adj + a10_insight_adj)
 
     factors['ai'] = {
         'score': ai_score,
@@ -10829,6 +11108,9 @@ def calculate_factor_scores(pair):
             'validation': ai_result.get('validation', {}),
             'gpt_raw_signal': ai_result.get('signal', 'N/A'),
             'gpt_raw_score': round(ai_result['score'], 1),
+            'pair_insight': ai_result.get('pair_insight', ''),
+            'entry_reasoning': ai_result.get('entry_reasoning', ''),
+            'conviction_pct': ai_result.get('conviction_pct', 50),
             'confidence_scaling': a1_confidence_adj,
             'trade_quality_adj': a2_quality_adj,
             'trade_quality_grade': ai_result.get('trade_quality', 'N/A'),
@@ -10839,7 +11121,10 @@ def calculate_factor_scores(pair):
             'driver_strength': a6_driver_adj,
             'driver_count': len(ai_result.get('key_drivers', [])),
             'direction_match': a7_direction_adj,
-            'data_quality_adj': a8_dataquality_adj
+            'data_quality_adj': a8_dataquality_adj,
+            'a9_conviction_alignment': a9_conviction_adj,
+            'a10_pair_insight_quality': a10_insight_adj,
+            'sub_components_total': sub_total
         }
     }
 
@@ -13117,7 +13402,7 @@ def run_system_audit():
             'mean_reversion': {'weight': 12, 'sources': 'v9.5.0: Quantitative (Z-Score/Bollinger/Triangle + Z-Momentum/EMA Distance/RSI Confluence/Volume Extremes) 55% + Structure (S/R/Pivot/Fib/ADX + Order Blocks/FVGs/Liquidity Zones/Confluence) 45%'},
             'sentiment': {'weight': 11, 'sources': 'v9.5.0: IG/Saxo retail + Finnhub/RSS/Yahoo news + COT institutional + 8 sub-components (VIX fear gauge, retail extreme, news velocity, price divergence, COT confirmation, sentiment momentum, source agreement, commodity regime)'},
             'intermarket': {'weight': 10, 'sources': 'v9.5.0: DXY/Gold/Oil/Yields/VIX base + 7 sub-components (VIX momentum, yield curve risk, correlation confirmation, SPX equity proxy via AUD/USD, gold-oil ratio regime, DXY-VIX divergence 4-regime, multi-asset momentum agreement)'},
-            'ai_synthesis': {'weight': 9, 'sources': 'v9.5.0: GPT-4o-mini cross-validation + 8 sub-components (confidence scaling, trade quality grade, risk severity, validation consistency, directional alignment, key driver strength, direction match, data quality gate) + confidence-based weight adjustment'},
+            'ai_synthesis': {'weight': 9, 'sources': 'v9.5.0: GPT-4o-mini with enriched pair-specific context (price action, extended technicals, structure levels, carry trade, calendar) + 10 sub-components A1-A10 (confidence scaling, trade quality, risk severity, validation, alignment, drivers, direction match, data quality, conviction alignment, pair insight quality) max_tokens=1000 temperature=0.2'},
             'currency_strength': {'weight': 8, 'sources': 'v9.4.0: 50-instrument analysis — confirmation tool. v9.5.0: Commodities get Supply & Demand (7%) with 7 sub-components (supply zones, FVG imbalance, real yields, EIA inventory, commodity ratios, DXY momentum, supply disruption)'},
             'calendar_risk': {'weight': 6, 'sources': 'Economic events + Seasonality — gate/filter role'},
             'geopolitical_risk': {'weight': 4, 'sources': 'v9.5.0: 65+ keywords across 5 tiers + 4 dedicated geo RSS feeds (Reuters/BBC/NYT/Al Jazeera) + 7 sub-components (event category severity, escalation detection, currency vulnerability, safe-haven flows, commodity supply disruption, news velocity, VIX correlation)'},
