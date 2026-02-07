@@ -1,6 +1,6 @@
 """
 ╔══════════════════════════════════════════════════════════════════════════════╗
-║                   MEGA FOREX v9.4.0 PRO - AI-ENHANCED SYSTEM                 ║
+║                   MEGA FOREX v9.5.0 PRO - AI-ENHANCED SYSTEM                 ║
 ║                    Build: February 7, 2026 - MARKET DEPTH + TRADING TIME     ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
 ║  ✓ 45 Forex Pairs + 5 Commodities (50 Instruments)                           ║
@@ -103,7 +103,7 @@ def health_check():
     """Health check endpoint"""
     return jsonify({
         'status': 'healthy',
-        'version': '9.4.0 PRO - AI ENHANCED',
+        'version': '9.5.0 PRO - AI ENHANCED',
         'pairs': len(ALL_INSTRUMENTS),
         'timestamp': datetime.now().isoformat()
     })
@@ -10329,7 +10329,7 @@ def run_system_audit():
     """Run comprehensive system audit with complete scoring methodology"""
     audit = {
         'timestamp': datetime.now().isoformat(),
-        'version': '9.4.0 PRO',
+        'version': '9.5.0 PRO',
         'api_status': {},
         'data_quality': {},
         'score_validation': {},
@@ -10342,8 +10342,8 @@ def run_system_audit():
     # SCORING METHODOLOGY DOCUMENTATION
     # ═══════════════════════════════════════════════════════════════════════════
     audit['scoring_methodology'] = {
-        'version': '9.4.0 PRO',
-        'description': 'v9.4.0 — 10 factor groups (incl. geopolitical risk + market depth), 10-gate quality filter (G3/G5/G8 mandatory), 50 instruments (45 forex + 5 commodities), commodity-specific weights, regime-dynamic weights',
+        'version': '9.5.0 PRO',
+        'description': 'v9.5.0 — 10 factor groups, dynamic intermarket baselines, magnitude-based currency strength, cross-pair correlation confirmation, triangle deviation scoring, 10-gate quality filter (G3/G5/G8 mandatory), 50 instruments, commodity-specific weights, regime-dynamic weights',
         'score_range': {
             'min': 5,
             'max': 95,

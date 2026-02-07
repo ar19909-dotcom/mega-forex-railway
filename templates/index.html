@@ -33,7 +33,7 @@
     <!-- iOS Splash Screens -->
     <link rel="apple-touch-startup-image" href="/static/icon-512.png">
 
-    <title>MEGA FOREX v9.4.0 PRO - AI Enhanced Trading Dashboard</title>
+    <title>MEGA FOREX v9.5.0 PRO - AI Enhanced Trading Dashboard</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
@@ -230,7 +230,7 @@
             gap: 1rem;
         }
 
-        /* ═══ v9.4.0 Range Ladder Card ═══ */
+        /* ═══ v9.5.0 Range Ladder Card ═══ */
         .signal-card {
             background: var(--bg-card);
             border-radius: 0.75rem;
@@ -2493,7 +2493,7 @@
 
     <!-- Header -->
     <header class="header">
-        <div class="logo">MEGA<span>FOREX</span> v9.4.0 <span style="color: var(--accent-green); font-size: 0.7em;">PRO</span></div>
+        <div class="logo">MEGA<span>FOREX</span> v9.5.0 <span style="color: var(--accent-green); font-size: 0.7em;">PRO</span></div>
         <div class="header-stats">
             <div class="stat-item">
                 <div class="stat-value" id="total-pairs">50</div>
@@ -2723,7 +2723,7 @@
         
         <!-- Weights Tab -->
         <div class="tab-content" id="tab-weights">
-            <h2 style="margin-bottom: 1rem;">⚖️ Factor Group Weights (v9.4.0)</h2>
+            <h2 style="margin-bottom: 1rem;">⚖️ Factor Group Weights (v9.5.0)</h2>
             <div class="weights-editor" id="weights-editor">
                 <div class="loading"><div class="spinner"></div>Loading weights...</div>
             </div>
@@ -2841,7 +2841,7 @@
             container.innerHTML = `<div class="loading"><div class="spinner"></div>${loadingText}</div>`;
 
             try {
-                // v9.4.0: Only add refresh=true on MANUAL refresh (button click), not auto-refresh
+                // v9.5.0: Only add refresh=true on MANUAL refresh (button click), not auto-refresh
                 const refreshParam = forceRefresh ? '&refresh=true' : '';
                 const response = await fetch(`${API_BASE}/signals?t=${Date.now()}${refreshParam}`);
                 const data = await response.json();
@@ -3855,7 +3855,7 @@
                                 separator = '<div style="border-top: 2px solid var(--bg-tertiary); margin: 0.75rem 0; padding-top: 0.25rem; font-size: 0.7rem; color: var(--text-muted); text-align: center;">FOREX PAIRS</div>';
                             }
                             lastWasCommodity = isCommodity;
-                            // v9.4.0: Normalize percentages to fill 100% of the bar
+                            // v9.5.0: Normalize percentages to fill 100% of the bar
                             const rawLong = p.long_percentage || 50;
                             const rawShort = p.short_percentage || 50;
                             const total = rawLong + rawShort;
@@ -4207,7 +4207,7 @@
                     const editor = document.getElementById('weights-editor');
                     const weights = data.weights;
 
-                    // v9.4.0: Commodity weight map (keyed by forex group name)
+                    // v9.5.0: Commodity weight map (keyed by forex group name)
                     const commodityMap = {
                         'trend_momentum': 22, 'fundamental': 8, 'sentiment': 10,
                         'intermarket': 15, 'mean_reversion': 11, 'calendar_risk': 7,
@@ -4415,7 +4415,7 @@
                                     <div class="label">Strength Label</div>
                                 </div>
                             </div>
-                            <h4 style="margin-top: 1rem;">v9.4.0 Factor Groups (10 Groups):</h4>
+                            <h4 style="margin-top: 1rem;">v9.5.0 Factor Groups (10 Groups):</h4>
                             <table class="data-table">
                                 <thead>
                                     <tr><th>Group</th><th>Weight</th><th>Score</th><th>Signal</th></tr>
@@ -4464,7 +4464,7 @@
                                 <span style="color: var(--accent-red);">⚠ FALLBACK</span> = Static placeholder
                             </div>
                             <div style="margin-top: 1rem; padding: 0.75rem; background: var(--bg-tertiary); border-radius: 8px;">
-                                <strong>v9.4.0 Conviction:</strong>
+                                <strong>v9.5.0 Conviction:</strong>
                                 Score ${data.score_validation?.conviction_v9?.score || 0} (${data.score_validation?.conviction_v9?.label || 'N/A'}) |
                                 <strong>Breadth:</strong> ${((data.score_validation?.conviction_v9?.breadth || 0) * 100).toFixed(0)}% |
                                 <strong>Groups:</strong> ${data.score_validation?.conviction_v9?.bullish_groups || 0} Bullish, ${data.score_validation?.conviction_v9?.bearish_groups || 0} Bearish |
@@ -4600,7 +4600,7 @@
                     const factors = data.factor_details;
                     container.innerHTML = `
                         <div class="audit-section">
-                            <h3>📖 Complete Scoring Methodology - v9.4.0 PRO (10-Gate Protected)</h3>
+                            <h3>📖 Complete Scoring Methodology - v9.5.0 PRO (10-Gate Protected)</h3>
                             <p style="color: var(--text-secondary); margin-bottom: 1rem;">
                                 This system merges 13 individual factors into <strong>10 independent groups</strong> (incl. Currency Strength, Geopolitical Risk + Market Depth) with <strong>regime-dynamic weights</strong>, a <strong>10-gate quality filter</strong> (incl. AI alignment + data quality), and a separate <strong>conviction metric</strong> (breadth x strength).
                                 <strong>50 instruments</strong> (45 Forex + 5 Commodities) with <strong>separate weight profiles</strong>.
@@ -4609,7 +4609,7 @@
                         </div>
 
                         <div class="audit-section">
-                            <h3>📦 10 Factor Groups — Forex Weights (Regime-Weighted) - v9.4.0</h3>
+                            <h3>📦 10 Factor Groups — Forex Weights (Regime-Weighted) - v9.5.0</h3>
                             <table class="data-table">
                                 <thead><tr><th>Group</th><th>Forex Weight</th><th>Sources</th></tr></thead>
                                 <tbody>
@@ -4626,7 +4626,7 @@
                                 </tbody>
                             </table>
 
-                            <h3 style="margin-top: 1.5rem;">🏗️ 10 Factor Groups — Commodity Weights (v9.4.0)</h3>
+                            <h3 style="margin-top: 1.5rem;">🏗️ 10 Factor Groups — Commodity Weights (v9.5.0)</h3>
                             <table class="data-table">
                                 <thead><tr><th>Group</th><th>Commodity Weight</th><th>Sources</th></tr></thead>
                                 <tbody>
@@ -5380,7 +5380,7 @@
                         <!-- v9.2.4 Enhancements -->
                         ${data.enhancements ? `
                         <div class="audit-section" style="margin-top: 1rem;">
-                            <h3>🚀 v9.4.0 Factor Enhancements</h3>
+                            <h3>🚀 v9.5.0 Factor Enhancements</h3>
                             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem;">
                                 ${Object.entries(data.enhancements).filter(([k]) => k !== 'version').map(([factor, features]) => `
                                     <div style="padding: 0.75rem; background: linear-gradient(135deg, rgba(59,130,246,0.1), rgba(139,92,246,0.1)); border-radius: 0.5rem; border-left: 3px solid #8b5cf6;">
@@ -5528,7 +5528,7 @@
 
                     container.innerHTML = `
                         <div class="audit-section">
-                            <h3>📊 Currency & Commodity Correlation Analysis (v9.4.0)</h3>
+                            <h3>📊 Currency & Commodity Correlation Analysis (v9.5.0)</h3>
                             <p style="color: var(--text-secondary); margin-bottom: 1rem;">
                                 Real-time currency strength analysis using all 50 instruments. Higher scores = stronger currency.
                             </p>
@@ -5574,12 +5574,12 @@
         document.getElementById('filter-grade').addEventListener('change', renderSignals);
         document.getElementById('rates-category').addEventListener('change', loadRates);
         
-        // Countdown timer - 300s auto-refresh (v9.4.0: was 120s, reduced to prevent cache thrashing)
+        // Countdown timer - 300s auto-refresh (v9.5.0: was 120s, reduced to prevent cache thrashing)
         function updateCountdown() {
             countdown--;
             if (countdown <= 0) {
                 countdown = 300;
-                // v9.4.0: Auto-refresh uses cached data (fast) — only manual refresh forces regeneration
+                // v9.5.0: Auto-refresh uses cached data (fast) — only manual refresh forces regeneration
                 loadSignals(false);
             }
             document.getElementById('refresh-countdown').textContent = `${countdown}s`;
