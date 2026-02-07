@@ -111,6 +111,20 @@ def health_check():
     })
 
 
+@app.route('/debug-signal')
+def debug_signal():
+    """Temporary debug endpoint"""
+    pair = request.args.get('pair', 'EUR/USD')
+    import traceback
+    try:
+        factors, tech, rate, patterns = calculate_factor_scores(pair)
+        if not rate:
+            return jsonify({'success': False, 'error': 'No rate data', 'pair': pair})
+        factor_groups = build_factor_groups(factors)
+        return jsonify({'success': True, 'pair': pair, 'factors': list(factors.keys()), 'groups': list(factor_groups.keys()), 'rate': bool(rate)})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e), 'traceback': traceback.format_exc(), 'pair': pair})
+
 @app.route('/manifest.json')
 def serve_manifest():
     """Serve PWA manifest"""
