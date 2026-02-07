@@ -9465,12 +9465,15 @@ def calculate_factor_scores(pair):
     }
     
     # ═══════════════════════════════════════════════════════════════════════════
-    # 4. INTERMARKET (11%) - DXY, Gold, Yields - EXPAND RANGE
+    # 4. INTERMARKET (10%) - DXY, Gold, Oil, VIX, Yields - ENHANCED v9.5.0
+    #    Sub-components: I1-I7 (±46 raw budget, clamped [10,90])
     # ═══════════════════════════════════════════════════════════════════════════
     intermarket = analyze_intermarket(pair)
     inter_score = intermarket['score']
     inter_data_quality = intermarket.get('data_quality', 'ESTIMATED')
-    
+    inter_details = intermarket.get('details', {})
+    inter_momentum = inter_details.get('momentum', {})
+
     # Expand if real data, reduce if estimated
     if inter_score != 50 and inter_data_quality == 'REAL':
         inter_score = 50 + (inter_score - 50) * 1.3
@@ -9478,12 +9481,264 @@ def calculate_factor_scores(pair):
     elif inter_data_quality == 'ESTIMATED':
         inter_score = 50 + (inter_score - 50) * 0.7
         inter_score = max(35, min(65, inter_score))
-    
+
+    # Initialize all I-component variables before try blocks
+    i1_vix_adj = 0
+    i2_yield_adj = 0
+    i2_yield_spread = 0.2
+    i3_corr_adj = 0
+    i3_corr_note = "N/A"
+    i4_spx_adj = 0
+    i4_spx_roc = 0
+    i5_ratio_adj = 0
+    i5_gold_oil_ratio = 0
+    i6_regime_adj = 0
+    i6_regime_name = "NEUTRAL"
+    i7_agreement_adj = 0
+
+    # Currency risk classification for intermarket sub-components
+    inter_safe_havens = {'USD', 'JPY', 'CHF'}
+    inter_risk_currencies = {'AUD', 'NZD', 'CAD', 'GBP'}
+    base_is_safe = base in inter_safe_havens
+    base_is_risk = base in inter_risk_currencies
+    quote_is_safe = quote in inter_safe_havens
+    quote_is_risk = quote in inter_risk_currencies
+    # Net risk direction: positive = pair benefits from risk-on
+    inter_risk_direction = (1 if base_is_risk else -1 if base_is_safe else 0) - \
+                           (1 if quote_is_risk else -1 if quote_is_safe else 0)
+
+    # Fetch expanded fundamental data once (cached 1hr)
+    try:
+        macro_inter = get_expanded_fundamental_data()
+    except Exception:
+        macro_inter = {}
+
+    # --- I1: VIX Momentum (±8 pts) ---
+    try:
+        i1_vix_level = macro_inter.get('VIXCLS', 18.0)
+        i1_vix_momentum = inter_momentum.get('vix', 0)  # 5-day ROC from dynamic baselines
+
+        if i1_vix_level > 30 and i1_vix_momentum > 5:
+            # VIX high AND rising — intense risk-off
+            i1_vix_adj = -8 if inter_risk_direction > 0 else 8 if inter_risk_direction < 0 else 0
+        elif i1_vix_level > 20 and i1_vix_momentum > 2:
+            # VIX elevated AND rising — moderate risk-off
+            i1_vix_adj = -5 if inter_risk_direction > 0 else 5 if inter_risk_direction < 0 else 0
+        elif i1_vix_level < 15 and i1_vix_momentum < -2:
+            # VIX low AND falling — complacency, risk-on carry
+            i1_vix_adj = 6 if inter_risk_direction > 0 else -4 if inter_risk_direction < 0 else 0
+        elif i1_vix_level < 15:
+            # VIX low but stable — mild risk-on
+            i1_vix_adj = 3 if inter_risk_direction > 0 else -2 if inter_risk_direction < 0 else 0
+
+        inter_score += i1_vix_adj
+    except Exception as e:
+        logger.debug(f"I1 VIX momentum failed for {pair}: {e}")
+
+    # --- I2: Yield Curve Risk Appetite (±7 pts) ---
+    try:
+        i2_yield_spread = macro_inter.get('T10Y2Y', macro_inter.get('us_yield_curve', 0.2))
+
+        if i2_yield_spread > 1.5:
+            # Steep curve — economic optimism, risk-on
+            i2_yield_adj = 7 if inter_risk_direction > 0 else -5 if inter_risk_direction < 0 else 2
+        elif i2_yield_spread > 0.5:
+            # Normal curve — mild risk-on
+            i2_yield_adj = 3 if inter_risk_direction > 0 else -2 if inter_risk_direction < 0 else 0
+        elif i2_yield_spread > -0.5:
+            # Flat/inverting — caution, safe-haven bid
+            i2_yield_adj = -4 if inter_risk_direction > 0 else 4 if inter_risk_direction < 0 else 0
+        else:
+            # Deeply inverted — recession fear, strong safe-haven
+            i2_yield_adj = -7 if inter_risk_direction > 0 else 7 if inter_risk_direction < 0 else 0
+
+        inter_score += i2_yield_adj
+    except Exception as e:
+        logger.debug(f"I2 yield curve failed for {pair}: {e}")
+
+    # --- I3: Cross-Pair Correlation Confirmation (±5 pts) ---
+    try:
+        i3_corr_adj, i3_corr_note = get_correlation_confirmation(pair, rates_dict, candle_cache)
+        inter_score += i3_corr_adj
+    except Exception as e:
+        logger.debug(f"I3 correlation failed for {pair}: {e}")
+
+    # --- I4: SPX Equity Proxy via AUD/USD (±8 pts) ---
+    try:
+        # Skip for AUD pairs (self-referencing)
+        is_aud_pair = base == 'AUD' or quote == 'AUD'
+        if not is_aud_pair and candle_cache:
+            aud_candles = candle_cache.get('AUD/USD', [])
+            if aud_candles and len(aud_candles) >= 6:
+                aud_now = aud_candles[-1]['close']
+                aud_prev = aud_candles[-6]['close'] if len(aud_candles) >= 6 else aud_candles[0]['close']
+                if aud_prev > 0:
+                    i4_spx_roc = ((aud_now - aud_prev) / aud_prev) * 100
+
+                    if i4_spx_roc > 1.0:
+                        # Strong risk-on equity signal
+                        i4_spx_adj = 8 if inter_risk_direction > 0 else -6 if inter_risk_direction < 0 else 2
+                    elif i4_spx_roc > 0.5:
+                        # Mild risk-on
+                        i4_spx_adj = 4 if inter_risk_direction > 0 else -3 if inter_risk_direction < 0 else 1
+                    elif i4_spx_roc < -1.0:
+                        # Strong risk-off
+                        i4_spx_adj = -8 if inter_risk_direction > 0 else 6 if inter_risk_direction < 0 else -2
+                    elif i4_spx_roc < -0.5:
+                        # Mild risk-off
+                        i4_spx_adj = -4 if inter_risk_direction > 0 else 3 if inter_risk_direction < 0 else -1
+
+        inter_score += i4_spx_adj
+    except Exception as e:
+        logger.debug(f"I4 SPX proxy failed for {pair}: {e}")
+
+    # --- I5: Gold-Oil Ratio Risk Regime (±6 pts) ---
+    try:
+        i5_gold_price = inter_details.get('gold')
+        i5_oil_price = inter_details.get('oil')
+
+        if i5_gold_price and i5_oil_price and i5_oil_price > 0:
+            i5_gold_oil_ratio = i5_gold_price / i5_oil_price
+
+            # Compare to historical norm (~27-30 barrels of oil per oz gold)
+            # Rising ratio = gold outperforming = risk-off
+            # Falling ratio = oil outperforming = risk-on/growth
+            gold_mom = inter_momentum.get('gold', 0)
+            oil_mom = inter_momentum.get('oil', 0)
+            ratio_momentum = gold_mom - oil_mom  # Positive = gold outperforming
+
+            is_commodity = pair in ('XAU/USD', 'XAG/USD', 'XPT/USD', 'WTI/USD', 'BRENT/USD')
+            multiplier = 1.3 if is_commodity else 1.0
+
+            if ratio_momentum > 3:
+                # Gold strongly outperforming oil — risk-off
+                i5_ratio_adj = round((-6 if inter_risk_direction > 0 else 6 if inter_risk_direction < 0 else 0) * multiplier)
+            elif ratio_momentum > 1.5:
+                # Gold mildly outperforming — cautious
+                i5_ratio_adj = round((-3 if inter_risk_direction > 0 else 3 if inter_risk_direction < 0 else 0) * multiplier)
+            elif ratio_momentum < -3:
+                # Oil strongly outperforming gold — risk-on/growth
+                i5_ratio_adj = round((6 if inter_risk_direction > 0 else -6 if inter_risk_direction < 0 else 0) * multiplier)
+            elif ratio_momentum < -1.5:
+                # Oil mildly outperforming — growth
+                i5_ratio_adj = round((3 if inter_risk_direction > 0 else -3 if inter_risk_direction < 0 else 0) * multiplier)
+
+            # Clamp commodity amplified values
+            i5_ratio_adj = max(-8, min(8, i5_ratio_adj))
+
+        inter_score += i5_ratio_adj
+    except Exception as e:
+        logger.debug(f"I5 gold-oil ratio failed for {pair}: {e}")
+
+    # --- I6: DXY-VIX Divergence (±7 pts) ---
+    try:
+        i6_dxy_momentum = inter_momentum.get('dxy', 0)
+
+        # Use VIX level from intermarket details
+        i6_vix = inter_details.get('vix', 18.0)
+        i6_vix_elevated = i6_vix > 20
+
+        # Determine USD exposure for this pair
+        base_is_usd = base == 'USD'
+        quote_is_usd = quote == 'USD'
+        usd_direction = 1 if base_is_usd else -1 if quote_is_usd else 0
+
+        if i6_dxy_momentum > 0.3 and i6_vix_elevated:
+            # Risk-Off USD: DXY rising + VIX rising — flight to USD safety
+            i6_regime_name = "RISK_OFF_USD"
+            i6_regime_adj = 7 * usd_direction if usd_direction != 0 else \
+                           (-7 if inter_risk_direction > 0 else 5 if inter_risk_direction < 0 else 0)
+        elif i6_dxy_momentum > 0.3 and not i6_vix_elevated:
+            # Carry Regime: DXY rising + VIX calm — USD carry strength
+            i6_regime_name = "CARRY"
+            i6_regime_adj = 5 * usd_direction if usd_direction != 0 else \
+                           (3 if inter_risk_direction > 0 else -2 if inter_risk_direction < 0 else 0)
+        elif i6_dxy_momentum < -0.3 and i6_vix_elevated:
+            # Non-USD Risk-Off: DXY falling + VIX rising — risk-off into JPY/CHF
+            i6_regime_name = "NON_USD_RISK_OFF"
+            jpy_chf_bonus = 7 if (base in ('JPY', 'CHF') or quote in ('JPY', 'CHF')) else 0
+            i6_regime_adj = jpy_chf_bonus if jpy_chf_bonus else \
+                           (-5 if inter_risk_direction > 0 else 3 if inter_risk_direction < 0 else 0)
+        elif i6_dxy_momentum < -0.3 and not i6_vix_elevated:
+            # Risk-On: DXY falling + VIX calm — broad risk appetite
+            i6_regime_name = "RISK_ON"
+            i6_regime_adj = 7 if inter_risk_direction > 0 else -5 if inter_risk_direction < 0 else 0
+
+        inter_score += i6_regime_adj
+    except Exception as e:
+        logger.debug(f"I6 DXY-VIX regime failed for {pair}: {e}")
+
+    # --- I7: Multi-Asset Momentum Agreement (±5 pts) ---
+    try:
+        # Count directional signals from momentum data
+        dxy_mom = inter_momentum.get('dxy', 0)
+        gold_mom = inter_momentum.get('gold', 0)
+        oil_mom = inter_momentum.get('oil', 0)
+        vix_mom = inter_momentum.get('vix', 0)
+
+        # For risk currencies: risk-on signals are bullish
+        # DXY falling = risk-on, Gold falling = risk-on, Oil rising = risk-on, VIX falling = risk-on
+        risk_on_signals = 0
+        risk_off_signals = 0
+
+        if dxy_mom < -0.3: risk_on_signals += 1
+        elif dxy_mom > 0.3: risk_off_signals += 1
+
+        if gold_mom < -0.5: risk_on_signals += 1  # Gold falling = less fear
+        elif gold_mom > 0.5: risk_off_signals += 1
+
+        if oil_mom > 0.5: risk_on_signals += 1  # Oil rising = growth demand
+        elif oil_mom < -0.5: risk_off_signals += 1
+
+        if vix_mom < -2: risk_on_signals += 1  # VIX falling = calm
+        elif vix_mom > 2: risk_off_signals += 1
+
+        # Yield curve direction from I2 (pre-initialized to 0.2)
+        if i2_yield_spread > 0.5:
+            risk_on_signals += 1
+        elif i2_yield_spread < -0.5:
+            risk_off_signals += 1
+
+        dominant = max(risk_on_signals, risk_off_signals)
+        if dominant >= 4:
+            # Strong multi-asset agreement
+            if risk_on_signals > risk_off_signals:
+                i7_agreement_adj = 5 if inter_risk_direction > 0 else -5 if inter_risk_direction < 0 else 0
+            else:
+                i7_agreement_adj = -5 if inter_risk_direction > 0 else 5 if inter_risk_direction < 0 else 0
+        elif dominant >= 3:
+            # Moderate agreement
+            if risk_on_signals > risk_off_signals:
+                i7_agreement_adj = 3 if inter_risk_direction > 0 else -3 if inter_risk_direction < 0 else 0
+            else:
+                i7_agreement_adj = -3 if inter_risk_direction > 0 else 3 if inter_risk_direction < 0 else 0
+
+        inter_score += i7_agreement_adj
+    except Exception as e:
+        logger.debug(f"I7 momentum agreement failed for {pair}: {e}")
+
+    # Final clamp
+    inter_score = max(10, min(90, inter_score))
+
     factors['intermarket'] = {
         'score': round(inter_score, 1),
         'signal': 'BULLISH' if inter_score >= 58 else 'BEARISH' if inter_score <= 42 else 'NEUTRAL',
         'data_quality': inter_data_quality,
-        'details': intermarket['details']
+        'details': inter_details,
+        'vix_momentum': i1_vix_adj,
+        'vix_level': round(inter_details.get('vix', 18.0), 1),
+        'yield_curve_risk': i2_yield_adj,
+        'yield_spread': round(i2_yield_spread, 2),
+        'correlation_confirmation': i3_corr_adj,
+        'correlation_note': i3_corr_note,
+        'spx_proxy': i4_spx_adj,
+        'spx_proxy_roc': round(i4_spx_roc, 2),
+        'gold_oil_ratio': i5_ratio_adj,
+        'gold_oil_ratio_value': round(i5_gold_oil_ratio, 1),
+        'dxy_vix_regime': i6_regime_name,
+        'dxy_vix_regime_adj': i6_regime_adj,
+        'momentum_agreement': i7_agreement_adj,
+        'risk_direction': inter_risk_direction
     }
     
     # ═══════════════════════════════════════════════════════════════════════════
@@ -11667,7 +11922,7 @@ def run_system_audit():
             'fundamental': {'weight': 14, 'sources': 'v9.5.0: Rate diff + Yield curve + CPI/Employment/Payroll momentum + Rate change trajectory + Fundamental news (13 FRED series, 3 historical lookups)'},
             'mean_reversion': {'weight': 12, 'sources': 'v9.5.0: Quantitative (Z-Score/Bollinger/Triangle + Z-Momentum/EMA Distance/RSI Confluence/Volume Extremes) 55% + Structure (S/R/Pivot/Fib/ADX + Order Blocks/FVGs/Liquidity Zones/Confluence) 45%'},
             'sentiment': {'weight': 11, 'sources': 'v9.5.0: IG/Saxo retail + Finnhub/RSS/Yahoo news + COT institutional + 8 sub-components (VIX fear gauge, retail extreme, news velocity, price divergence, COT confirmation, sentiment momentum, source agreement, commodity regime)'},
-            'intermarket': {'weight': 10, 'sources': 'DXY, Gold, Yields, Oil correlations'},
+            'intermarket': {'weight': 10, 'sources': 'v9.5.0: DXY/Gold/Oil/Yields/VIX base + 7 sub-components (VIX momentum, yield curve risk, correlation confirmation, SPX equity proxy via AUD/USD, gold-oil ratio regime, DXY-VIX divergence 4-regime, multi-asset momentum agreement)'},
             'ai_synthesis': {'weight': 9, 'sources': 'GPT enhanced analysis — synthesis tool'},
             'currency_strength': {'weight': 8, 'sources': 'v9.4.0: 50-instrument analysis — confirmation tool'},
             'calendar_risk': {'weight': 6, 'sources': 'Economic events + Seasonality — gate/filter role'},
@@ -12583,7 +12838,7 @@ def run_system_audit():
             'fundamental': 'Interest rate differentials from central bank rates + FRED API',
             'sentiment': 'IG positioning + Finnhub news + RSS feeds + COT institutional data',
             'ai': 'GPT-4o-mini market analysis and pattern recognition',
-            'intermarket': 'DXY, Gold, Yields correlation analysis',
+            'intermarket': 'v9.5.0: DXY/Gold/Oil/Yields/VIX + VIX momentum + yield curve risk + cross-pair correlation + SPX proxy + gold-oil ratio + DXY-VIX regime + momentum agreement',
             'quantitative': 'Z-score and Bollinger %B from price statistics',
             'mtf': 'H1/H4/D1 EMA analysis from candle data (proper OHLC aggregation)',
             'structure': 'Swing high/low detection + pivot calculations',
