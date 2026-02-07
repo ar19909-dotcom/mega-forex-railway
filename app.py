@@ -5430,6 +5430,7 @@ def calculate_probability_factor(pair, candles, opens, highs, lows, closes, tech
     """
     score = 50.0
     details = []
+    tech = tech or {}  # Guard against None tech dict
 
     # Pre-initialize ALL sub-component variables
     p1_atr_cycle = 0
@@ -5821,10 +5822,11 @@ def calculate_probability_factor(pair, candles, opens, highs, lows, closes, tech
             'LONDON_CLOSE': {'GBP': 55, 'EUR': 50, 'USD': 50, 'CHF': 45, 'JPY': 40, 'CAD': 40, 'AUD': 35, 'NZD': 30}
         }
 
-        # Map killzone names to affinity keys
+        # Map killzone names to affinity keys (must match get_ict_killzones() return values)
         kz_map = {
-            'LONDON_KZ': 'LONDON', 'NY_AM_KZ': 'NY_AM', 'NY_PM_KZ': 'NY_PM',
-            'ASIAN_RANGE': 'ASIAN', 'LONDON_CLOSE': 'LONDON_CLOSE'
+            'LONDON_KILLZONE': 'LONDON', 'NY_AM_KILLZONE': 'NY_AM', 'NY_PM_KILLZONE': 'NY_PM',
+            'ASIAN_RANGE': 'ASIAN', 'LONDON_CLOSE': 'LONDON_CLOSE',
+            'LONDON_CONTINUATION': 'LONDON', 'DEAD_ZONE': None
         }
         session_key = kz_map.get(killzone, None)
 
@@ -11972,6 +11974,8 @@ def generate_signal(pair):
 
         # v9.2.2: Add Currency Strength as 8th factor group (10% weight)
         # v9.4.0: Pass cached rates to avoid spawning 50 threads per signal
+        _cached_rates = {}
+        _cached_candles = {}
         try:
             with cache_lock:
                 _cached_rates = cache.get('rates', {}).get('data', {})
