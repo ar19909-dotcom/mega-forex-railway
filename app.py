@@ -8381,23 +8381,40 @@ def build_factor_groups(factors):
         'weight': FACTOR_GROUP_WEIGHTS['calendar_risk']
     }
 
-    # Group 7: AI Synthesis (only activates when 4+ groups agree)
+    # Group 7: AI Synthesis (v9.5.0 enhanced — confidence-based weight + activation gate)
     ai_s = factors.get('ai', {}).get('score', 50)
+    ai_confidence = factors.get('ai', {}).get('details', {}).get('confidence', 'MEDIUM')
     directional_groups = sum(1 for g in factor_groups.values() if g['signal'] != 'NEUTRAL')
 
     if directional_groups >= 2:
+        ai_weight = FACTOR_GROUP_WEIGHTS['ai_synthesis']
+        ai_signal = 'BULLISH' if ai_s >= 58 else 'BEARISH' if ai_s <= 42 else 'NEUTRAL'
+
+        # v9.5.0: Confidence-based weight adjustment
+        # Count dominant direction to check if AI agrees
+        bullish_count = sum(1 for g in factor_groups.values() if g['signal'] == 'BULLISH')
+        bearish_count = sum(1 for g in factor_groups.values() if g['signal'] == 'BEARISH')
+        dominant_dir = 'BULLISH' if bullish_count > bearish_count else 'BEARISH' if bearish_count > bullish_count else 'NEUTRAL'
+
+        if ai_confidence == 'HIGH' and ai_signal == dominant_dir:
+            ai_weight = min(ai_weight + 2, 18)  # Boost when HIGH confidence confirms consensus
+        elif ai_confidence == 'LOW':
+            ai_weight = max(ai_weight - 1, 5)   # Reduce when LOW confidence
+
         factor_groups['ai_synthesis'] = {
             'score': round(ai_s, 1),
-            'signal': 'BULLISH' if ai_s >= 58 else 'BEARISH' if ai_s <= 42 else 'NEUTRAL',
-            'weight': FACTOR_GROUP_WEIGHTS['ai_synthesis'],
-            'activated': True
+            'signal': ai_signal,
+            'weight': ai_weight,
+            'activated': True,
+            'confidence': ai_confidence
         }
     else:
         factor_groups['ai_synthesis'] = {
             'score': 50,
             'signal': 'NEUTRAL',
             'weight': FACTOR_GROUP_WEIGHTS['ai_synthesis'],
-            'activated': False
+            'activated': False,
+            'confidence': ai_confidence
         }
 
     return factor_groups
@@ -10392,8 +10409,9 @@ def calculate_factor_scores(pair):
         }
 
     # ═══════════════════════════════════════════════════════════════════════════
-    # 10. AI FACTOR (10%) - GPT-4o-mini Analysis (v8.5 NEW)
-    # Only called for pairs with sufficient signal strength to control costs
+    # 10. AI FACTOR (9%) - GPT-4o-mini Analysis - ENHANCED v9.5.0
+    #     Sub-components: A1-A8 (±52 raw budget, clamped [10,90])
+    #     ZERO additional API calls — post-processes existing GPT response
     # ═══════════════════════════════════════════════════════════════════════════
 
     # Calculate preliminary score to determine if AI analysis is needed
@@ -10412,21 +10430,192 @@ def calculate_factor_scores(pair):
     # Call AI factor with ALL factors for cross-validation (v9.0 dual-role)
     ai_result = calculate_ai_factor(pair, tech, sentiment, rate, preliminary_score, all_factors=factors)
 
-    # Apply standard signal thresholds (same as all other factors) - NOT GPT's raw signal
-    ai_score = round(ai_result['score'], 1)
+    # Base score from GPT
+    ai_score = ai_result['score']
+    ai_data_quality = ai_result.get('data_quality', 'AI_REAL')
+
+    # Initialize all A-component variables before try blocks
+    a1_confidence_adj = 0
+    a2_quality_adj = 0
+    a3_risk_adj = 0
+    a4_validation_adj = 0
+    a5_alignment_adj = 0
+    a6_driver_adj = 0
+    a7_direction_adj = 0
+    a8_dataquality_adj = 0
+
+    # Only process sub-components when GPT actually returned real analysis
+    if ai_data_quality in ('AI_REAL', 'AI_PARTIAL'):
+
+        # --- A1: Confidence Scaling (±8 pts) ---
+        try:
+            a1_confidence = ai_result.get('confidence', 'MEDIUM').upper()
+            if a1_confidence == 'HIGH':
+                # Expand score away from 50 by 1.2x, then +3 conviction bonus
+                ai_score = 50 + (ai_score - 50) * 1.2
+                a1_confidence_adj = 3
+            elif a1_confidence == 'LOW':
+                # Compress score toward 50 by 0.8x, then -3 uncertainty penalty
+                ai_score = 50 + (ai_score - 50) * 0.8
+                a1_confidence_adj = -3
+
+            ai_score += a1_confidence_adj
+        except Exception as e:
+            logger.debug(f"A1 confidence scaling failed for {pair}: {e}")
+
+        # --- A2: Trade Quality Grade (±7 pts) ---
+        try:
+            a2_trade_quality = ai_result.get('trade_quality', '')
+            if isinstance(a2_trade_quality, str) and len(a2_trade_quality) > 0:
+                grade = a2_trade_quality.strip()[0].upper()
+                if grade == 'A':
+                    a2_quality_adj = 7
+                elif grade == 'B':
+                    a2_quality_adj = 3
+                elif grade == 'C':
+                    a2_quality_adj = -5
+
+            ai_score += a2_quality_adj
+        except Exception as e:
+            logger.debug(f"A2 trade quality failed for {pair}: {e}")
+
+        # --- A3: Risk Factor Severity (±6 pts) ---
+        try:
+            a3_risks = ai_result.get('risk_factors', [])
+            a3_risk_count = len(a3_risks) if isinstance(a3_risks, list) else 0
+
+            if a3_risk_count == 0:
+                a3_risk_adj = 4   # Clean setup
+            elif a3_risk_count == 1:
+                a3_risk_adj = 1   # Normal
+            elif a3_risk_count == 2:
+                a3_risk_adj = -3  # Elevated
+            else:
+                a3_risk_adj = -6  # High risk
+
+            ai_score += a3_risk_adj
+        except Exception as e:
+            logger.debug(f"A3 risk severity failed for {pair}: {e}")
+
+        # --- A4: Validation Consistency (±7 pts) ---
+        try:
+            a4_validation = ai_result.get('validation', {})
+            a4_consistent = a4_validation.get('consistent', True)
+            a4_flags = a4_validation.get('flags', [])
+            a4_flag_count = len(a4_flags) if isinstance(a4_flags, list) else 0
+
+            if a4_consistent and a4_flag_count == 0:
+                a4_validation_adj = 5   # All factors validated
+            elif a4_consistent and a4_flag_count <= 2:
+                a4_validation_adj = 2   # Minor issues
+            elif not a4_consistent and a4_flag_count < 3:
+                a4_validation_adj = -3  # Some inconsistencies
+            elif not a4_consistent:
+                a4_validation_adj = -7  # Major inconsistencies
+
+            ai_score += a4_validation_adj
+        except Exception as e:
+            logger.debug(f"A4 validation failed for {pair}: {e}")
+
+        # --- A5: Directional Alignment with Consensus (±8 pts) ---
+        try:
+            ai_direction = ai_score - 50   # Positive = bullish, negative = bearish
+            prelim_direction = preliminary_score - 50
+
+            if (ai_direction > 0 and prelim_direction > 0) or (ai_direction < 0 and prelim_direction < 0):
+                # Same direction — check strength of agreement
+                min_strength = min(abs(ai_direction), abs(prelim_direction))
+                if min_strength >= 8:
+                    a5_alignment_adj = 8   # Strong agreement
+                elif min_strength >= 3:
+                    a5_alignment_adj = 4   # Mild agreement
+                else:
+                    a5_alignment_adj = 2   # Weak agreement
+            elif abs(ai_direction) < 3 or abs(prelim_direction) < 3:
+                # One side is neutral-ish
+                a5_alignment_adj = -3
+            else:
+                # Opposing directions
+                a5_alignment_adj = -8
+
+            ai_score += a5_alignment_adj
+        except Exception as e:
+            logger.debug(f"A5 alignment failed for {pair}: {e}")
+
+        # --- A6: Key Driver Strength (±5 pts) ---
+        try:
+            a6_drivers = ai_result.get('key_drivers', [])
+            a6_driver_count = len(a6_drivers) if isinstance(a6_drivers, list) else 0
+
+            if a6_driver_count >= 4:
+                a6_driver_adj = 5
+            elif a6_driver_count == 3:
+                a6_driver_adj = 3
+            elif a6_driver_count <= 0:
+                a6_driver_adj = -3
+
+            ai_score += a6_driver_adj
+        except Exception as e:
+            logger.debug(f"A6 driver strength failed for {pair}: {e}")
+
+        # --- A7: GPT Recommended Direction Match (±6 pts) ---
+        try:
+            a7_validation = ai_result.get('validation', {})
+            a7_recommended = a7_validation.get('recommended_direction', 'NEUTRAL').upper()
+            a7_gpt_signal = ai_result.get('signal', 'NEUTRAL').upper()
+
+            # Normalize to LONG/SHORT/NEUTRAL
+            a7_score_direction = 'LONG' if ai_score > 53 else 'SHORT' if ai_score < 47 else 'NEUTRAL'
+
+            if a7_recommended == 'NEUTRAL':
+                a7_direction_adj = 0
+            elif a7_recommended == a7_score_direction:
+                a7_direction_adj = 4   # Internally consistent
+            elif a7_recommended != a7_score_direction and a7_score_direction != 'NEUTRAL':
+                a7_direction_adj = -6  # GPT contradicts its own score
+
+            ai_score += a7_direction_adj
+        except Exception as e:
+            logger.debug(f"A7 direction match failed for {pair}: {e}")
+
+        # --- A8: Data Quality Gate (±5 pts) ---
+        try:
+            if ai_data_quality == 'AI_REAL':
+                a8_dataquality_adj = 3   # Full JSON parsed
+            elif ai_data_quality == 'AI_PARTIAL':
+                a8_dataquality_adj = -5  # Partial parse, less reliable
+
+            ai_score += a8_dataquality_adj
+        except Exception as e:
+            logger.debug(f"A8 data quality failed for {pair}: {e}")
+
+    # Final clamp and signal
+    ai_score = max(10, min(90, round(ai_score, 1)))
     ai_signal = 'BULLISH' if ai_score >= 58 else 'BEARISH' if ai_score <= 42 else 'NEUTRAL'
 
     factors['ai'] = {
         'score': ai_score,
         'signal': ai_signal,
-        'data_quality': ai_result.get('data_quality', 'AI_REAL'),
+        'data_quality': ai_data_quality,
         'details': {
             'analysis': ai_result.get('analysis', ''),
             'confidence': ai_result.get('confidence', 'MEDIUM'),
             'model': AI_FACTOR_CONFIG.get('model', 'gpt-4o-mini'),
             'preliminary_score': round(preliminary_score, 1),
             'validation': ai_result.get('validation', {}),
-            'gpt_raw_signal': ai_result.get('signal', 'N/A')  # Keep GPT's original signal for reference
+            'gpt_raw_signal': ai_result.get('signal', 'N/A'),
+            'gpt_raw_score': round(ai_result['score'], 1),
+            'confidence_scaling': a1_confidence_adj,
+            'trade_quality_adj': a2_quality_adj,
+            'trade_quality_grade': ai_result.get('trade_quality', 'N/A'),
+            'risk_severity': a3_risk_adj,
+            'risk_count': len(ai_result.get('risk_factors', [])),
+            'validation_consistency': a4_validation_adj,
+            'directional_alignment': a5_alignment_adj,
+            'driver_strength': a6_driver_adj,
+            'driver_count': len(ai_result.get('key_drivers', [])),
+            'direction_match': a7_direction_adj,
+            'data_quality_adj': a8_dataquality_adj
         }
     }
 
@@ -11923,7 +12112,7 @@ def run_system_audit():
             'mean_reversion': {'weight': 12, 'sources': 'v9.5.0: Quantitative (Z-Score/Bollinger/Triangle + Z-Momentum/EMA Distance/RSI Confluence/Volume Extremes) 55% + Structure (S/R/Pivot/Fib/ADX + Order Blocks/FVGs/Liquidity Zones/Confluence) 45%'},
             'sentiment': {'weight': 11, 'sources': 'v9.5.0: IG/Saxo retail + Finnhub/RSS/Yahoo news + COT institutional + 8 sub-components (VIX fear gauge, retail extreme, news velocity, price divergence, COT confirmation, sentiment momentum, source agreement, commodity regime)'},
             'intermarket': {'weight': 10, 'sources': 'v9.5.0: DXY/Gold/Oil/Yields/VIX base + 7 sub-components (VIX momentum, yield curve risk, correlation confirmation, SPX equity proxy via AUD/USD, gold-oil ratio regime, DXY-VIX divergence 4-regime, multi-asset momentum agreement)'},
-            'ai_synthesis': {'weight': 9, 'sources': 'GPT enhanced analysis — synthesis tool'},
+            'ai_synthesis': {'weight': 9, 'sources': 'v9.5.0: GPT-4o-mini cross-validation + 8 sub-components (confidence scaling, trade quality grade, risk severity, validation consistency, directional alignment, key driver strength, direction match, data quality gate) + confidence-based weight adjustment'},
             'currency_strength': {'weight': 8, 'sources': 'v9.4.0: 50-instrument analysis — confirmation tool'},
             'calendar_risk': {'weight': 6, 'sources': 'Economic events + Seasonality — gate/filter role'},
             'geopolitical_risk': {'weight': 4, 'sources': 'War, sanctions, trade tensions — tail-risk filter (IMF 2025)'},
@@ -12837,7 +13026,7 @@ def run_system_audit():
             'technical': 'RSI, MACD, ADX calculated from real-time candle data',
             'fundamental': 'Interest rate differentials from central bank rates + FRED API',
             'sentiment': 'IG positioning + Finnhub news + RSS feeds + COT institutional data',
-            'ai': 'GPT-4o-mini market analysis and pattern recognition',
+            'ai': 'v9.5.0: GPT-4o-mini cross-validation + confidence scaling + trade quality + risk assessment + validation consistency + directional alignment + driver analysis + data quality gate',
             'intermarket': 'v9.5.0: DXY/Gold/Oil/Yields/VIX + VIX momentum + yield curve risk + cross-pair correlation + SPX proxy + gold-oil ratio + DXY-VIX regime + momentum agreement',
             'quantitative': 'Z-score and Bollinger %B from price statistics',
             'mtf': 'H1/H4/D1 EMA analysis from candle data (proper OHLC aggregation)',
