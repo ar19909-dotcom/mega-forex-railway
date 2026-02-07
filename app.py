@@ -1136,6 +1136,89 @@ DEFAULT_ATR = {
     'WTI/USD': 1.80, 'BRENT/USD': 1.90
 }
 
+# v9.5.0: Typical bid-ask spread in basis points per pair (for MD4 spread dynamics)
+TYPICAL_SPREAD_BPS = {
+    # Majors: tightest spreads (0.8-2.0 bps)
+    'EUR/USD': 1.0, 'GBP/USD': 1.2, 'USD/JPY': 1.0, 'USD/CHF': 1.5,
+    'AUD/USD': 1.2, 'USD/CAD': 1.5, 'NZD/USD': 1.8,
+    # Major crosses (1.5-4.0 bps)
+    'EUR/GBP': 1.5, 'EUR/JPY': 1.5, 'EUR/CHF': 2.0, 'EUR/AUD': 2.5,
+    'EUR/CAD': 2.5, 'EUR/NZD': 3.5, 'GBP/JPY': 2.5, 'GBP/CHF': 3.0,
+    'GBP/AUD': 3.5, 'GBP/CAD': 3.5, 'GBP/NZD': 4.0,
+    # Minor crosses (2.0-5.0 bps)
+    'AUD/JPY': 2.0, 'NZD/JPY': 2.5, 'CAD/JPY': 2.5, 'CHF/JPY': 2.5,
+    'SGD/JPY': 3.5, 'HKD/JPY': 3.0, 'AUD/NZD': 3.0, 'AUD/CAD': 2.5,
+    'AUD/CHF': 3.0, 'NZD/CAD': 3.5, 'NZD/CHF': 3.5, 'CAD/CHF': 3.0,
+    # Exotics: wide spreads (10-80 bps)
+    'USD/SGD': 5.0, 'USD/HKD': 3.0, 'USD/MXN': 15.0, 'USD/ZAR': 30.0,
+    'USD/TRY': 50.0, 'USD/NOK': 12.0, 'USD/SEK': 12.0, 'USD/DKK': 5.0,
+    'USD/PLN': 15.0, 'EUR/TRY': 55.0, 'EUR/PLN': 18.0, 'EUR/NOK': 15.0,
+    'EUR/SEK': 15.0, 'EUR/HUF': 20.0, 'EUR/CZK': 12.0,
+    # Commodities
+    'XAU/USD': 3.0, 'XAG/USD': 3.5, 'XPT/USD': 8.0,
+    'WTI/USD': 4.0, 'BRENT/USD': 5.0
+}
+
+# v9.5.0: Session-pair affinity — optimal trading windows per pair
+SESSION_PAIR_AFFINITY = {
+    # EUR pairs: best in London and NY overlap
+    'EUR/USD': ['LONDON_KILLZONE', 'NY_AM_KILLZONE'],
+    'EUR/GBP': ['LONDON_KILLZONE', 'LONDON_CONTINUATION'],
+    'EUR/JPY': ['LONDON_KILLZONE', 'NY_AM_KILLZONE'],
+    'EUR/CHF': ['LONDON_KILLZONE', 'LONDON_CONTINUATION'],
+    'EUR/AUD': ['LONDON_KILLZONE', 'ASIAN_RANGE'],
+    'EUR/CAD': ['LONDON_KILLZONE', 'NY_AM_KILLZONE'],
+    'EUR/NZD': ['LONDON_KILLZONE', 'ASIAN_RANGE'],
+    'EUR/TRY': ['LONDON_KILLZONE', 'LONDON_CONTINUATION'],
+    'EUR/PLN': ['LONDON_KILLZONE', 'LONDON_CONTINUATION'],
+    'EUR/NOK': ['LONDON_KILLZONE', 'LONDON_CONTINUATION'],
+    'EUR/SEK': ['LONDON_KILLZONE', 'LONDON_CONTINUATION'],
+    'EUR/HUF': ['LONDON_KILLZONE', 'LONDON_CONTINUATION'],
+    'EUR/CZK': ['LONDON_KILLZONE', 'LONDON_CONTINUATION'],
+    # GBP pairs: best in London
+    'GBP/USD': ['LONDON_KILLZONE', 'NY_AM_KILLZONE'],
+    'GBP/JPY': ['LONDON_KILLZONE', 'NY_AM_KILLZONE'],
+    'GBP/CHF': ['LONDON_KILLZONE', 'LONDON_CONTINUATION'],
+    'GBP/AUD': ['LONDON_KILLZONE', 'ASIAN_RANGE'],
+    'GBP/CAD': ['LONDON_KILLZONE', 'NY_AM_KILLZONE'],
+    'GBP/NZD': ['LONDON_KILLZONE', 'ASIAN_RANGE'],
+    # USD/JPY pairs: best in Tokyo and NY
+    'USD/JPY': ['ASIAN_RANGE', 'NY_AM_KILLZONE'],
+    'AUD/JPY': ['ASIAN_RANGE', 'LONDON_KILLZONE'],
+    'NZD/JPY': ['ASIAN_RANGE', 'LONDON_KILLZONE'],
+    'CAD/JPY': ['NY_AM_KILLZONE', 'ASIAN_RANGE'],
+    'CHF/JPY': ['LONDON_KILLZONE', 'ASIAN_RANGE'],
+    'SGD/JPY': ['ASIAN_RANGE', 'LONDON_KILLZONE'],
+    'HKD/JPY': ['ASIAN_RANGE', 'LONDON_KILLZONE'],
+    # USD pairs: best in NY
+    'USD/CHF': ['NY_AM_KILLZONE', 'LONDON_KILLZONE'],
+    'USD/CAD': ['NY_AM_KILLZONE', 'LONDON_CONTINUATION'],
+    'USD/SGD': ['ASIAN_RANGE', 'NY_AM_KILLZONE'],
+    'USD/HKD': ['ASIAN_RANGE', 'NY_AM_KILLZONE'],
+    'USD/MXN': ['NY_AM_KILLZONE', 'NY_PM_KILLZONE'],
+    'USD/ZAR': ['LONDON_KILLZONE', 'NY_AM_KILLZONE'],
+    'USD/TRY': ['LONDON_KILLZONE', 'NY_AM_KILLZONE'],
+    'USD/NOK': ['LONDON_KILLZONE', 'NY_AM_KILLZONE'],
+    'USD/SEK': ['LONDON_KILLZONE', 'NY_AM_KILLZONE'],
+    'USD/DKK': ['LONDON_KILLZONE', 'LONDON_CONTINUATION'],
+    'USD/PLN': ['LONDON_KILLZONE', 'NY_AM_KILLZONE'],
+    # AUD/NZD pairs: best in Asian/London overlap
+    'AUD/USD': ['ASIAN_RANGE', 'LONDON_KILLZONE'],
+    'NZD/USD': ['ASIAN_RANGE', 'LONDON_KILLZONE'],
+    'AUD/NZD': ['ASIAN_RANGE', 'LONDON_KILLZONE'],
+    'AUD/CAD': ['ASIAN_RANGE', 'NY_AM_KILLZONE'],
+    'AUD/CHF': ['ASIAN_RANGE', 'LONDON_KILLZONE'],
+    'NZD/CAD': ['ASIAN_RANGE', 'NY_AM_KILLZONE'],
+    'NZD/CHF': ['ASIAN_RANGE', 'LONDON_KILLZONE'],
+    'CAD/CHF': ['NY_AM_KILLZONE', 'LONDON_KILLZONE'],
+    # Commodities: best in London/NY (highest volume)
+    'XAU/USD': ['LONDON_KILLZONE', 'NY_AM_KILLZONE'],
+    'XAG/USD': ['LONDON_KILLZONE', 'NY_AM_KILLZONE'],
+    'XPT/USD': ['LONDON_KILLZONE', 'NY_AM_KILLZONE'],
+    'WTI/USD': ['NY_AM_KILLZONE', 'LONDON_CONTINUATION'],
+    'BRENT/USD': ['LONDON_KILLZONE', 'NY_AM_KILLZONE'],
+}
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # DATA CACHING
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -11222,6 +11305,281 @@ def generate_signal(pair):
         })
 
         # ═══════════════════════════════════════════════════════════════════════════
+        # v9.5.0: MARKET DEPTH SUB-COMPONENTS (MD1-MD7)
+        # Enhanced depth scoring — volume, order flow, spread dynamics, session affinity
+        # ═══════════════════════════════════════════════════════════════════════════
+        depth_score = depth_data['score']
+
+        # Pre-initialize all MD sub-component variables
+        md1_volume_adj = 0
+        md1_vol_ratio = 0
+        md2_ob_adj = 0
+        md2_ob_count = 0
+        md3_liq_adj = 0
+        md3_liq_count = 0
+        md4_spread_adj = 0
+        md4_spread_ratio = 0
+        md5_affinity_adj = 0
+        md5_affinity_match = 'N/A'
+        md6_confluence_adj = 0
+        md6_price_dir = 'FLAT'
+        md6_vol_dir = 'FLAT'
+        md7_atr_adj = 0
+        md7_atr_ratio = 0
+        md7_atr_regime = 'NORMAL'
+
+        # --- MD1: Volume Profile Analysis (±8 pts) ---
+        try:
+            if candles and len(candles) >= 20:
+                md_volumes = [c.get('volume', 0) for c in candles[-20:]]
+                md_non_zero = [v for v in md_volumes if v > 0]
+                if len(md_non_zero) >= 10:
+                    avg_vol = sum(md_non_zero) / len(md_non_zero)
+                    curr_vol = candles[-1].get('volume', 0)
+                    if avg_vol > 0 and curr_vol > 0:
+                        md1_vol_ratio = round(curr_vol / avg_vol, 2)
+                        if md1_vol_ratio > 1.5:
+                            md1_volume_adj = 8
+                        elif md1_vol_ratio > 1.2:
+                            md1_volume_adj = 4
+                        elif md1_vol_ratio >= 0.8:
+                            md1_volume_adj = 0
+                        elif md1_vol_ratio >= 0.5:
+                            md1_volume_adj = -4
+                        else:
+                            md1_volume_adj = -8
+                        # Commodity amplifier
+                        if is_commodity(pair):
+                            md1_volume_adj = round(md1_volume_adj * 1.3)
+                        md1_volume_adj = max(-8, min(8, md1_volume_adj))
+            depth_score += md1_volume_adj
+        except Exception as e:
+            logger.debug(f"MD1 volume profile failed for {pair}: {e}")
+
+        # --- MD2: Order Block Density (±7 pts) ---
+        try:
+            if candles and len(candles) >= 20:
+                md_ob_data = detect_order_blocks(opens, highs, lows, closes, lookback=50)
+                bullish_obs = md_ob_data.get('bullish_ob', [])
+                bearish_obs = md_ob_data.get('bearish_ob', [])
+                md2_ob_count = len(bullish_obs) + len(bearish_obs)
+                ob_strength = md_ob_data.get('ob_strength', 0)
+
+                if md2_ob_count >= 4:
+                    md2_ob_adj = 7
+                elif md2_ob_count >= 2:
+                    md2_ob_adj = 4
+                elif md2_ob_count >= 1:
+                    md2_ob_adj = 2
+                else:
+                    md2_ob_adj = -3
+
+                # Bonus for strong institutional zone
+                if ob_strength > 70:
+                    md2_ob_adj = min(7, md2_ob_adj + 2)
+
+            depth_score += md2_ob_adj
+        except Exception as e:
+            logger.debug(f"MD2 order block density failed for {pair}: {e}")
+
+        # --- MD3: Liquidity Zone Density (±7 pts) ---
+        try:
+            if candles and len(candles) >= 20:
+                current_price = closes[-1] if closes else rate.get('mid', 0)
+                md_liq_data = detect_liquidity_zones(highs, lows, closes, lookback=50)
+                buy_liq = md_liq_data.get('buy_side_liquidity', [])
+                sell_liq = md_liq_data.get('sell_side_liquidity', [])
+                md3_liq_count = len(buy_liq) + len(sell_liq)
+
+                if md3_liq_count >= 6:
+                    md3_liq_adj = 7
+                elif md3_liq_count >= 4:
+                    md3_liq_adj = 4
+                elif md3_liq_count >= 2:
+                    md3_liq_adj = 2
+                else:
+                    md3_liq_adj = -3
+
+                # Penalty if liquidity recently swept (thin conditions)
+                if md_liq_data.get('liquidity_swept', False):
+                    md3_liq_adj = max(-7, md3_liq_adj - 3)
+
+            depth_score += md3_liq_adj
+        except Exception as e:
+            logger.debug(f"MD3 liquidity zone density failed for {pair}: {e}")
+
+        # --- MD4: Spread Dynamics (±8 pts) ---
+        try:
+            bid = rate.get('bid', 0) if isinstance(rate, dict) else 0
+            ask = rate.get('ask', 0) if isinstance(rate, dict) else 0
+            mid = rate.get('mid', 0) if isinstance(rate, dict) else 0
+            if bid > 0 and ask > 0 and mid > 0:
+                current_spread_bps = (ask - bid) / mid * 10000
+                typical_spread = TYPICAL_SPREAD_BPS.get(pair, 0)
+                if typical_spread > 0:
+                    md4_spread_ratio = round(current_spread_bps / typical_spread, 2)
+                    if md4_spread_ratio < 0.7:
+                        md4_spread_adj = 8
+                    elif md4_spread_ratio <= 1.0:
+                        md4_spread_adj = 4
+                    elif md4_spread_ratio <= 1.5:
+                        md4_spread_adj = 0
+                    elif md4_spread_ratio <= 2.5:
+                        md4_spread_adj = -5
+                    else:
+                        md4_spread_adj = -8
+            depth_score += md4_spread_adj
+        except Exception as e:
+            logger.debug(f"MD4 spread dynamics failed for {pair}: {e}")
+
+        # --- MD5: Session-Pair Affinity (±6 pts) ---
+        try:
+            current_kz = depth_data.get('killzone', 'UNKNOWN')
+            optimal_sessions = SESSION_PAIR_AFFINITY.get(pair, ['LONDON_KILLZONE', 'NY_AM_KILLZONE'])
+            kz_quality = depth_data.get('session_quality', 0)
+
+            if current_kz == 'WEEKEND' or (hasattr(datetime, 'utcnow') and datetime.utcnow().weekday() >= 5):
+                md5_affinity_adj = -6
+                md5_affinity_match = 'WEEKEND'
+            elif len(optimal_sessions) > 0 and current_kz == optimal_sessions[0]:
+                md5_affinity_adj = 6
+                md5_affinity_match = 'PRIMARY'
+            elif len(optimal_sessions) > 1 and current_kz == optimal_sessions[1]:
+                md5_affinity_adj = 3
+                md5_affinity_match = 'SECONDARY'
+            elif kz_quality >= 40:
+                md5_affinity_adj = 0
+                md5_affinity_match = 'ACTIVE'
+            else:
+                md5_affinity_adj = -4
+                md5_affinity_match = 'OFF_SESSION'
+
+            depth_score += md5_affinity_adj
+        except Exception as e:
+            logger.debug(f"MD5 session-pair affinity failed for {pair}: {e}")
+
+        # --- MD6: Volume-Price Confluence (±6 pts) ---
+        try:
+            if candles and len(candles) >= 5:
+                recent_closes = [c.get('close', 0) for c in candles[-5:]]
+                recent_volumes = [c.get('volume', 0) for c in candles[-5:]]
+                non_zero_vols = [v for v in recent_volumes if v > 0]
+
+                if len(recent_closes) >= 5 and len(non_zero_vols) >= 3:
+                    # Price direction: compare last vs first of 5 candles
+                    price_change = recent_closes[-1] - recent_closes[0]
+                    price_rising = price_change > 0
+                    md6_price_dir = 'RISING' if price_rising else 'FALLING'
+
+                    # Volume direction: compare last 2 avg vs first 2 avg
+                    vol_recent = sum(recent_volumes[-2:]) / 2 if recent_volumes[-1] > 0 and recent_volumes[-2] > 0 else 0
+                    vol_earlier = sum(recent_volumes[:2]) / 2 if recent_volumes[0] > 0 and recent_volumes[1] > 0 else 0
+                    vol_rising = vol_recent > vol_earlier if vol_earlier > 0 else False
+                    md6_vol_dir = 'RISING' if vol_rising else 'FALLING'
+
+                    if price_rising and vol_rising:
+                        md6_confluence_adj = 6    # Confirmed move
+                    elif not price_rising and vol_rising:
+                        md6_confluence_adj = 4    # Confirmed selling
+                    elif price_rising and not vol_rising:
+                        md6_confluence_adj = -4   # Weak rally
+                    else:
+                        md6_confluence_adj = -2   # Weak decline
+
+                    # Conviction bonus: latest volume > 2x average
+                    if md1_vol_ratio > 2.0:
+                        md6_confluence_adj = min(6, md6_confluence_adj + 2)
+
+                    md6_confluence_adj = max(-6, min(6, md6_confluence_adj))
+
+            depth_score += md6_confluence_adj
+        except Exception as e:
+            logger.debug(f"MD6 volume-price confluence failed for {pair}: {e}")
+
+        # --- MD7: ATR Regime Detection (±6 pts) ---
+        try:
+            current_atr = tech.get('atr', 0) if isinstance(tech, dict) else 0
+            default_atr = DEFAULT_ATR.get(pair, 0)
+            if current_atr > 0 and default_atr > 0:
+                md7_atr_ratio = round(current_atr / default_atr, 2)
+
+                # ATR trend: compare current vs 5-day average from candles
+                atr_declining = False
+                atr_rising = False
+                if candles and len(candles) >= 10:
+                    recent_ranges = [(c['high'] - c['low']) for c in candles[-5:]]
+                    earlier_ranges = [(c['high'] - c['low']) for c in candles[-10:-5]]
+                    recent_avg = sum(recent_ranges) / len(recent_ranges) if recent_ranges else 0
+                    earlier_avg = sum(earlier_ranges) / len(earlier_ranges) if earlier_ranges else 0
+                    if earlier_avg > 0:
+                        atr_declining = recent_avg < earlier_avg * 0.85
+                        atr_rising = recent_avg > earlier_avg * 1.15
+
+                if md7_atr_ratio < 0.6 and atr_declining:
+                    md7_atr_adj = 4
+                    md7_atr_regime = 'SQUEEZE'
+                elif md7_atr_ratio < 0.6:
+                    md7_atr_adj = 2
+                    md7_atr_regime = 'LOW_VOL'
+                elif md7_atr_ratio > 2.5:
+                    md7_atr_adj = -6
+                    md7_atr_regime = 'EXTREME'
+                elif md7_atr_ratio > 1.5 and atr_rising:
+                    md7_atr_adj = -3
+                    md7_atr_regime = 'EXPANSION'
+                else:
+                    md7_atr_adj = 0
+                    md7_atr_regime = 'NORMAL'
+
+                # Commodity amplifier for oil
+                if pair in ('WTI/USD', 'BRENT/USD'):
+                    md7_atr_adj = round(md7_atr_adj * 1.2)
+                md7_atr_adj = max(-6, min(6, md7_atr_adj))
+
+            depth_score += md7_atr_adj
+        except Exception as e:
+            logger.debug(f"MD7 ATR regime detection failed for {pair}: {e}")
+
+        # Final clamp and update factor_groups
+        depth_score = max(10, min(90, depth_score))
+        total_md_adj = md1_volume_adj + md2_ob_adj + md3_liq_adj + md4_spread_adj + md5_affinity_adj + md6_confluence_adj + md7_atr_adj
+
+        # Update signal based on enhanced score
+        if depth_score >= 60:
+            depth_signal = 'BULLISH'
+        elif depth_score <= 40:
+            depth_signal = 'BEARISH'
+        else:
+            depth_signal = 'NEUTRAL'
+
+        factor_groups['market_depth'] = {
+            'score': round(depth_score, 1),
+            'signal': depth_signal,
+            'weight': depth_weight,
+            'details': depth_data.get('details', []),
+            'session_quality': depth_data.get('session_quality', 0),
+            'killzone': depth_data.get('killzone', 'UNKNOWN'),
+            # v9.5.0: Enhanced sub-component details
+            'volume_profile': md1_volume_adj,
+            'volume_ratio': md1_vol_ratio,
+            'order_block_density': md2_ob_adj,
+            'order_block_count': md2_ob_count,
+            'liquidity_zone_density': md3_liq_adj,
+            'liquidity_zone_count': md3_liq_count,
+            'spread_dynamics': md4_spread_adj,
+            'spread_ratio': md4_spread_ratio,
+            'session_pair_affinity': md5_affinity_adj,
+            'affinity_match': md5_affinity_match,
+            'volume_price_confluence': md6_confluence_adj,
+            'price_direction': md6_price_dir,
+            'volume_direction': md6_vol_dir,
+            'atr_regime': md7_atr_regime,
+            'atr_regime_adj': md7_atr_adj,
+            'atr_ratio': md7_atr_ratio,
+            'total_md_adjustment': total_md_adj
+        }
+
+        # ═══════════════════════════════════════════════════════════════════════════
         # v9.2.4: SMART MONEY CONCEPTS (SMC) ANALYSIS
         # Order Blocks, Liquidity Zones, Session Timing
         # ═══════════════════════════════════════════════════════════════════════════
@@ -12458,7 +12816,7 @@ def run_system_audit():
             'currency_strength': {'weight': 8, 'sources': 'v9.4.0: 50-instrument analysis — confirmation tool'},
             'calendar_risk': {'weight': 6, 'sources': 'Economic events + Seasonality — gate/filter role'},
             'geopolitical_risk': {'weight': 4, 'sources': 'v9.5.0: 65+ keywords across 5 tiers + 4 dedicated geo RSS feeds (Reuters/BBC/NYT/Al Jazeera) + 7 sub-components (event category severity, escalation detection, currency vulnerability, safe-haven flows, commodity supply disruption, news velocity, VIX correlation)'},
-            'market_depth': {'weight': 4, 'sources': 'Spread, session, liquidity — trade quality filter'}
+            'market_depth': {'weight': 4, 'sources': 'v9.5.0: Smart depth with 7 sub-components (volume profile, order block density, liquidity zone density, spread dynamics, session-pair affinity, volume-price confluence, ATR regime detection) + base spread/session/liquidity/ATR'}
         },
         'commodity_weights': {
             'description': 'v9.4.0: Separate weight profile for 5 commodities (XAU, XAG, XPT, WTI, BRENT)',
@@ -12868,12 +13226,13 @@ def run_system_audit():
         'market_depth': {
             'weight': 4,
             'weight_percent': '100% of Market Depth (4%)',
-            'description': 'Trade execution quality assessment — spread tightness, session activity, pair liquidity class, and ATR volatility',
-            'data_sources': ['Polygon.io (bid/ask spreads)', 'ICT Killzone session detection', 'Pair classification (Major/Minor/Cross/Exotic)', 'ATR (14-period)'],
-            'score_range': '15-85',
+            'description': 'v9.5.0 Enhanced: Smart market depth with volume profile, order flow, spread dynamics, session affinity, and ATR regime detection',
+            'data_sources': ['Polygon.io (bid/ask spreads + OHLCV volume)', 'ICT Killzone session detection', 'Pair classification (Major/Minor/Cross/Exotic)', 'ATR (14-period)', 'Order Blocks (institutional flow)', 'Liquidity Zones (stop-loss pools)', 'TYPICAL_SPREAD_BPS (relative spread)', 'SESSION_PAIR_AFFINITY (optimal windows)'],
+            'score_range': '10-90',
+            'base_function': 'calculate_market_depth() — spread(35%) + session(35%) + pair_class(20%) + ATR(10%)',
             'components': {
                 'Spread_Tightness': {
-                    'description': 'Bid-ask spread in basis points (35% of score)',
+                    'description': 'Bid-ask spread in basis points (35% of base score)',
                     'scoring': [
                         {'condition': 'Spread < 2 bps', 'points': '80', 'meaning': 'Excellent liquidity'},
                         {'condition': 'Spread < 5 bps', 'points': '66', 'meaning': 'Good liquidity'},
@@ -12883,7 +13242,7 @@ def run_system_audit():
                     ]
                 },
                 'Session_Activity': {
-                    'description': 'ICT Killzone quality — active trading session detection (35% of score)',
+                    'description': 'ICT Killzone quality — active trading session detection (35% of base score)',
                     'scoring': [
                         {'condition': 'Killzone quality >= 80%', 'points': '80', 'meaning': 'Peak session overlap'},
                         {'condition': 'Killzone quality >= 60%', 'points': '65', 'meaning': 'Active session'},
@@ -12892,25 +13251,76 @@ def run_system_audit():
                         {'condition': 'Killzone quality < 20%', 'points': '20', 'meaning': 'Off-session'}
                     ]
                 },
-                'Pair_Liquidity': {
-                    'description': 'Pair classification liquidity score (20% of score)',
+                'MD1_Volume_Profile': {
+                    'description': 'Polygon volume ratio vs 20-day average (±8 pts)',
                     'scoring': [
-                        {'condition': 'MAJOR pair', 'points': '80', 'meaning': 'EUR/USD, GBP/USD, USD/JPY etc.'},
-                        {'condition': 'MINOR pair', 'points': '65', 'meaning': 'Cross pairs with major currencies'},
-                        {'condition': 'COMMODITY', 'points': '60', 'meaning': 'XAU, XAG, WTI, BRENT'},
-                        {'condition': 'CROSS pair', 'points': '55', 'meaning': 'Non-USD crosses'},
-                        {'condition': 'EXOTIC pair', 'points': '30', 'meaning': 'TRY, ZAR, MXN, HUF etc.'}
+                        {'condition': 'Volume > 1.5x avg', 'points': '+8', 'meaning': 'Deep market participation'},
+                        {'condition': 'Volume > 1.2x avg', 'points': '+4', 'meaning': 'Above average activity'},
+                        {'condition': 'Volume 0.8-1.2x', 'points': '0', 'meaning': 'Normal activity'},
+                        {'condition': 'Volume 0.5-0.8x', 'points': '-4', 'meaning': 'Thin market'},
+                        {'condition': 'Volume < 0.5x', 'points': '-8', 'meaning': 'Dangerous illiquidity'}
                     ]
                 },
-                'ATR_Activity': {
-                    'description': 'ATR percentile relative to 20-period average (10% of score)',
+                'MD2_Order_Block_Density': {
+                    'description': 'Institutional order flow proximity via detect_order_blocks() (±7 pts)',
                     'scoring': [
-                        {'condition': 'ATR percentile > 70%', 'points': '68', 'meaning': 'High volatility activity'},
-                        {'condition': 'ATR percentile > 40%', 'points': '55', 'meaning': 'Normal activity'},
-                        {'condition': 'ATR percentile <= 40%', 'points': '35', 'meaning': 'Low activity'}
+                        {'condition': '4+ order blocks', 'points': '+7', 'meaning': 'Dense institutional interest'},
+                        {'condition': '2-3 order blocks', 'points': '+4', 'meaning': 'Moderate institutional flow'},
+                        {'condition': '1 order block', 'points': '+2', 'meaning': 'Light institutional presence'},
+                        {'condition': '0 order blocks', 'points': '-3', 'meaning': 'No institutional footprint'}
+                    ]
+                },
+                'MD3_Liquidity_Zone_Density': {
+                    'description': 'Stop-loss pool density via detect_liquidity_zones() (±7 pts)',
+                    'scoring': [
+                        {'condition': '6+ levels nearby', 'points': '+7', 'meaning': 'Many stop pools = deep liquidity'},
+                        {'condition': '4-5 levels', 'points': '+4', 'meaning': 'Good liquidity clustering'},
+                        {'condition': '2-3 levels', 'points': '+2', 'meaning': 'Moderate liquidity'},
+                        {'condition': '0-1 levels', 'points': '-3', 'meaning': 'No visible liquidity pools'},
+                        {'condition': 'Liquidity swept', 'points': '-3 extra', 'meaning': 'Temporary thin conditions'}
+                    ]
+                },
+                'MD4_Spread_Dynamics': {
+                    'description': 'Current spread vs TYPICAL_SPREAD_BPS for pair (±8 pts)',
+                    'scoring': [
+                        {'condition': 'Ratio < 0.7', 'points': '+8', 'meaning': 'Tighter than usual'},
+                        {'condition': 'Ratio 0.7-1.0', 'points': '+4', 'meaning': 'Better than usual'},
+                        {'condition': 'Ratio 1.0-1.5', 'points': '0', 'meaning': 'Normal spread'},
+                        {'condition': 'Ratio 1.5-2.5', 'points': '-5', 'meaning': 'Wider than usual'},
+                        {'condition': 'Ratio > 2.5', 'points': '-8', 'meaning': 'Event risk / illiquidity'}
+                    ]
+                },
+                'MD5_Session_Pair_Affinity': {
+                    'description': 'Pair-specific optimal session matching (±6 pts)',
+                    'scoring': [
+                        {'condition': 'Primary optimal session', 'points': '+6', 'meaning': 'Best execution window'},
+                        {'condition': 'Secondary session', 'points': '+3', 'meaning': 'Good execution window'},
+                        {'condition': 'Active non-optimal', 'points': '0', 'meaning': 'Acceptable window'},
+                        {'condition': 'Off-session', 'points': '-4', 'meaning': 'Poor execution window'},
+                        {'condition': 'Weekend', 'points': '-6', 'meaning': 'Markets closed'}
+                    ]
+                },
+                'MD6_Volume_Price_Confluence': {
+                    'description': 'Volume confirms or contradicts price direction (±6 pts)',
+                    'scoring': [
+                        {'condition': 'Rising price + rising volume', 'points': '+6', 'meaning': 'Confirmed move'},
+                        {'condition': 'Falling price + rising volume', 'points': '+4', 'meaning': 'Confirmed selling'},
+                        {'condition': 'Falling price + falling volume', 'points': '-2', 'meaning': 'Weak decline'},
+                        {'condition': 'Rising price + falling volume', 'points': '-4', 'meaning': 'Weak rally'}
+                    ]
+                },
+                'MD7_ATR_Regime': {
+                    'description': 'ATR squeeze/expansion detection vs DEFAULT_ATR (±6 pts)',
+                    'scoring': [
+                        {'condition': 'Squeeze (ratio<0.6 + declining)', 'points': '+4', 'meaning': 'Coiling energy'},
+                        {'condition': 'Low vol (ratio<0.6)', 'points': '+2', 'meaning': 'Calm market'},
+                        {'condition': 'Normal (0.6-1.5x)', 'points': '0', 'meaning': 'Normal regime'},
+                        {'condition': 'Expansion (>1.5x + rising)', 'points': '-3', 'meaning': 'Volatile'},
+                        {'condition': 'Extreme (>2.5x)', 'points': '-6', 'meaning': 'Dangerous volatility'}
                     ]
                 }
             },
+            'max_sub_component_range': '±48 (MD1-MD7)',
             'signal_thresholds': {'bullish': '>= 60 (good depth)', 'bearish': '<= 40 (poor depth)', 'neutral': '41-59'},
             'note': 'G10 gate requires market depth score >= 30 for directional signals'
         }
