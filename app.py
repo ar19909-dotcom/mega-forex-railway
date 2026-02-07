@@ -110,63 +110,6 @@ def health_check():
         'timestamp': datetime.now().isoformat()
     })
 
-@app.route('/debug-signal')
-def debug_signal():
-    """Temporary debug endpoint - test signal generation step by step"""
-    pair = request.args.get('pair', 'EUR/USD')
-    import traceback
-    steps = []
-    try:
-        steps.append('1. Calling calculate_factor_scores...')
-        factors, tech, rate, patterns = calculate_factor_scores(pair)
-        steps.append(f'2. Got factors: {list(factors.keys())}, rate: {bool(rate)}')
-        if not rate:
-            return jsonify({'success': False, 'pair': pair, 'error': 'No rate data', 'steps': steps})
-
-        steps.append('3. Building factor groups...')
-        factor_groups = build_factor_groups(factors)
-        steps.append(f'4. Factor groups: {list(factor_groups.keys())}')
-
-        steps.append('5. Getting currency strength...')
-        with cache_lock:
-            _cr = cache.get('rates', {}).get('data', {})
-            _cc = cache.get('candles', {}).get('data', {})
-        cs_data = get_currency_strength_score(pair, rates_dict=_cr if _cr else None, candle_cache=_cc)
-        steps.append(f'6. Currency strength: {cs_data.get("score", "N/A")}')
-
-        factor_groups['currency_strength'] = {
-            'score': cs_data['score'], 'signal': cs_data['signal'],
-            'weight': COMMODITY_FACTOR_WEIGHTS.get('currency_strength', 7) if is_commodity(pair) else FACTOR_GROUP_WEIGHTS.get('currency_strength', 8)
-        }
-        steps.append('7. Currency strength added to factor_groups')
-
-        steps.append('8. Computing geopolitical risk...')
-        geo_data = calculate_geopolitical_risk(pair)
-        steps.append(f'9. Geo risk: {geo_data.get("score", "N/A")}')
-
-        factor_groups['geopolitical_risk'] = {'score': geo_data['score'], 'signal': 'NEUTRAL', 'weight': 4}
-        steps.append('10. Geo risk added')
-
-        steps.append('11. Computing market depth...')
-        depth_data = calculate_market_depth(pair, rate, tech)
-        steps.append(f'12. Market depth: {depth_data.get("score", "N/A")}')
-
-        factor_groups['market_depth'] = {'score': depth_data['score'], 'signal': depth_data['signal'], 'weight': 4}
-        steps.append('13. Market depth added')
-
-        steps.append('14. Testing MD sub-components scope...')
-        # Test if candles/opens/highs/lows/closes are in scope
-        try:
-            _ = candles
-            steps.append('15. candles IS in scope')
-        except NameError:
-            steps.append('15. candles NOT in scope (NameError)')
-
-        steps.append('16. All steps completed successfully')
-        return jsonify({'success': True, 'pair': pair, 'steps': steps, 'factor_groups': {k: v.get('score') for k, v in factor_groups.items()}})
-    except Exception as e:
-        steps.append(f'ERROR: {str(e)}')
-        return jsonify({'success': False, 'pair': pair, 'error': str(e), 'traceback': traceback.format_exc(), 'steps': steps})
 
 @app.route('/manifest.json')
 def serve_manifest():
@@ -9905,8 +9848,8 @@ def calculate_factor_scores(pair):
             oil_mom = inter_momentum.get('oil', 0)
             ratio_momentum = gold_mom - oil_mom  # Positive = gold outperforming
 
-            is_commodity = pair in ('XAU/USD', 'XAG/USD', 'XPT/USD', 'WTI/USD', 'BRENT/USD')
-            multiplier = 1.3 if is_commodity else 1.0
+            is_commodity_pair = pair in ('XAU/USD', 'XAG/USD', 'XPT/USD', 'WTI/USD', 'BRENT/USD')
+            multiplier = 1.3 if is_commodity_pair else 1.0
 
             if ratio_momentum > 3:
                 # Gold strongly outperforming oil — risk-off
@@ -11111,6 +11054,21 @@ def generate_signal(pair):
         except Exception as cs_err:
             logger.warning(f"Currency strength error for {pair}: {cs_err}")
             currency_strength_data = {'score': 50, 'signal': 'NEUTRAL', 'details': ['Error - using neutral'], 'base_strength': 50, 'quote_strength': 50}
+
+        # v9.5.0: Extract candle data for SD/MD sub-components
+        # candles/opens/highs/lows/closes are local to calculate_factor_scores() — extract from cache
+        candles = _cached_candles.get(pair, []) if _cached_candles else []
+        if candles and len(candles) >= 5:
+            opens = [c['open'] for c in candles]
+            closes = [c['close'] for c in candles]
+            highs = [c['high'] for c in candles]
+            lows = [c['low'] for c in candles]
+        else:
+            current_price = rate['mid'] if rate else 1.0
+            opens = [current_price] * 20
+            closes = [current_price] * 20
+            highs = [current_price * 1.001] * 20
+            lows = [current_price * 0.999] * 20
         factor_groups['currency_strength'] = {
             'score': currency_strength_data['score'],
             'signal': currency_strength_data['signal'],
