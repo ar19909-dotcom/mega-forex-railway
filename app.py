@@ -12941,13 +12941,14 @@ def generate_signal(pair):
         tp1_placement = 'ATR'
         tp2_placement = 'ATR'
 
-        # First: compute ATR-based price levels as defaults
+        # v9.5.1: SL measured from entry zone EDGE (not current_price) to guarantee
+        # SL is always outside the entry zone. TP from current_price for achievability.
         if direction == 'LONG':
-            sl = entry - (sl_pips * pip_size)
+            sl = entry_min - (sl_pips * pip_size)    # SL below entry zone lower bound
             tp1 = entry + (tp1_pips * pip_size)
             tp2 = entry + (tp2_pips * pip_size)
         elif direction == 'SHORT':
-            sl = entry + (sl_pips * pip_size)
+            sl = entry_max + (sl_pips * pip_size)    # SL above entry zone upper bound
             tp1 = entry - (tp1_pips * pip_size)
             tp2 = entry - (tp2_pips * pip_size)
         else:
@@ -12968,8 +12969,8 @@ def generate_signal(pair):
                         ('swing_low', swing_low),
                         ('pivot_s1', pivot_s1),
                     ]:
-                        if lvl_val and lvl_val < entry and lvl_val > 0:
-                            dist = (entry - lvl_val) / pip_size
+                        if lvl_val and lvl_val < entry_min and lvl_val > 0:
+                            dist = (entry_min - lvl_val) / pip_size
                             buffered = dist + structure_buffer
                             if buffered >= limits['sl_abs_min'] and buffered <= limits['sl_abs_max']:
                                 if buffered >= atr_pips * 1.2:
@@ -12978,7 +12979,7 @@ def generate_signal(pair):
                     if sl_candidates:
                         best = min(sl_candidates, key=lambda x: x['dist'])
                         sl_pips = best['dist']
-                        sl = best['level'] - (structure_buffer * pip_size)
+                        sl = best['level'] - (structure_buffer * pip_size)  # Below the structure level
                         sl_placement = 'STRUCTURE'
 
                     # === SMART TP1 FOR LONG: nearest resistance/R1/fib ===
@@ -13027,8 +13028,8 @@ def generate_signal(pair):
                         ('swing_high', swing_high),
                         ('pivot_r1', pivot_r1),
                     ]:
-                        if lvl_val and lvl_val > entry:
-                            dist = (lvl_val - entry) / pip_size
+                        if lvl_val and lvl_val > entry_max:
+                            dist = (lvl_val - entry_max) / pip_size
                             buffered = dist + structure_buffer
                             if buffered >= limits['sl_abs_min'] and buffered <= limits['sl_abs_max']:
                                 if buffered >= atr_pips * 1.2:
@@ -13037,7 +13038,7 @@ def generate_signal(pair):
                     if sl_candidates:
                         best = min(sl_candidates, key=lambda x: x['dist'])
                         sl_pips = best['dist']
-                        sl = best['level'] + (structure_buffer * pip_size)
+                        sl = best['level'] + (structure_buffer * pip_size)  # Above the structure level
                         sl_placement = 'STRUCTURE'
 
                     # === SMART TP1 FOR SHORT: nearest support/S1/fib ===
@@ -13094,7 +13095,7 @@ def generate_signal(pair):
                 sell_liquidity = liquidity_zones.get('nearest_sell_liquidity')
                 if sell_liquidity:
                     liquidity_level = sell_liquidity['level']
-                    liquidity_distance = (entry - liquidity_level) / pip_size
+                    liquidity_distance = (entry_min - liquidity_level) / pip_size  # v9.5.1: from entry zone edge
 
                     # If liquidity zone is closer than our SL, place SL below it
                     if liquidity_distance > 0 and liquidity_distance < sl_pips:
@@ -13112,7 +13113,7 @@ def generate_signal(pair):
                 buy_liquidity = liquidity_zones.get('nearest_buy_liquidity')
                 if buy_liquidity:
                     liquidity_level = buy_liquidity['level']
-                    liquidity_distance = (liquidity_level - entry) / pip_size
+                    liquidity_distance = (liquidity_level - entry_max) / pip_size  # v9.5.1: from entry zone edge
 
                     # If liquidity zone is closer than our SL, place SL above it
                     if liquidity_distance > 0 and liquidity_distance < sl_pips:
