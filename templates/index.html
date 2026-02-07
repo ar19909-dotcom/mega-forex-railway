@@ -4575,7 +4575,7 @@
                                 <span style="color: var(--accent-red);">⚠ FALLBACK</span> = Static placeholder
                             </div>
                             <div style="margin-top: 1rem; padding: 0.75rem; background: var(--bg-tertiary); border-radius: 8px;">
-                                <strong>v9.5.0 Conviction:</strong>
+                                <strong>v9.6.0 Conviction:</strong>
                                 Score ${data.score_validation?.conviction_v9?.score || 0} (${data.score_validation?.conviction_v9?.label || 'N/A'}) |
                                 <strong>Breadth:</strong> ${((data.score_validation?.conviction_v9?.breadth || 0) * 100).toFixed(0)}% |
                                 <strong>Groups:</strong> ${data.score_validation?.conviction_v9?.bullish_groups || 0} Bullish, ${data.score_validation?.conviction_v9?.bearish_groups || 0} Bearish |
@@ -4651,13 +4651,13 @@
                                 <div style="background: rgba(59,130,246,0.1); padding: 0.75rem; border-radius: 8px; border-left: 3px solid var(--accent-blue);">
                                     <h5 style="margin: 0 0 0.5rem 0; color: var(--accent-blue);">📊 Forex Weights (45 pairs)</h5>
                                     <div style="font-size: 0.8rem; color: var(--text-secondary);">
-                                        Trend 22% | Fund 14% | M.Rev 12% | Sent 11% | Inter 10% | AI 9% | Cur.Str 8% | Cal 6% | <strong style="color: #ef4444;">Geo 4%</strong> | <strong style="color: #3b82f6;">Depth 4%</strong>
+                                        Trend 20% | Fund 13% | M.Rev 11% | Sent 10% | Inter 9% | AI 8% | Cur.Str 8% | <strong style="color: #a78bfa;">Prob 7%</strong> | Cal 6% | <strong style="color: #ef4444;">Geo 4%</strong> | <strong style="color: #3b82f6;">Depth 4%</strong>
                                     </div>
                                 </div>
                                 <div style="background: rgba(245,158,11,0.1); padding: 0.75rem; border-radius: 8px; border-left: 3px solid #f59e0b;">
                                     <h5 style="margin: 0 0 0.5rem 0; color: #f59e0b;">🏗️ Commodity Weights (5 instruments)</h5>
                                     <div style="font-size: 0.8rem; color: var(--text-secondary);">
-                                        Trend 22% | Inter 15% | M.Rev 11% | Sent 10% | Fund 8% | AI 8% | Cal 7% | <strong style="color: #f59e0b;">S&D 7%</strong> | <strong style="color: #ef4444;">Geo 8%</strong> | <strong style="color: #3b82f6;">Depth 4%</strong>
+                                        Trend 21% | Inter 14% | M.Rev 10% | Sent 9% | AI 8% | Fund 7% | <strong style="color: #ef4444;">Geo 7%</strong> | <strong style="color: #f59e0b;">S&D 7%</strong> | Cal 7% | <strong style="color: #a78bfa;">Prob 6%</strong> | <strong style="color: #3b82f6;">Depth 4%</strong>
                                     </div>
                                 </div>
                             </div>
@@ -4765,7 +4765,7 @@
                                 <thead><tr><th>Gate</th><th>Rule</th></tr></thead>
                                 <tbody>
                                     <tr><td><strong>G1</strong></td><td>Composite score ≥ 60 (LONG) or ≤ 40 (SHORT)</td></tr>
-                                    <tr><td><strong>G2</strong></td><td>≥ 3 of 10 groups agree on direction</td></tr>
+                                    <tr><td><strong>G2</strong></td><td>≥ 3 of 11 groups agree on direction</td></tr>
                                     <tr><td><strong>G3</strong> <span style="color: #ef4444; font-size: 0.7rem;">MANDATORY</span></td><td>Trend & Momentum + EMA must CONFIRM direction (score &gt;52 for LONG, &lt;48 for SHORT)</td></tr>
                                     <tr><td><strong>G4</strong></td><td>Risk:Reward ≥ 1.3:1</td></tr>
                                     <tr><td><strong>G5</strong> <span style="color: #ef4444; font-size: 0.7rem;">MANDATORY</span></td><td>No high-impact calendar event imminent</td></tr>
@@ -4803,10 +4803,10 @@
                             <table class="data-table">
                                 <thead><tr><th>Regime</th><th>Condition</th><th>Weight Shift</th></tr></thead>
                                 <tbody>
-                                    <tr><td style="color: var(--accent-green); font-weight: 600;">Trending</td><td>ADX ≥ 25, volatility ≥ 0.4%</td><td>Trend & Momentum → 28%</td></tr>
-                                    <tr><td style="color: var(--accent-yellow); font-weight: 600;">Ranging</td><td>ADX &lt; 20, moderate vol</td><td>Mean Reversion → 22%</td></tr>
-                                    <tr><td style="color: var(--accent-red); font-weight: 600;">Volatile</td><td>High ATR</td><td>Geopolitical Risk → 15%</td></tr>
-                                    <tr><td style="color: var(--accent-blue); font-weight: 600;">Quiet</td><td>Low ATR, low ADX</td><td>Fundamental → 15%</td></tr>
+                                    <tr><td style="color: var(--accent-green); font-weight: 600;">Trending</td><td>ADX ≥ 25, volatility ≥ 0.4%</td><td>Trend & Momentum → 27%</td></tr>
+                                    <tr><td style="color: var(--accent-yellow); font-weight: 600;">Ranging</td><td>ADX &lt; 20, moderate vol</td><td>Mean Reversion → 20%</td></tr>
+                                    <tr><td style="color: var(--accent-red); font-weight: 600;">Volatile</td><td>High ATR</td><td>Geopolitical Risk → 14%</td></tr>
+                                    <tr><td style="color: var(--accent-blue); font-weight: 600;">Quiet</td><td>Low ATR, low ADX</td><td>Fundamental → 13%</td></tr>
                                 </tbody>
                             </table>
                         </div>

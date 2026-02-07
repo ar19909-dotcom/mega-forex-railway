@@ -14186,7 +14186,7 @@ def run_system_audit():
     """Run comprehensive system audit with complete scoring methodology"""
     audit = {
         'timestamp': datetime.now().isoformat(),
-        'version': '9.5.0 PRO',
+        'version': '9.6.0 PRO',
         'api_status': {},
         'data_quality': {},
         'score_validation': {},
@@ -14270,7 +14270,7 @@ def run_system_audit():
     audit['factor_details'] = {
         'technical': {
             'weight': 13,
-            'weight_percent': '60% of Trend & Momentum (22%)',
+            'weight_percent': '60% of Trend & Momentum (20%)',
             'description': 'v9.5.0: 10 sub-components with ADX-adaptive RSI, swing divergence, candlestick patterns, ROC, EMA recency, BB squeeze, volume confirmation',
             'data_sources': ['Polygon.io (Tier 1)', 'Twelve Data (Tier 2)', 'TraderMade (Tier 3)', 'ExchangeRate (Tier 4)', 'CurrencyLayer (Tier 5)'],
             'score_range': '10-90 (±115 raw, ADX multiplied, clamped)',
@@ -14342,7 +14342,7 @@ def run_system_audit():
         },
         'fundamental': {
             'weight': 15,
-            'weight_percent': '100% of Fundamental (14%)',
+            'weight_percent': '100% of Fundamental (13%)',
             'description': 'v9.5.0: Enhanced with FRED macro engine — carry trade + yield curve + CPI/employment/payroll momentum + rate trajectory + fundamental news',
             'data_sources': ['Central bank rates database', 'FRED API (13 series + 3 historical)', 'Finnhub/RSS news (fundamental keywords)'],
             'score_range': '10-90 (±88.5 raw, clamped)',
@@ -14364,7 +14364,7 @@ def run_system_audit():
         },
         'sentiment': {
             'weight': 8,
-            'weight_percent': '65% of Sentiment (11%)',
+            'weight_percent': '65% of Sentiment (10%)',
             'description': 'IG Client Positioning + News sentiment analysis',
             'data_sources': ['IG Markets API (client positioning)', 'Finnhub API (news)', 'RSS feeds (ForexLive, FXStreet, Investing.com)'],
             'score_range': '15-85',
@@ -14384,7 +14384,7 @@ def run_system_audit():
         },
         'ai': {
             'weight': 10,
-            'weight_percent': '100% of AI Synthesis (9%)',
+            'weight_percent': '100% of AI Synthesis (8%)',
             'description': 'GPT-4o-mini AI-powered market analysis (v9.4.0)',
             'data_sources': ['OpenAI API (GPT-4o-mini model)'],
             'score_range': '15-85',
@@ -14407,7 +14407,7 @@ def run_system_audit():
         },
         'intermarket': {
             'weight': 12,
-            'weight_percent': '100% of Intermarket (10%)',
+            'weight_percent': '100% of Intermarket (9%)',
             'description': 'Correlation analysis with DXY, Gold, Yields, Oil',
             'data_sources': ['Polygon.io', 'Alpha Vantage'],
             'score_range': '15-85',
@@ -14422,7 +14422,7 @@ def run_system_audit():
         },
         'quantitative': {
             'weight': 6,
-            'weight_percent': '55% of Mean Reversion (12%)',
+            'weight_percent': '55% of Mean Reversion (11%)',
             'description': 'Z-Score and Bollinger Band mean reversion analysis',
             'data_sources': ['Calculated from price data'],
             'score_range': '10-90',
@@ -14457,7 +14457,7 @@ def run_system_audit():
         },
         'mtf': {
             'weight': 8,
-            'weight_percent': '40% of Trend & Momentum (22%)',
+            'weight_percent': '40% of Trend & Momentum (20%)',
             'description': 'Multi-Timeframe trend alignment (H1, H4, D1)',
             'data_sources': ['Polygon.io candles (hourly, daily)'],
             'score_range': '12-88',
@@ -14478,7 +14478,7 @@ def run_system_audit():
         },
         'structure': {
             'weight': 5,
-            'weight_percent': '45% of Mean Reversion (12%)',
+            'weight_percent': '45% of Mean Reversion (11%)',
             'description': 'Support/Resistance levels and Pivot Points',
             'data_sources': ['Calculated from swing highs/lows'],
             'score_range': '15-85',
@@ -14531,7 +14531,7 @@ def run_system_audit():
         },
         'options': {
             'weight': 5,
-            'weight_percent': '35% of Sentiment (11%)',
+            'weight_percent': '35% of Sentiment (10%)',
             'description': '25-Delta Risk Reversals & Put/Call Ratio analysis',
             'data_sources': ['CME FX Options (when available)', 'Price volatility structure proxy'],
             'score_range': '15-85 (REAL), 40-60 (PROXY)',
@@ -15224,7 +15224,7 @@ def run_ai_system_health_check(use_ai=True):
     """
     health = {
         'timestamp': datetime.now().isoformat(),
-        'version': '9.4.0',
+        'version': '9.6.0',
         'overall_status': 'HEALTHY',  # HEALTHY, WARNING, CRITICAL
         'overall_score': 100,
         'checks': {},
@@ -15234,7 +15234,7 @@ def run_ai_system_health_check(use_ai=True):
         'ai_analysis': None,
         # v9.3.0: Enhancement tracking
         'enhancements': {
-            'version': '9.4.0',
+            'version': '9.6.0',
             'technical': ['Stochastic Oscillator', 'CCI (Commodity Channel Index)', 'RSI Divergence Detection'],
             'fundamental': ['GDP Growth Differential', 'Inflation Analysis', 'Current Account Balance'],
             'intermarket': ['VIX Fear Index', 'S&P 500 Correlation', 'Yield Spreads (US-EU, US-JP)'],
