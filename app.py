@@ -11056,11 +11056,300 @@ def generate_signal(pair):
         factor_groups['currency_strength'] = {
             'score': currency_strength_data['score'],
             'signal': currency_strength_data['signal'],
-            'weight': FACTOR_GROUP_WEIGHTS.get('currency_strength', 9),
+            'weight': COMMODITY_FACTOR_WEIGHTS.get('currency_strength', 7) if is_commodity(pair) else FACTOR_GROUP_WEIGHTS.get('currency_strength', 8),
             'details': currency_strength_data.get('details', []),
             'base_strength': currency_strength_data.get('base_strength', 50),
             'quote_strength': currency_strength_data.get('quote_strength', 50)
         }
+
+        # ═══════════════════════════════════════════════════════════════════
+        # v9.5.0: SUPPLY & DEMAND SUB-COMPONENTS (SD1-SD7) — COMMODITIES ONLY
+        # Enhanced S&D scoring: supply zones, FVG, real yields, EIA, ratios, DXY momentum
+        # ═══════════════════════════════════════════════════════════════════
+        if is_commodity(pair):
+            sd_score = currency_strength_data['score']
+
+            # Pre-initialize all SD sub-component variables
+            sd1_zone_adj = 0
+            sd1_ob_signal = 'NEUTRAL'
+            sd2_fvg_adj = 0
+            sd2_fvg_signal = 'NEUTRAL'
+            sd3_yield_adj = 0
+            sd3_real_yield = 0
+            sd4_eia_adj = 0
+            sd4_weekly_change = 0
+            sd5_ratio_adj = 0
+            sd5_ratio_name = 'N/A'
+            sd5_ratio_value = 0
+            sd6_dxy_adj = 0
+            sd6_dxy_roc = 0
+            sd7_disruption_adj = 0
+            sd7_disruption_source = 'N/A'
+
+            # --- SD1: Supply/Demand Zone Proximity (±8 pts) ---
+            try:
+                if candles and len(candles) >= 20:
+                    sd_ob_data = detect_order_blocks(opens, highs, lows, closes, lookback=50)
+                    sd1_ob_signal = sd_ob_data.get('ob_signal', 'NEUTRAL')
+                    ob_strength = sd_ob_data.get('ob_strength', 0)
+
+                    if sd1_ob_signal == 'BULLISH':
+                        # Price near demand zone (bullish OB)
+                        strength_mult = 1.2 if ob_strength > 70 else 0.7 if ob_strength < 30 else 1.0
+                        sd1_zone_adj = round(6 * strength_mult)
+                    elif sd1_ob_signal == 'BEARISH':
+                        # Price near supply zone (bearish OB)
+                        strength_mult = 1.2 if ob_strength > 70 else 0.7 if ob_strength < 30 else 1.0
+                        sd1_zone_adj = round(-6 * strength_mult)
+
+                    # Discount/premium zone bonus
+                    if sd_ob_data.get('in_discount'):
+                        sd1_zone_adj += 3
+                    elif sd_ob_data.get('in_premium'):
+                        sd1_zone_adj -= 3
+
+                    sd1_zone_adj = max(-8, min(8, sd1_zone_adj))
+                sd_score += sd1_zone_adj
+            except Exception as e:
+                logger.debug(f"SD1 supply/demand zone failed for {pair}: {e}")
+
+            # --- SD2: Fair Value Gap Imbalance (±6 pts) ---
+            try:
+                if candles and len(candles) >= 20:
+                    sd_fvg_data = detect_fair_value_gaps(opens, highs, lows, closes, lookback=30)
+                    sd2_fvg_signal = sd_fvg_data.get('fvg_signal', 'NEUTRAL')
+                    unfilled = sd_fvg_data.get('unfilled_count', 0)
+                    bullish_fvgs = len(sd_fvg_data.get('bullish_fvg', []))
+                    bearish_fvgs = len(sd_fvg_data.get('bearish_fvg', []))
+
+                    if bullish_fvgs > bearish_fvgs:
+                        sd2_fvg_adj = 4
+                        if bullish_fvgs >= 3:
+                            sd2_fvg_adj = 6
+                    elif bearish_fvgs > bullish_fvgs:
+                        sd2_fvg_adj = -4
+                        if bearish_fvgs >= 3:
+                            sd2_fvg_adj = -6
+
+                    # Imbalance intensity bonus
+                    if unfilled > 3:
+                        imbalance_dir = 1 if sd2_fvg_adj >= 0 else -1
+                        sd2_fvg_adj += 2 * imbalance_dir
+
+                    sd2_fvg_adj = max(-6, min(6, sd2_fvg_adj))
+                sd_score += sd2_fvg_adj
+            except Exception as e:
+                logger.debug(f"SD2 fair value gap failed for {pair}: {e}")
+
+            # --- SD3: Real Yield Impact (±8 pts, precious metals only) ---
+            try:
+                if pair in ('XAU/USD', 'XAG/USD', 'XPT/USD'):
+                    macro_sd = get_expanded_fundamental_data()
+                    us_10y = macro_sd.get('DGS10', 4.5) if macro_sd else 4.5
+                    sd3_real_yield = round(us_10y - 2.5, 2)  # Inflation expectation ~2.5%
+
+                    if sd3_real_yield > 2.0:
+                        sd3_yield_adj = -8
+                    elif sd3_real_yield > 1.0:
+                        sd3_yield_adj = -4
+                    elif sd3_real_yield > 0.5:
+                        sd3_yield_adj = 0
+                    elif sd3_real_yield > 0:
+                        sd3_yield_adj = 4
+                    else:
+                        sd3_yield_adj = 8  # Negative real yields = max bullish metals
+
+                    sd_score += sd3_yield_adj
+            except Exception as e:
+                logger.debug(f"SD3 real yield failed for {pair}: {e}")
+
+            # --- SD4: EIA Inventory Trend (±8 pts, oil pairs only) ---
+            try:
+                if pair in ('WTI/USD', 'BRENT/USD'):
+                    eia_sd = get_eia_oil_data()
+                    if eia_sd and eia_sd.get('data_quality') == 'REAL':
+                        sd4_weekly_change = eia_sd.get('weekly_change', 0)
+                        if sd4_weekly_change < -5:
+                            sd4_eia_adj = 8    # Large draw = very bullish
+                        elif sd4_weekly_change < -2:
+                            sd4_eia_adj = 5    # Moderate draw
+                        elif sd4_weekly_change < 0:
+                            sd4_eia_adj = 2    # Small draw
+                        elif sd4_weekly_change <= 2:
+                            sd4_eia_adj = -2   # Small build
+                        elif sd4_weekly_change <= 5:
+                            sd4_eia_adj = -5   # Moderate build
+                        else:
+                            sd4_eia_adj = -8   # Large build = very bearish
+
+                    sd_score += sd4_eia_adj
+            except Exception as e:
+                logger.debug(f"SD4 EIA inventory failed for {pair}: {e}")
+
+            # --- SD5: Cross-Commodity Ratio Signals (±7 pts) ---
+            try:
+                # Get commodity prices from candle cache
+                gold_price = 0
+                silver_price = 0
+                oil_wti_price = 0
+                oil_brent_price = 0
+
+                if _cached_candles:
+                    gold_candles = _cached_candles.get('XAU/USD', []) or _cached_candles.get('XAUUSD', [])
+                    if gold_candles and len(gold_candles) > 0:
+                        gold_price = gold_candles[-1].get('close', 0)
+                    silver_candles = _cached_candles.get('XAG/USD', []) or _cached_candles.get('XAGUSD', [])
+                    if silver_candles and len(silver_candles) > 0:
+                        silver_price = silver_candles[-1].get('close', 0)
+                    wti_candles = _cached_candles.get('WTI/USD', []) or _cached_candles.get('WTIUSD', [])
+                    if wti_candles and len(wti_candles) > 0:
+                        oil_wti_price = wti_candles[-1].get('close', 0)
+                    brent_candles = _cached_candles.get('BRENT/USD', []) or _cached_candles.get('BRENTUSD', [])
+                    if brent_candles and len(brent_candles) > 0:
+                        oil_brent_price = brent_candles[-1].get('close', 0)
+
+                # Gold-Silver ratio (for XAG/USD)
+                if pair == 'XAG/USD' and gold_price > 0 and silver_price > 0:
+                    gs_ratio = gold_price / silver_price
+                    sd5_ratio_name = 'Gold/Silver'
+                    sd5_ratio_value = round(gs_ratio, 1)
+                    if gs_ratio > 85:
+                        sd5_ratio_adj = 7   # Silver undervalued
+                    elif gs_ratio > 75:
+                        sd5_ratio_adj = 3
+                    elif gs_ratio < 55:
+                        sd5_ratio_adj = -5  # Silver overvalued
+                    # else 0 (normal range)
+
+                # Gold-Oil ratio (for precious metals)
+                elif pair in ('XAU/USD', 'XAG/USD', 'XPT/USD') and gold_price > 0 and oil_wti_price > 0:
+                    go_ratio = gold_price / oil_wti_price
+                    sd5_ratio_name = 'Gold/Oil'
+                    sd5_ratio_value = round(go_ratio, 1)
+                    if go_ratio > 28:
+                        sd5_ratio_adj = -4  # Gold stretched vs oil
+                    elif go_ratio < 15:
+                        sd5_ratio_adj = 4   # Gold undervalued vs oil
+
+                # WTI-Brent spread (for oil pairs)
+                elif pair == 'WTI/USD' and oil_wti_price > 0 and oil_brent_price > 0:
+                    wb_spread = oil_wti_price - oil_brent_price
+                    sd5_ratio_name = 'WTI-Brent'
+                    sd5_ratio_value = round(wb_spread, 2)
+                    if wb_spread < -5:
+                        sd5_ratio_adj = 4   # WTI discount = catch-up
+                    elif wb_spread > 0:
+                        sd5_ratio_adj = -3  # WTI premium = overextended
+
+                elif pair == 'BRENT/USD' and oil_wti_price > 0 and oil_brent_price > 0:
+                    wb_spread = oil_brent_price - oil_wti_price
+                    sd5_ratio_name = 'Brent-WTI'
+                    sd5_ratio_value = round(wb_spread, 2)
+                    if wb_spread > 5:
+                        sd5_ratio_adj = -3  # Brent premium too wide
+                    elif wb_spread < 0:
+                        sd5_ratio_adj = 4   # Brent discount = catch-up
+
+                sd5_ratio_adj = max(-7, min(7, sd5_ratio_adj))
+                sd_score += sd5_ratio_adj
+            except Exception as e:
+                logger.debug(f"SD5 cross-commodity ratio failed for {pair}: {e}")
+
+            # --- SD6: DXY Momentum (±6 pts) ---
+            try:
+                # Use EUR/USD candles as DXY inverse proxy
+                eur_candles = _cached_candles.get('EUR/USD', []) or _cached_candles.get('EURUSD', []) if _cached_candles else []
+                if eur_candles and len(eur_candles) >= 6:
+                    eur_now = eur_candles[-1].get('close', 0)
+                    eur_5d_ago = eur_candles[-6].get('close', 0)
+                    if eur_5d_ago > 0 and eur_now > 0:
+                        eur_roc = ((eur_now - eur_5d_ago) / eur_5d_ago) * 100
+                        # EUR rising = DXY falling = bullish commodities (invert)
+                        sd6_dxy_roc = round(-eur_roc, 2)  # DXY ROC (inverted)
+
+                        if sd6_dxy_roc < -1.0:
+                            sd6_dxy_adj = 6    # DXY falling fast = commodity tailwind
+                        elif sd6_dxy_roc < -0.5:
+                            sd6_dxy_adj = 3
+                        elif sd6_dxy_roc > 1.0:
+                            sd6_dxy_adj = -6   # DXY rising fast = commodity headwind
+                        elif sd6_dxy_roc > 0.5:
+                            sd6_dxy_adj = -3
+                        # else 0 (stable)
+
+                sd_score += sd6_dxy_adj
+            except Exception as e:
+                logger.debug(f"SD6 DXY momentum failed for {pair}: {e}")
+
+            # --- SD7: Supply Disruption Signal (±6 pts) ---
+            try:
+                # Get geopolitical risk data (base function, cached)
+                sd_geo = calculate_geopolitical_risk(pair)
+                geo_score_sd = sd_geo.get('score', 50)
+                matched_cats = sd_geo.get('matched_categories', [])
+
+                if pair in ('WTI/USD', 'BRENT/USD'):
+                    # Oil: supply disruption from energy/geopolitical events
+                    if 'ENERGY_SUPPLY' in matched_cats:
+                        sd7_disruption_adj = -6 if geo_score_sd < 50 else 6
+                        sd7_disruption_source = 'ENERGY_SUPPLY'
+                    elif 'MILITARY' in matched_cats or 'SANCTIONS_TRADE' in matched_cats:
+                        sd7_disruption_adj = -4 if geo_score_sd < 50 else 3
+                        sd7_disruption_source = 'GEO_RISK'
+                    elif geo_score_sd < 35:
+                        sd7_disruption_adj = 4  # High risk = supply fear = bullish oil
+                        sd7_disruption_source = 'HIGH_RISK'
+                else:
+                    # Precious metals: geo risk = safe-haven demand
+                    if geo_score_sd < 40:
+                        sd7_disruption_adj = 5   # Crisis = gold buying
+                        sd7_disruption_source = 'SAFE_HAVEN'
+                    elif geo_score_sd > 60:
+                        sd7_disruption_adj = -2  # Calm = less safe-haven demand
+                        sd7_disruption_source = 'LOW_RISK'
+
+                sd7_disruption_adj = max(-6, min(6, sd7_disruption_adj))
+                sd_score += sd7_disruption_adj
+            except Exception as e:
+                logger.debug(f"SD7 supply disruption failed for {pair}: {e}")
+
+            # Final clamp and update factor_groups
+            sd_score = max(10, min(90, sd_score))
+            total_sd_adj = sd1_zone_adj + sd2_fvg_adj + sd3_yield_adj + sd4_eia_adj + sd5_ratio_adj + sd6_dxy_adj + sd7_disruption_adj
+
+            if sd_score >= 58:
+                sd_signal = 'BULLISH'
+            elif sd_score <= 42:
+                sd_signal = 'BEARISH'
+            else:
+                sd_signal = 'NEUTRAL'
+
+            factor_groups['currency_strength'] = {
+                'score': round(sd_score, 1),
+                'signal': sd_signal,
+                'weight': COMMODITY_FACTOR_WEIGHTS.get('currency_strength', 7),
+                'details': currency_strength_data.get('details', []),
+                'base_strength': currency_strength_data.get('base_strength', 50),
+                'quote_strength': currency_strength_data.get('quote_strength', 50),
+                'factor_name': 'Supply & Demand',
+                # v9.5.0: Enhanced sub-component details
+                'supply_demand_zones': sd1_zone_adj,
+                'ob_signal': sd1_ob_signal,
+                'fair_value_gaps': sd2_fvg_adj,
+                'fvg_signal': sd2_fvg_signal,
+                'real_yield_impact': sd3_yield_adj,
+                'real_yield': sd3_real_yield,
+                'eia_inventory_trend': sd4_eia_adj,
+                'eia_weekly_change': sd4_weekly_change,
+                'commodity_ratio': sd5_ratio_adj,
+                'ratio_name': sd5_ratio_name,
+                'ratio_value': sd5_ratio_value,
+                'dxy_momentum': sd6_dxy_adj,
+                'dxy_roc': sd6_dxy_roc,
+                'supply_disruption': sd7_disruption_adj,
+                'disruption_source': sd7_disruption_source,
+                'total_sd_adjustment': total_sd_adj
+            }
 
         # ═══════════════════════════════════════════════════════════════════
         # 9. GEOPOLITICAL RISK (4%/8%) - ENHANCED v9.5.0
@@ -12813,7 +13102,7 @@ def run_system_audit():
             'sentiment': {'weight': 11, 'sources': 'v9.5.0: IG/Saxo retail + Finnhub/RSS/Yahoo news + COT institutional + 8 sub-components (VIX fear gauge, retail extreme, news velocity, price divergence, COT confirmation, sentiment momentum, source agreement, commodity regime)'},
             'intermarket': {'weight': 10, 'sources': 'v9.5.0: DXY/Gold/Oil/Yields/VIX base + 7 sub-components (VIX momentum, yield curve risk, correlation confirmation, SPX equity proxy via AUD/USD, gold-oil ratio regime, DXY-VIX divergence 4-regime, multi-asset momentum agreement)'},
             'ai_synthesis': {'weight': 9, 'sources': 'v9.5.0: GPT-4o-mini cross-validation + 8 sub-components (confidence scaling, trade quality grade, risk severity, validation consistency, directional alignment, key driver strength, direction match, data quality gate) + confidence-based weight adjustment'},
-            'currency_strength': {'weight': 8, 'sources': 'v9.4.0: 50-instrument analysis — confirmation tool'},
+            'currency_strength': {'weight': 8, 'sources': 'v9.4.0: 50-instrument analysis — confirmation tool. v9.5.0: Commodities get Supply & Demand (7%) with 7 sub-components (supply zones, FVG imbalance, real yields, EIA inventory, commodity ratios, DXY momentum, supply disruption)'},
             'calendar_risk': {'weight': 6, 'sources': 'Economic events + Seasonality — gate/filter role'},
             'geopolitical_risk': {'weight': 4, 'sources': 'v9.5.0: 65+ keywords across 5 tiers + 4 dedicated geo RSS feeds (Reuters/BBC/NYT/Al Jazeera) + 7 sub-components (event category severity, escalation detection, currency vulnerability, safe-haven flows, commodity supply disruption, news velocity, VIX correlation)'},
             'market_depth': {'weight': 4, 'sources': 'v9.5.0: Smart depth with 7 sub-components (volume profile, order block density, liquidity zone density, spread dynamics, session-pair affinity, volume-price confluence, ATR regime detection) + base spread/session/liquidity/ATR'}
@@ -12823,7 +13112,7 @@ def run_system_audit():
             'trend_momentum': 22, 'intermarket': 15, 'mean_reversion': 11,
             'sentiment': 10, 'fundamental': 8, 'ai_synthesis': 8,
             'geopolitical_risk': 8, 'calendar_risk': 7, 'supply_demand': 7, 'market_depth': 4,
-            'note': 'Currency Strength replaced by Supply & Demand (7%): EIA inventory for oil, DXY inverse for all, safe-haven demand for metals. Intermarket is #2 commodity factor (15%). Geopolitical risk higher (8%) — IMF: geo stress directly drives gold, disrupts oil.'
+            'note': 'v9.5.0: Supply & Demand (7%) enhanced with 7 sub-components: SD1 supply/demand zones (±8), SD2 fair value gap imbalance (±6), SD3 real yield impact (±8 metals), SD4 EIA inventory trend (±8 oil), SD5 cross-commodity ratios (±7), SD6 DXY momentum (±6), SD7 supply disruption signal (±6). Max ±49 raw budget, clamped [10,90].'
         },
         'quality_gates': {
             'description': '8 of 10 gates must pass for LONG/SHORT signal, otherwise NEUTRAL. G3/G5/G8 are MANDATORY.',
@@ -14124,7 +14413,7 @@ def run_ai_system_health_check(use_ai=True):
     # v9.3.0: Commodity-specific anti-overfitting measures
     overfit_check['details']['commodity_safeguards'] = [
         'Separate weight profile prevents forex-tuned weights biasing commodities',
-        'Currency Strength replaced by Supply & Demand (8%) — EIA, DXY inverse, safe-haven',
+        'Currency Strength replaced by Supply & Demand (7%) — v9.5.0: 7 sub-components (supply zones, FVG, real yields, EIA inventory, commodity ratios, DXY momentum, supply disruption)',
         'Intermarket at 15% — cross-commodity correlations validated against historical data',
         'Entry range capped at 0.1% of price — prevents ATR-driven wide entries',
         'SL/TP use commodity-specific ATR multipliers (not forex defaults)',
