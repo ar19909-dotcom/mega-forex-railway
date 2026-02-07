@@ -276,6 +276,12 @@ EXOTIC_PIP_SIZES = {
     'EUR/CZK': 0.01,    # Price ~25, ATR ~0.35 → 35 pips
     'USD/PLN': 0.001,   # Price ~4, ATR ~0.055 → 55 pips
     'EUR/PLN': 0.001,   # Price ~4.4, ATR ~0.065 → 65 pips
+    # v9.5.0: Scandinavian pairs — without these, ATR/0.0001 = 1500+ pips, always capped
+    'USD/NOK': 0.001,   # Price ~10.7, ATR ~0.15 → 150 pips
+    'USD/SEK': 0.001,   # Price ~10.5, ATR ~0.15 → 150 pips
+    'USD/DKK': 0.001,   # Price ~6.8, ATR ~0.065 → 65 pips
+    'EUR/NOK': 0.001,   # Price ~11.5, ATR ~0.18 → 180 pips
+    'EUR/SEK': 0.001,   # Price ~11.3, ATR ~0.16 → 160 pips
 }
 
 def get_pip_size(pair):
@@ -352,6 +358,16 @@ CENTRAL_BANK_POLICY_BIAS = {
     'CAD': {'bias': 'DOVISH', 'score_adj': -6, 'outlook': 'Multiple cuts expected'},
     'MXN': {'bias': 'DOVISH', 'score_adj': -5, 'outlook': 'Easing cycle'},
     'ZAR': {'bias': 'NEUTRAL', 'score_adj': 0, 'outlook': 'Stable for now'},
+    # v9.5.0: Exotic/Scandinavian currencies
+    'NOK': {'bias': 'NEUTRAL', 'score_adj': 0, 'outlook': 'Gradual easing, oil-dependent economy'},
+    'SEK': {'bias': 'DOVISH', 'score_adj': -5, 'outlook': 'Cutting cycle, weak growth'},
+    'DKK': {'bias': 'NEUTRAL', 'score_adj': 0, 'outlook': 'Pegged to EUR, mirrors ECB'},
+    'SGD': {'bias': 'HAWKISH', 'score_adj': +5, 'outlook': 'MAS tightening via NEER bands'},
+    'HKD': {'bias': 'NEUTRAL', 'score_adj': 0, 'outlook': 'Pegged to USD, mirrors Fed'},
+    'TRY': {'bias': 'HAWKISH', 'score_adj': +10, 'outlook': 'Emergency tightening, 45% rate'},
+    'HUF': {'bias': 'NEUTRAL', 'score_adj': 0, 'outlook': 'Cautious easing after inflation spike'},
+    'CZK': {'bias': 'DOVISH', 'score_adj': -5, 'outlook': 'Cutting cycle, inflation controlled'},
+    'PLN': {'bias': 'NEUTRAL', 'score_adj': 0, 'outlook': 'On hold, political uncertainty'},
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -371,6 +387,16 @@ ECONOMIC_DATA = {
     'CAD': {'gdp_growth': 1.1, 'inflation': 2.7, 'current_account': -0.8, 'unemployment': 6.8},
     'MXN': {'gdp_growth': 3.2, 'inflation': 4.5, 'current_account': -1.0, 'unemployment': 2.8},
     'ZAR': {'gdp_growth': 0.6, 'inflation': 5.3, 'current_account': -1.5, 'unemployment': 32.0},
+    # v9.5.0: Exotic/Scandinavian currencies
+    'NOK': {'gdp_growth': 1.8, 'inflation': 3.6, 'current_account': 12.0, 'unemployment': 3.5},
+    'SEK': {'gdp_growth': 0.3, 'inflation': 2.2, 'current_account': 5.0, 'unemployment': 8.4},
+    'DKK': {'gdp_growth': 1.5, 'inflation': 2.0, 'current_account': 10.0, 'unemployment': 4.8},
+    'TRY': {'gdp_growth': 4.0, 'inflation': 65.0, 'current_account': -4.0, 'unemployment': 9.5},
+    'PLN': {'gdp_growth': 2.8, 'inflation': 4.5, 'current_account': -1.2, 'unemployment': 5.0},
+    'HUF': {'gdp_growth': 0.5, 'inflation': 4.0, 'current_account': -1.5, 'unemployment': 4.5},
+    'CZK': {'gdp_growth': 1.0, 'inflation': 2.5, 'current_account': 0.5, 'unemployment': 3.8},
+    'SGD': {'gdp_growth': 2.5, 'inflation': 2.8, 'current_account': 18.0, 'unemployment': 2.0},
+    'HKD': {'gdp_growth': 3.0, 'inflation': 2.2, 'current_account': 5.0, 'unemployment': 2.8},
 }
 
 def get_economic_differential(base, quote):
@@ -5703,6 +5729,18 @@ def analyze_sentiment(pair):
         'XPT': ['platinum', 'xpt', 'platinum price', 'pgm', 'platinum futures'],
         'WTI': ['oil', 'wti', 'crude', 'crude oil', 'oil price', 'petroleum', 'opec', 'eia', 'nymex crude', 'oil futures'],
         'BRENT': ['brent', 'brent crude', 'oil', 'crude oil', 'opec', 'petroleum', 'ice brent', 'oil futures'],
+        # v9.5.0: Exotic/Scandinavian currency keywords for sentiment matching
+        'NOK': ['krone', 'nok', 'norwegian', 'norges bank', 'norway', 'oil price', 'scandinavian'],
+        'SEK': ['krona', 'sek', 'swedish', 'riksbank', 'sweden', 'scandinavian'],
+        'DKK': ['krone', 'dkk', 'danish', 'nationalbank', 'denmark', 'scandinavian'],
+        'TRY': ['lira', 'try', 'turkish', 'tcmb', 'turkey', 'erdogan', 'ankara'],
+        'MXN': ['peso', 'mxn', 'mexican', 'banxico', 'mexico', 'nearshoring'],
+        'ZAR': ['rand', 'zar', 'south african', 'sarb', 'south africa', 'loadshedding'],
+        'PLN': ['zloty', 'pln', 'polish', 'nbp', 'poland'],
+        'HUF': ['forint', 'huf', 'hungarian', 'mnb', 'hungary'],
+        'CZK': ['koruna', 'czk', 'czech', 'cnb', 'czechia'],
+        'SGD': ['singapore dollar', 'sgd', 'mas', 'singapore', 'monetary authority'],
+        'HKD': ['hong kong dollar', 'hkd', 'hkma', 'hong kong'],
     }
 
     # Get keywords for this pair's currencies
@@ -7942,7 +7980,7 @@ def analyze_intermarket(pair):
         gold_baseline = dynamic.get('gold', 2000)  # v9.5.0: Dynamic 20d SMA
         gold_sentiment = (gold - gold_baseline) / max(gold_baseline, 1) * 100
 
-        risk_currencies = ['AUD', 'NZD', 'CAD']
+        risk_currencies = ['AUD', 'NZD', 'CAD', 'NOK', 'SEK']
         safe_havens = ['JPY', 'CHF']
 
         gold_impact = 0
@@ -8034,7 +8072,7 @@ def analyze_intermarket(pair):
     vix_baseline = 18
     vix_deviation = (vix - vix_baseline) / vix_baseline * 100
 
-    risk_currencies = ['AUD', 'NZD', 'CAD', 'GBP', 'MXN', 'ZAR']
+    risk_currencies = ['AUD', 'NZD', 'CAD', 'GBP', 'MXN', 'ZAR', 'NOK', 'SEK']
     safe_havens = ['JPY', 'CHF', 'USD']
 
     vix_impact = 0
@@ -10706,6 +10744,10 @@ def calculate_factor_scores(pair):
             'pivot': pivot_data['pivot'],
             'pivot_r1': pivot_data['r1'],
             'pivot_s1': pivot_data['s1'],
+            'pivot_r2': pivot_data['r2'],
+            'pivot_s2': pivot_data['s2'],
+            'resistance_2': sr_levels['resistance_2'],
+            'support_2': sr_levels['support_2'],
             'pivot_bias': pivot_bias,
             'adx': adx,
             'trend': 'TRENDING' if adx > 25 else 'RANGING',
@@ -12715,6 +12757,17 @@ def generate_signal(pair):
         nearest_support = structure_details.get('nearest_support', current_price * 0.995)
         nearest_resistance = structure_details.get('nearest_resistance', current_price * 1.005)
 
+        # v9.5.0: Additional structure levels for Smart SL/TP
+        swing_high = structure_details.get('swing_high', current_price * 1.01)
+        swing_low = structure_details.get('swing_low', current_price * 0.99)
+        pivot_r2 = structure_details.get('pivot_r2', current_price + atr * 2)
+        pivot_s2 = structure_details.get('pivot_s2', current_price - atr * 2)
+        resistance_2 = structure_details.get('resistance_2', current_price * 1.02)
+        support_2 = structure_details.get('support_2', current_price * 0.98)
+        fib_382 = structure_details.get('fib_0.382', current_price)
+        fib_500 = structure_details.get('fib_0.5', current_price)
+        fib_618 = structure_details.get('fib_0.618', current_price)
+
         # Get trend info
         ema_signal = tech.get('ema_signal', 'NEUTRAL')
         trend_strength = 'STRONG' if adx > 30 else 'MODERATE' if adx > 20 else 'WEAK'
@@ -12875,55 +12928,154 @@ def generate_signal(pair):
             tp2_pips = tp2_pips * 0.85
 
         # ─────────────────────────────────────────────────────────────────────────
-        # STRUCTURE-BASED REFINEMENT (Bollinger Bands)
-        # Use BB as reference but ensure minimum ATR distance
+        # v9.5.0: SMART STRUCTURE-BASED SL/TP PLACEMENT
+        # Uses S/R, swing high/low, pivots, and fibs for meaningful placement
+        # Fallback: ATR-based values from step 6 above
         # ─────────────────────────────────────────────────────────────────────────
-        min_sl_distance = atr_pips * 1.2  # Never closer than 1.2x ATR
+        sl_placement = 'ATR'
+        tp1_placement = 'ATR'
+        tp2_placement = 'ATR'
 
+        # First: compute ATR-based price levels as defaults
         if direction == 'LONG':
             sl = entry - (sl_pips * pip_size)
             tp1 = entry + (tp1_pips * pip_size)
             tp2 = entry + (tp2_pips * pip_size)
-
-            # Check BB lower for SL - only use if it gives adequate distance
-            bb_lower_distance = (entry - bb_lower) / pip_size
-            if bb_lower_distance >= min_sl_distance and bb_lower_distance <= limits['sl_abs_max']:
-                # Use BB lower + buffer as SL
-                buffer = max(5, atr_pips * 0.3)  # At least 5 pips or 0.3x ATR buffer
-                sl_pips = bb_lower_distance + buffer
-                sl = bb_lower - (buffer * pip_size)
-
-            # Check BB upper for TP1 - only if achievable
-            bb_upper_distance = (bb_upper - entry) / pip_size
-            if bb_upper_distance >= sl_pips * 1.3 and bb_upper_distance <= limits['tp1_abs_max']:
-                buffer = max(3, atr_pips * 0.2)
-                tp1_pips = bb_upper_distance - buffer
-                tp1 = bb_upper - (buffer * pip_size)
-
         elif direction == 'SHORT':
             sl = entry + (sl_pips * pip_size)
             tp1 = entry - (tp1_pips * pip_size)
             tp2 = entry - (tp2_pips * pip_size)
-
-            # Check BB upper for SL
-            bb_upper_distance = (bb_upper - entry) / pip_size
-            if bb_upper_distance >= min_sl_distance and bb_upper_distance <= limits['sl_abs_max']:
-                buffer = max(5, atr_pips * 0.3)
-                sl_pips = bb_upper_distance + buffer
-                sl = bb_upper + (buffer * pip_size)
-
-            # Check BB lower for TP1
-            bb_lower_distance = (entry - bb_lower) / pip_size
-            if bb_lower_distance >= sl_pips * 1.3 and bb_lower_distance <= limits['tp1_abs_max']:
-                buffer = max(3, atr_pips * 0.2)
-                tp1_pips = bb_lower_distance - buffer
-                tp1 = bb_lower + (buffer * pip_size)
-
         else:
-            # Neutral - use ATR-based defaults
             sl = entry - (sl_pips * pip_size)
             tp1 = entry + (tp1_pips * pip_size)
             tp2 = entry + (tp2_pips * pip_size)
+
+        # Now try structure-based refinement
+        try:
+            if direction in ['LONG', 'SHORT']:
+                structure_buffer = max(5, atr_pips * 0.3)  # 0.3x ATR or 5 pips min
+
+                if direction == 'LONG':
+                    # === SMART SL FOR LONG: below support/swing low/S1 ===
+                    sl_candidates = []
+                    for lvl_name, lvl_val in [
+                        ('nearest_support', nearest_support),
+                        ('swing_low', swing_low),
+                        ('pivot_s1', pivot_s1),
+                    ]:
+                        if lvl_val and lvl_val < entry and lvl_val > 0:
+                            dist = (entry - lvl_val) / pip_size
+                            buffered = dist + structure_buffer
+                            if buffered >= limits['sl_abs_min'] and buffered <= limits['sl_abs_max']:
+                                if buffered >= atr_pips * 1.2:
+                                    sl_candidates.append({'name': lvl_name, 'level': lvl_val, 'dist': buffered})
+
+                    if sl_candidates:
+                        best = min(sl_candidates, key=lambda x: x['dist'])
+                        sl_pips = best['dist']
+                        sl = best['level'] - (structure_buffer * pip_size)
+                        sl_placement = 'STRUCTURE'
+
+                    # === SMART TP1 FOR LONG: nearest resistance/R1/fib ===
+                    tp1_candidates = []
+                    for lvl_name, lvl_val in [
+                        ('nearest_resistance', nearest_resistance),
+                        ('pivot_r1', pivot_r1),
+                        ('fib_0.618', fib_618),
+                        ('fib_0.5', fib_500),
+                    ]:
+                        if lvl_val and lvl_val > entry:
+                            dist = (lvl_val - entry) / pip_size
+                            if dist >= sl_pips * 1.5 and dist <= limits['tp1_abs_max'] and dist <= atr_pips * 6:
+                                tp1_candidates.append({'name': lvl_name, 'level': lvl_val, 'dist': dist})
+
+                    if tp1_candidates:
+                        best = min(tp1_candidates, key=lambda x: x['dist'])
+                        tp1_pips = best['dist']
+                        tp1 = best['level']
+                        tp1_placement = 'STRUCTURE'
+
+                    # === SMART TP2 FOR LONG: R2/pivot_r2/swing high ===
+                    tp2_candidates = []
+                    for lvl_name, lvl_val in [
+                        ('resistance_2', resistance_2),
+                        ('pivot_r2', pivot_r2),
+                        ('swing_high', swing_high),
+                        ('fib_0.382', fib_382),
+                    ]:
+                        if lvl_val and lvl_val > entry and lvl_val > tp1:
+                            dist = (lvl_val - entry) / pip_size
+                            if dist >= sl_pips * 2.5 and dist <= limits['tp2_abs_max'] and dist <= atr_pips * 8:
+                                tp2_candidates.append({'name': lvl_name, 'level': lvl_val, 'dist': dist})
+
+                    if tp2_candidates:
+                        best = min(tp2_candidates, key=lambda x: x['dist'])
+                        tp2_pips = best['dist']
+                        tp2 = best['level']
+                        tp2_placement = 'STRUCTURE'
+
+                elif direction == 'SHORT':
+                    # === SMART SL FOR SHORT: above resistance/swing high/R1 ===
+                    sl_candidates = []
+                    for lvl_name, lvl_val in [
+                        ('nearest_resistance', nearest_resistance),
+                        ('swing_high', swing_high),
+                        ('pivot_r1', pivot_r1),
+                    ]:
+                        if lvl_val and lvl_val > entry:
+                            dist = (lvl_val - entry) / pip_size
+                            buffered = dist + structure_buffer
+                            if buffered >= limits['sl_abs_min'] and buffered <= limits['sl_abs_max']:
+                                if buffered >= atr_pips * 1.2:
+                                    sl_candidates.append({'name': lvl_name, 'level': lvl_val, 'dist': buffered})
+
+                    if sl_candidates:
+                        best = min(sl_candidates, key=lambda x: x['dist'])
+                        sl_pips = best['dist']
+                        sl = best['level'] + (structure_buffer * pip_size)
+                        sl_placement = 'STRUCTURE'
+
+                    # === SMART TP1 FOR SHORT: nearest support/S1/fib ===
+                    tp1_candidates = []
+                    for lvl_name, lvl_val in [
+                        ('nearest_support', nearest_support),
+                        ('pivot_s1', pivot_s1),
+                        ('fib_0.618', fib_618),
+                        ('fib_0.5', fib_500),
+                    ]:
+                        if lvl_val and lvl_val < entry and lvl_val > 0:
+                            dist = (entry - lvl_val) / pip_size
+                            if dist >= sl_pips * 1.5 and dist <= limits['tp1_abs_max'] and dist <= atr_pips * 6:
+                                tp1_candidates.append({'name': lvl_name, 'level': lvl_val, 'dist': dist})
+
+                    if tp1_candidates:
+                        best = min(tp1_candidates, key=lambda x: x['dist'])
+                        tp1_pips = best['dist']
+                        tp1 = best['level']
+                        tp1_placement = 'STRUCTURE'
+
+                    # === SMART TP2 FOR SHORT: S2/pivot_s2/swing low ===
+                    tp2_candidates = []
+                    for lvl_name, lvl_val in [
+                        ('support_2', support_2),
+                        ('pivot_s2', pivot_s2),
+                        ('swing_low', swing_low),
+                        ('fib_0.382', fib_382),
+                    ]:
+                        if lvl_val and lvl_val < entry and lvl_val < tp1 and lvl_val > 0:
+                            dist = (entry - lvl_val) / pip_size
+                            if dist >= sl_pips * 2.5 and dist <= limits['tp2_abs_max'] and dist <= atr_pips * 8:
+                                tp2_candidates.append({'name': lvl_name, 'level': lvl_val, 'dist': dist})
+
+                    if tp2_candidates:
+                        best = min(tp2_candidates, key=lambda x: x['dist'])
+                        tp2_pips = best['dist']
+                        tp2 = best['level']
+                        tp2_placement = 'STRUCTURE'
+
+        except Exception as e:
+            logger.debug(f"Smart structure SL/TP fallback for {pair}: {e}")
+            # ATR-based sl, tp1, tp2 values remain from defaults above
 
         # ─────────────────────────────────────────────────────────────────────────
         # v9.2.4: LIQUIDITY ZONE REFINEMENT (SMC)
@@ -13147,7 +13299,10 @@ def generate_signal(pair):
                 'market_context': {
                     'volatility': volatility_regime,
                     'trend': trend_strength,
-                    'confidence': confidence
+                    'confidence': confidence,
+                    'sl_basis': sl_placement,
+                    'tp1_basis': tp1_placement,
+                    'tp2_basis': tp2_placement
                 }
             },
             'technical': {
