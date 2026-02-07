@@ -1,10 +1,10 @@
 """
 ╔══════════════════════════════════════════════════════════════════════════════╗
-║                   MEGA FOREX v9.5.0 PRO - AI-ENHANCED SYSTEM                 ║
-║                    Build: February 7, 2026 - MARKET DEPTH + TRADING TIME     ║
+║                   MEGA FOREX v9.6.0 PRO - AI-ENHANCED SYSTEM                 ║
+║                    Build: February 8, 2026 - PROBABILITY FACTOR              ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
 ║  ✓ 45 Forex Pairs + 5 Commodities (50 Instruments)                           ║
-║  ✓ 10-Group Gated Scoring + 10-Gate Quality Filter                            ║
+║  ✓ 11-Group Gated Scoring + 10-Gate Quality Filter                            ║
 ║  ✓ Smart AI Weight Adjustment (Dynamic, Anti-Overfit)                        ║
 ║  ✓ NEW: Market Depth Factor (Spread, Session, Liquidity, ATR)               ║
 ║  ✓ NEW: Trading Time Badge (GREEN/YELLOW/RED per pair)                      ║
@@ -18,28 +18,30 @@
 ║    EMA recency, BB squeeze, volume confirmation (±115 raw → clamped)         ║
 ║  ✓ Smart Money Concepts: Order Blocks, Liquidity Zones, Session Timing       ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
-║  FOREX SCORING (45 pairs) - 10-Group Gated AI-Enhanced (v9.5.0)              ║
-║  - Trend & Momentum (22%): RSI/MACD/Stoch/CCI/Div/Patterns/ROC/Vol + MTF    ║
-║  - Fundamental (14%): Rates + Yield Curve + CPI/Employment/Payroll Momentum  ║
-║  - Mean Reversion (12%): Z-Score, Bollinger %B + S/R structure               ║
-║  - Sentiment (11%): IG positioning + enhanced news analysis                  ║
-║  - Intermarket (10%): DXY, Gold, Yields, Oil correlations                    ║
-║  - AI Synthesis (9%): GPT-4o-mini market analysis                            ║
+║  FOREX SCORING (45 pairs) - 11-Group Gated AI-Enhanced (v9.6.0)              ║
+║  - Trend & Momentum (20%): RSI/MACD/Stoch/CCI/Div/Patterns/ROC/Vol + MTF    ║
+║  - Fundamental (13%): Rates + Yield Curve + CPI/Employment/Payroll Momentum  ║
+║  - Mean Reversion (11%): Z-Score, Bollinger %B + S/R structure               ║
+║  - Sentiment (10%): IG positioning + enhanced news analysis                  ║
+║  - Intermarket (9%): DXY, Gold, Yields, Oil correlations                     ║
+║  - AI Synthesis (8%): GPT-4o-mini market analysis                            ║
 ║  - Currency Strength (8%): 50-instrument cross-currency analysis             ║
+║  - Probability (7%): ATR cycles, breakout, Bulkowski patterns, S/R exhaust  ║
 ║  - Calendar Risk (6%): Economic event risk + seasonality                     ║
 ║  - Geopolitical Risk (4%): War, sanctions, trade tensions, elections         ║
 ║  - Market Depth (4%): Spread tightness, session activity, liquidity, ATR    ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
-║  COMMODITY SCORING (5 instruments) - Commodity-Specific Weights (v9.5.0)     ║
-║  - Trend & Momentum (22%): RSI/MACD/Stoch/CCI/Div/Patterns/ROC/Vol + MTF    ║
-║  - Intermarket (15%): Cross-commodity, DXY, VIX, Yields, Equities           ║
-║  - Mean Reversion (11%): Z-Score, Bollinger %B + S/R structure               ║
-║  - Sentiment (10%): IG + COT institutional + commodity news                  ║
+║  COMMODITY SCORING (5 instruments) - Commodity-Specific Weights (v9.6.0)     ║
+║  - Trend & Momentum (21%): RSI/MACD/Stoch/CCI/Div/Patterns/ROC/Vol + MTF    ║
+║  - Intermarket (14%): Cross-commodity, DXY, VIX, Yields, Equities           ║
+║  - Mean Reversion (10%): Z-Score, Bollinger %B + S/R structure               ║
+║  - Sentiment (9%): IG + COT institutional + commodity news                   ║
 ║  - AI Synthesis (8%): GPT-4o-mini commodity analysis                         ║
-║  - Fundamental (8%): DXY inverse, Real yields, VIX safe-haven               ║
-║  - Geopolitical Risk (8%): War, sanctions, OPEC politics, trade tensions    ║
+║  - Fundamental (7%): DXY inverse, Real yields, VIX safe-haven                ║
+║  - Geopolitical Risk (7%): War, sanctions, OPEC politics, trade tensions    ║
 ║  - Supply & Demand (7%): EIA inventory, USD correlation, warehouse stocks   ║
 ║  - Calendar Risk (7%): OPEC, EIA, FOMC, PMI events                          ║
+║  - Probability (6%): ATR cycles, breakout, Bulkowski patterns, S/R exhaust  ║
 ║  - Market Depth (4%): Spread tightness, session activity, liquidity, ATR    ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
 ║  17 APIs: Polygon, TwelveData, TraderMade, GoldAPI, Yahoo, Finnhub + more    ║
@@ -105,7 +107,7 @@ def health_check():
     """Health check endpoint"""
     return jsonify({
         'status': 'healthy',
-        'version': '9.5.0 PRO - AI ENHANCED',
+        'version': '9.6.0 PRO - AI ENHANCED',
         'pairs': len(ALL_INSTRUMENTS),
         'timestamp': datetime.now().isoformat()
     })
@@ -1019,56 +1021,58 @@ FACTOR_WEIGHTS = {
 # Research: 3-4 non-correlated factors is the sweet spot (CME Group 2019)
 # ═══════════════════════════════════════════════════════════════════════════════
 FACTOR_GROUP_WEIGHTS = {
-    'trend_momentum': 22,     # #1 return driver (CME, Quantpedia research) — RSI, MACD, ADX + MTF
-    'fundamental': 14,        # #2 FX factor — carry trade / interest rate differentials (SSRN)
-    'sentiment': 11,          # Confirmation + alpha booster — IG positioning + News + Options
-    'intermarket': 10,        # DXY, Gold, Yields, Oil correlations (independent)
-    'mean_reversion': 12,     # Combined with momentum = best FX strategy (ResearchGate)
-    'calendar_risk': 6,       # Gate/filter role — 10-Gate already filters high-impact events
-    'ai_synthesis': 9,        # Synthesis tool — follows, doesn't lead
+    'trend_momentum': 20,     # #1 return driver (CME, Quantpedia research) — RSI, MACD, ADX + MTF
+    'fundamental': 13,        # #2 FX factor — carry trade / interest rate differentials (SSRN)
+    'sentiment': 10,          # Confirmation + alpha booster — IG positioning + News + Options
+    'intermarket': 9,         # DXY, Gold, Yields, Oil correlations (independent)
+    'mean_reversion': 11,     # Combined with momentum = best FX strategy (ResearchGate)
+    'calendar_risk': 6,       # Gate/filter role — 11-Gate already filters high-impact events
+    'ai_synthesis': 8,        # Synthesis tool — follows, doesn't lead
     'currency_strength': 8,   # Confirmation tool — buy strong/sell weak (MarketMilk research)
+    'probability': 7,         # v9.6.0: Empirical probability calibration (Bulkowski, ATR cycles)
     'geopolitical_risk': 4,   # Tail-risk filter for forex (IMF 2025)
     'market_depth': 4          # Trade quality filter — spread, session, liquidity
 }
-# Total: 100% (22+14+11+10+12+6+9+8+4+4)
+# Total: 100% (20+13+10+9+11+6+8+8+7+4+4)
 
 # v9.3.0 DYNAMIC REGIME WEIGHTS - Adapt to market conditions
 # Research: +0.29 Sharpe improvement (Northern Trust)
 # Now includes currency_strength (10%) from 50-instrument analysis
 REGIME_WEIGHTS = {
     'trending': {  # ADX > 25: Ride the trend hard
-        'trend_momentum': 28, 'fundamental': 12, 'sentiment': 6,
-        'intermarket': 10, 'mean_reversion': 4, 'calendar_risk': 5, 'ai_synthesis': 10, 'currency_strength': 13, 'geopolitical_risk': 6, 'market_depth': 6
+        'trend_momentum': 27, 'fundamental': 11, 'sentiment': 5,
+        'intermarket': 9, 'mean_reversion': 4, 'calendar_risk': 5, 'ai_synthesis': 9, 'currency_strength': 13, 'probability': 5, 'geopolitical_risk': 6, 'market_depth': 6
     },  # Total: 100
     'ranging': {  # ADX < 20: Mean reversion dominates
-        'trend_momentum': 8, 'fundamental': 12, 'sentiment': 11,
-        'intermarket': 9, 'mean_reversion': 22, 'calendar_risk': 5, 'ai_synthesis': 10, 'currency_strength': 11, 'geopolitical_risk': 6, 'market_depth': 6
+        'trend_momentum': 7, 'fundamental': 10, 'sentiment': 10,
+        'intermarket': 8, 'mean_reversion': 20, 'calendar_risk': 5, 'ai_synthesis': 9, 'currency_strength': 10, 'probability': 10, 'geopolitical_risk': 5, 'market_depth': 6
     },  # Total: 100
     'volatile': {  # ATR spike > 1.5x: Geopolitical + trend matter most
-        'trend_momentum': 15, 'fundamental': 8, 'sentiment': 12,
-        'intermarket': 9, 'mean_reversion': 5, 'calendar_risk': 9, 'ai_synthesis': 9, 'currency_strength': 10, 'geopolitical_risk': 15, 'market_depth': 8
+        'trend_momentum': 14, 'fundamental': 7, 'sentiment': 11,
+        'intermarket': 9, 'mean_reversion': 5, 'calendar_risk': 8, 'ai_synthesis': 8, 'currency_strength': 10, 'probability': 6, 'geopolitical_risk': 14, 'market_depth': 8
     },  # Total: 100
     'quiet': {  # Low ATR + Low ADX: Carry trade + mean reversion shine
-        'trend_momentum': 18, 'fundamental': 15, 'sentiment': 7,
-        'intermarket': 11, 'mean_reversion': 14, 'calendar_risk': 4, 'ai_synthesis': 9, 'currency_strength': 11, 'geopolitical_risk': 5, 'market_depth': 6
+        'trend_momentum': 16, 'fundamental': 13, 'sentiment': 6,
+        'intermarket': 10, 'mean_reversion': 13, 'calendar_risk': 4, 'ai_synthesis': 8, 'currency_strength': 10, 'probability': 9, 'geopolitical_risk': 5, 'market_depth': 6
     }  # Total: 100
 }
 
 # v9.3.0: Commodity-specific factor weights
 # Currency Strength replaced by Supply & Demand (EIA inventory, DXY inverse, warehouse stocks)
 COMMODITY_FACTOR_WEIGHTS = {
-    'trend_momentum': 22,     # #1 commodity factor — commodities trend harder than forex (EDHEC)
-    'fundamental': 8,          # Slow-moving for commodities — DXY + real yields
-    'sentiment': 10,           # COT data is weekly, less actionable for swing
-    'intermarket': 15,         # #2 commodity factor — gold/oil/DXY/yields correlations critical
-    'mean_reversion': 11,      # Less reliable than in forex — commodities trend strongly
+    'trend_momentum': 21,     # #1 commodity factor — commodities trend harder than forex (EDHEC)
+    'fundamental': 7,          # Slow-moving for commodities — DXY + real yields
+    'sentiment': 9,            # COT data is weekly, less actionable for swing
+    'intermarket': 14,         # #2 commodity factor — gold/oil/DXY/yields correlations critical
+    'mean_reversion': 10,      # Less reliable than in forex — commodities trend strongly
     'calendar_risk': 7,        # Essential — OPEC, EIA, crop reports
     'ai_synthesis': 8,         # Synthesis tool — supports but doesn't lead
     'currency_strength': 7,    # → "Supply & Demand" for commodities (EIA, DXY, warehouse)
-    'geopolitical_risk': 8,    # IMF research: geo stress directly drives gold, disrupts oil supply
+    'probability': 6,          # v9.6.0: Empirical probability calibration
+    'geopolitical_risk': 7,    # IMF research: geo stress directly drives gold, disrupts oil supply
     'market_depth': 4           # Execution filter — commodities have good liquidity
 }
-# Total: 100% (22+8+10+15+11+7+8+7+8+4)
+# Total: 100% (21+7+9+14+10+7+8+7+6+7+4)
 
 # v9.0 STATISTICAL CAPS - Realistic limits (FXCM 43M trade study)
 STAT_CAPS = {
@@ -5408,6 +5412,597 @@ def calculate_geopolitical_risk(pair):
         logger.debug(f"Geopolitical risk calculation error: {e}")
         return {'score': 50, 'signal': 'NEUTRAL', 'risk_level': 'LOW', 'details': 'Error in calculation'}
 
+def calculate_probability_factor(pair, candles, opens, highs, lows, closes, tech, patterns, rate):
+    """
+    v9.6.0: Probability Factor (11th factor group)
+    Empirical probability calibration using 8 sub-components:
+    P1: ATR Cycle Phase (±8) — volatility expansion/contraction regime forecast
+    P2: Consolidation Breakout Probability (±8) — range compression → breakout detection
+    P3: Candlestick Pattern Success Rate (±7) — Bulkowski-calibrated success rates
+    P4: S/R Touch-Count Exhaustion (±7) — inverted-U model (peak at 3rd touch)
+    P5: Liquidity Sweep Reversal (±6) — institutional stop-hunting detection
+    P6: FVG Magnet Effect (±5) — unfilled FVG proximity/direction bias
+    P7: Session Win Rate (±5) — pair-specific session affinity
+    P8: Fibonacci Confluence Density (±5) — multi-swing fib cluster detection
+
+    Base score 50, total budget ±51, clamped [10, 90]
+    Returns: dict with score, signal, details, sub-component fields
+    """
+    score = 50.0
+    details = []
+
+    # Pre-initialize ALL sub-component variables
+    p1_atr_cycle = 0
+    p1_atr_ratio = 0.0
+    p1_phase = 'NORMAL'
+    p2_breakout = 0
+    p2_compression = 0.0
+    p2_narrow_bars = 0
+    p3_pattern = 0
+    p3_pattern_name = 'NONE'
+    p3_success_rate = 0
+    p4_sr_exhaust = 0
+    p4_touch_count = 0
+    p4_level_type = 'NONE'
+    p5_sweep = 0
+    p5_swept = False
+    p5_wick_ratio = 0.0
+    p6_fvg = 0
+    p6_unfilled_count = 0
+    p6_fvg_direction = 'NEUTRAL'
+    p7_session = 0
+    p7_affinity = 0
+    p7_session_name = 'UNKNOWN'
+    p8_fib = 0
+    p8_cluster_count = 0
+    p8_fib_direction = 'NEUTRAL'
+
+    current_price = closes[-1] if closes and len(closes) > 0 else 0
+    n = len(closes) if closes else 0
+
+    # ── P1: ATR Cycle Phase (±8 pts) ──────────────────────────────────────────
+    # ATR(5)/ATR(50) ratio detects expansion/contraction phases
+    try:
+        if n >= 51:
+            atr5 = calculate_atr(highs, lows, closes, period=5)
+            atr50 = calculate_atr(highs, lows, closes, period=50)
+
+            if atr5 and atr50 and atr50 > 0:
+                p1_atr_ratio = round(atr5 / atr50, 3)
+
+                # EMA trend for direction hint
+                ema20 = sum(closes[-20:]) / 20 if n >= 20 else current_price
+                rsi = tech.get('rsi', 50) if tech else 50
+
+                if p1_atr_ratio < 0.4:
+                    # Extreme contraction → breakout imminent (75-80% within 20 bars)
+                    p1_phase = 'CONTRACTION'
+                    direction_mult = 1 if current_price > ema20 else -1
+                    p1_atr_cycle = 8 * direction_mult
+                    details.append(f"P1: ATR contraction {p1_atr_ratio:.2f} — breakout imminent ({'+' if direction_mult > 0 else ''}{p1_atr_cycle})")
+                elif p1_atr_ratio < 0.65:
+                    # Moderate contraction
+                    p1_phase = 'LOW_VOL'
+                    direction_mult = 1 if current_price > ema20 else -1
+                    p1_atr_cycle = 5 * direction_mult
+                    details.append(f"P1: ATR low vol {p1_atr_ratio:.2f} ({'+' if direction_mult > 0 else ''}{p1_atr_cycle})")
+                elif p1_atr_ratio > 2.0:
+                    # Extreme expansion → mean reversion likely
+                    p1_phase = 'EXPANSION'
+                    # RSI overbought/oversold drives direction
+                    if rsi > 70:
+                        p1_atr_cycle = -8  # Overbought → bearish reversion
+                    elif rsi < 30:
+                        p1_atr_cycle = 8   # Oversold → bullish reversion
+                    else:
+                        p1_atr_cycle = -3 if rsi > 55 else 3
+                    details.append(f"P1: ATR expansion {p1_atr_ratio:.2f} — mean reversion (RSI {rsi:.0f}, {p1_atr_cycle:+d})")
+                elif p1_atr_ratio > 1.5:
+                    # Moderate expansion
+                    p1_phase = 'HIGH_VOL'
+                    if rsi > 70:
+                        p1_atr_cycle = -5
+                    elif rsi < 30:
+                        p1_atr_cycle = 5
+                    else:
+                        p1_atr_cycle = -2 if rsi > 55 else 2
+                    details.append(f"P1: ATR high vol {p1_atr_ratio:.2f} ({p1_atr_cycle:+d})")
+                else:
+                    p1_phase = 'NORMAL'
+                    p1_atr_cycle = 0
+                    details.append(f"P1: ATR normal {p1_atr_ratio:.2f} (0)")
+            else:
+                details.append("P1: ATR insufficient data (0)")
+        else:
+            details.append("P1: Need 51+ candles (0)")
+    except Exception as e:
+        logger.debug(f"P1 ATR cycle error for {pair}: {e}")
+        details.append("P1: Error (0)")
+
+    # ── P2: Consolidation Breakout Probability (±8 pts) ───────────────────────
+    # Range compression: range(5)/range(20) ratio + narrow-bar duration
+    try:
+        if n >= 20:
+            range5 = max(highs[-5:]) - min(lows[-5:]) if n >= 5 else 0
+            range20 = max(highs[-20:]) - min(lows[-20:])
+
+            if range20 > 0:
+                p2_compression = round(range5 / range20, 3)
+
+                # Count consecutive narrow bars (body < 30% of avg range)
+                avg_range = sum(highs[i] - lows[i] for i in range(-20, 0)) / 20
+                p2_narrow_bars = 0
+                for i in range(-1, max(-11, -n), -1):
+                    bar_range = highs[i] - lows[i]
+                    if bar_range < avg_range * 0.5:
+                        p2_narrow_bars += 1
+                    else:
+                        break
+
+                # Direction hint: 62% continues prior 20-bar trend
+                trend_dir = 1 if closes[-1] > closes[-20] else -1
+
+                if p2_compression < 0.25 and p2_narrow_bars >= 5:
+                    p2_breakout = 8 * trend_dir
+                    details.append(f"P2: Extreme compression {p2_compression:.2f}, {p2_narrow_bars} narrow bars ({p2_breakout:+d})")
+                elif p2_compression < 0.35 and p2_narrow_bars >= 3:
+                    p2_breakout = 6 * trend_dir
+                    details.append(f"P2: High compression {p2_compression:.2f}, {p2_narrow_bars} narrow bars ({p2_breakout:+d})")
+                elif p2_compression < 0.45:
+                    p2_breakout = 3 * trend_dir
+                    details.append(f"P2: Moderate compression {p2_compression:.2f} ({p2_breakout:+d})")
+                else:
+                    details.append(f"P2: No compression {p2_compression:.2f} (0)")
+            else:
+                details.append("P2: Zero range (0)")
+        else:
+            details.append("P2: Need 20+ candles (0)")
+    except Exception as e:
+        logger.debug(f"P2 breakout error for {pair}: {e}")
+        details.append("P2: Error (0)")
+
+    # ── P3: Candlestick Pattern Success Rate (±7 pts) ─────────────────────────
+    # Bulkowski-calibrated success rates + location modifier
+    try:
+        BULKOWSKI_RATES = {
+            'MORNING_STAR': 0.72, 'EVENING_STAR': 0.72,
+            'BULLISH_ENGULFING': 0.63, 'BEARISH_ENGULFING': 0.63,
+            'HAMMER': 0.60, 'SHOOTING_STAR': 0.60, 'INVERTED_HAMMER': 0.55,
+            'DOJI': 0.50, 'THREE_WHITE_SOLDIERS': 0.70, 'THREE_BLACK_CROWS': 0.70
+        }
+
+        if patterns and isinstance(patterns, dict) and patterns.get('patterns'):
+            pattern_list = patterns['patterns']
+            best_pattern = None
+            best_rate = 0
+
+            for p in pattern_list:
+                p_name = p.get('name', '') if isinstance(p, dict) else str(p)
+                rate_val = BULKOWSKI_RATES.get(p_name, 0.50)
+                if rate_val > best_rate:
+                    best_rate = rate_val
+                    best_pattern = p
+
+            if best_pattern and best_rate > 0.50:
+                p_name = best_pattern.get('name', 'UNKNOWN') if isinstance(best_pattern, dict) else str(best_pattern)
+                p_signal = best_pattern.get('signal', 'NEUTRAL') if isinstance(best_pattern, dict) else 'NEUTRAL'
+                p3_pattern_name = p_name
+                p3_success_rate = int(best_rate * 100)
+
+                # Location modifier: at S/R level +10%
+                sr_data = calculate_support_resistance(highs, lows, closes)
+                at_sr = False
+                if sr_data and current_price > 0:
+                    atr_val = tech.get('atr') or DEFAULT_ATR.get(pair, 0.005)
+                    nr = sr_data.get('nearest_resistance', 0)
+                    ns = sr_data.get('nearest_support', 0)
+                    if nr and abs(current_price - nr) < atr_val * 0.5:
+                        at_sr = True
+                        best_rate = min(best_rate + 0.10, 0.85)
+                    elif ns and abs(current_price - ns) < atr_val * 0.5:
+                        at_sr = True
+                        best_rate = min(best_rate + 0.10, 0.85)
+
+                # Convert to score: (rate - 0.5) maps to ±7
+                raw_p3 = (best_rate - 0.50) * 35  # 0.72 → 7.7, 0.63 → 4.55
+                raw_p3 = max(-7, min(7, raw_p3))
+
+                if p_signal == 'BEARISH':
+                    raw_p3 = -abs(raw_p3)
+                elif p_signal == 'BULLISH':
+                    raw_p3 = abs(raw_p3)
+
+                p3_pattern = int(round(raw_p3))
+                loc_str = " @ S/R" if at_sr else ""
+                details.append(f"P3: {p3_pattern_name} ({p3_success_rate}%{loc_str}) ({p3_pattern:+d})")
+            else:
+                details.append("P3: No strong pattern (0)")
+        else:
+            details.append("P3: No patterns detected (0)")
+    except Exception as e:
+        logger.debug(f"P3 pattern error for {pair}: {e}")
+        details.append("P3: Error (0)")
+
+    # ── P4: S/R Touch-Count Exhaustion (±7 pts) ──────────────────────────────
+    # Inverted-U model: 1st ~53%, 2nd ~62%, 3rd ~68%, 4th ~63%, 5th+ ~52%
+    try:
+        if n >= 20:
+            sr_data = calculate_support_resistance(highs, lows, closes)
+            atr_val = tech.get('atr') or DEFAULT_ATR.get(pair, 0.005)
+
+            if sr_data and atr_val > 0:
+                ns = sr_data.get('nearest_support', 0)
+                nr = sr_data.get('nearest_resistance', 0)
+
+                # Count touches of nearest support
+                sup_touches = 0
+                if ns and ns > 0:
+                    tol = atr_val * 0.5
+                    for i in range(-min(50, n), 0):
+                        if abs(lows[i] - ns) < tol:
+                            sup_touches += 1
+
+                # Count touches of nearest resistance
+                res_touches = 0
+                if nr and nr > 0:
+                    tol = atr_val * 0.5
+                    for i in range(-min(50, n), 0):
+                        if abs(highs[i] - nr) < tol:
+                            res_touches += 1
+
+                # Determine which level is more relevant
+                dist_to_sup = abs(current_price - ns) / atr_val if ns and atr_val > 0 else 999
+                dist_to_res = abs(current_price - nr) / atr_val if nr and atr_val > 0 else 999
+
+                if dist_to_sup < dist_to_res and dist_to_sup < 2.0:
+                    p4_touch_count = sup_touches
+                    p4_level_type = 'SUPPORT'
+                    # Near support: bounce is bullish
+                    touch_prob = {1: 0.53, 2: 0.62, 3: 0.68, 4: 0.63}
+                    prob = touch_prob.get(min(sup_touches, 4), 0.52 if sup_touches >= 5 else 0.50)
+                    if sup_touches >= 5:
+                        # Exhaustion → expect break → bearish
+                        raw_p4 = -int((0.52 - 0.50) * 70)  # Small bearish
+                        raw_p4 = max(-4, raw_p4 - 3)  # Extra penalty for exhaustion
+                    else:
+                        raw_p4 = int((prob - 0.50) * 39)  # 0.68 → 7
+                    p4_sr_exhaust = max(-7, min(7, raw_p4))
+                    details.append(f"P4: Support {sup_touches} touches ({'HOLD' if sup_touches <= 4 else 'EXHAUST'}) ({p4_sr_exhaust:+d})")
+                elif dist_to_res < 2.0:
+                    p4_touch_count = res_touches
+                    p4_level_type = 'RESISTANCE'
+                    touch_prob = {1: 0.53, 2: 0.62, 3: 0.68, 4: 0.63}
+                    prob = touch_prob.get(min(res_touches, 4), 0.52 if res_touches >= 5 else 0.50)
+                    if res_touches >= 5:
+                        raw_p4 = int((0.52 - 0.50) * 70)
+                        raw_p4 = min(4, raw_p4 + 3)  # Expect break → bullish
+                    else:
+                        raw_p4 = -int((prob - 0.50) * 39)  # Resistance holds → bearish
+                    p4_sr_exhaust = max(-7, min(7, raw_p4))
+                    details.append(f"P4: Resistance {res_touches} touches ({'HOLD' if res_touches <= 4 else 'EXHAUST'}) ({p4_sr_exhaust:+d})")
+                else:
+                    details.append("P4: No nearby S/R (0)")
+            else:
+                details.append("P4: S/R data unavailable (0)")
+        else:
+            details.append("P4: Need 20+ candles (0)")
+    except Exception as e:
+        logger.debug(f"P4 S/R exhaustion error for {pair}: {e}")
+        details.append("P4: Error (0)")
+
+    # ── P5: Liquidity Sweep Reversal (±6 pts) ────────────────────────────────
+    # Detects when price sweeps prior swing high/low then closes back inside
+    try:
+        if n >= 20:
+            liq_data = detect_liquidity_zones(highs, lows, closes)
+            p5_swept = liq_data.get('liquidity_swept', False) if liq_data else False
+
+            if p5_swept and n >= 3:
+                # Check wick rejection on last candle
+                last_high = highs[-1]
+                last_low = lows[-1]
+                last_open = opens[-1]
+                last_close = closes[-1]
+                last_range = last_high - last_low if last_high > last_low else 0.0001
+
+                upper_wick = last_high - max(last_open, last_close)
+                lower_wick = min(last_open, last_close) - last_low
+
+                # Check if swept above (bearish sweep) or below (bullish sweep)
+                buy_liq = liq_data.get('buy_side_liquidity', [])
+                sell_liq = liq_data.get('sell_side_liquidity', [])
+
+                swept_above = False
+                swept_below = False
+                if buy_liq:
+                    for zone in buy_liq:
+                        lvl = zone.get('level', 0) if isinstance(zone, dict) else 0
+                        if lvl > 0 and last_high > lvl and last_close < lvl:
+                            swept_above = True
+                            break
+                if sell_liq:
+                    for zone in sell_liq:
+                        lvl = zone.get('level', 0) if isinstance(zone, dict) else 0
+                        if lvl > 0 and last_low < lvl and last_close > lvl:
+                            swept_below = True
+                            break
+
+                if swept_above:
+                    p5_wick_ratio = round(upper_wick / last_range, 2)
+                    if p5_wick_ratio > 0.6:
+                        p5_sweep = -6  # Strong bearish sweep
+                    elif p5_wick_ratio > 0.4:
+                        p5_sweep = -4
+                    else:
+                        p5_sweep = -2
+                    details.append(f"P5: Bearish sweep, wick {p5_wick_ratio:.0%} ({p5_sweep:+d})")
+                elif swept_below:
+                    p5_wick_ratio = round(lower_wick / last_range, 2)
+                    if p5_wick_ratio > 0.6:
+                        p5_sweep = 6  # Strong bullish sweep
+                    elif p5_wick_ratio > 0.4:
+                        p5_sweep = 4
+                    else:
+                        p5_sweep = 2
+                    details.append(f"P5: Bullish sweep, wick {p5_wick_ratio:.0%} ({p5_sweep:+d})")
+                else:
+                    details.append("P5: Sweep detected but no clear rejection (0)")
+            else:
+                details.append("P5: No liquidity sweep (0)")
+        else:
+            details.append("P5: Need 20+ candles (0)")
+    except Exception as e:
+        logger.debug(f"P5 sweep error for {pair}: {e}")
+        details.append("P5: Error (0)")
+
+    # ── P6: FVG Magnet Effect (±5 pts) ────────────────────────────────────────
+    # Unfilled FVGs act as price "magnets" — 65-70% fill within 20 bars
+    try:
+        if n >= 30:
+            fvg_data = detect_fair_value_gaps(opens, highs, lows, closes)
+
+            if fvg_data:
+                bullish_fvgs = fvg_data.get('bullish_fvg', [])
+                bearish_fvgs = fvg_data.get('bearish_fvg', [])
+                p6_unfilled_count = len(bullish_fvgs) + len(bearish_fvgs)
+
+                bull_below = 0  # Bullish FVGs below price → demand zones
+                bear_above = 0  # Bearish FVGs above price → supply zones
+
+                atr_val = tech.get('atr') or DEFAULT_ATR.get(pair, 0.005)
+                proximity_range = atr_val * 5  # Within 5 ATR
+
+                for fvg in bullish_fvgs:
+                    fvg_mid = (fvg.get('high', 0) + fvg.get('low', 0)) / 2
+                    if fvg_mid < current_price and (current_price - fvg_mid) < proximity_range:
+                        bull_below += 1
+
+                for fvg in bearish_fvgs:
+                    fvg_mid = (fvg.get('high', 0) + fvg.get('low', 0)) / 2
+                    if fvg_mid > current_price and (fvg_mid - current_price) < proximity_range:
+                        bear_above += 1
+
+                net = bull_below - bear_above
+                if net > 0:
+                    p6_fvg_direction = 'BULLISH'
+                    p6_fvg = min(5, net * 2)
+                elif net < 0:
+                    p6_fvg_direction = 'BEARISH'
+                    p6_fvg = max(-5, net * 2)
+                else:
+                    p6_fvg_direction = 'NEUTRAL'
+
+                if p6_fvg != 0:
+                    details.append(f"P6: FVG magnet — {bull_below} bull below, {bear_above} bear above ({p6_fvg:+d})")
+                else:
+                    details.append(f"P6: FVG balanced ({p6_unfilled_count} unfilled) (0)")
+            else:
+                details.append("P6: No FVG data (0)")
+        else:
+            details.append("P6: Need 30+ candles (0)")
+    except Exception as e:
+        logger.debug(f"P6 FVG error for {pair}: {e}")
+        details.append("P6: Error (0)")
+
+    # ── P7: Session Win Rate (±5 pts) ─────────────────────────────────────────
+    # Pair-specific session affinity
+    try:
+        kz_data = get_ict_killzones(pair)
+        killzone = kz_data.get('killzone', 'OFF_HOURS') if kz_data else 'OFF_HOURS'
+        kz_quality = kz_data.get('quality', 0) if kz_data else 0
+        p7_session_name = killzone
+
+        # Session-currency affinity map (based on historical win rates)
+        SESSION_AFFINITY = {
+            'LONDON': {'GBP': 80, 'EUR': 75, 'CHF': 65, 'USD': 55, 'AUD': 40, 'NZD': 35, 'JPY': 45, 'CAD': 45},
+            'NY_AM': {'USD': 80, 'CAD': 70, 'GBP': 60, 'EUR': 55, 'JPY': 50, 'CHF': 45, 'AUD': 40, 'NZD': 35},
+            'NY_PM': {'USD': 65, 'CAD': 55, 'JPY': 50, 'GBP': 45, 'EUR': 45, 'CHF': 40, 'AUD': 35, 'NZD': 30},
+            'ASIAN': {'JPY': 75, 'AUD': 70, 'NZD': 65, 'USD': 40, 'GBP': 30, 'EUR': 35, 'CHF': 30, 'CAD': 35},
+            'LONDON_CLOSE': {'GBP': 55, 'EUR': 50, 'USD': 50, 'CHF': 45, 'JPY': 40, 'CAD': 40, 'AUD': 35, 'NZD': 30}
+        }
+
+        # Map killzone names to affinity keys
+        kz_map = {
+            'LONDON_KZ': 'LONDON', 'NY_AM_KZ': 'NY_AM', 'NY_PM_KZ': 'NY_PM',
+            'ASIAN_RANGE': 'ASIAN', 'LONDON_CLOSE': 'LONDON_CLOSE'
+        }
+        session_key = kz_map.get(killzone, None)
+
+        if session_key and session_key in SESSION_AFFINITY:
+            base_ccy, quote_ccy = pair.split('/') if '/' in pair else (pair[:3], pair[3:])
+            affinity_map = SESSION_AFFINITY[session_key]
+            base_aff = affinity_map.get(base_ccy, 35)
+            quote_aff = affinity_map.get(quote_ccy, 35)
+            # Combined: session match (60%) + killzone quality (40%)
+            session_match = max(base_aff, quote_aff)
+            p7_affinity = int(session_match * 0.6 + kz_quality * 0.4)
+
+            if p7_affinity >= 70:
+                p7_session = 5
+            elif p7_affinity >= 55:
+                p7_session = 3
+            elif p7_affinity >= 40:
+                p7_session = 1
+            elif p7_affinity < 15:
+                p7_session = -3
+            else:
+                p7_session = 0
+
+            details.append(f"P7: {session_key} session, {pair.split('/')[0]} affinity {session_match} ({p7_session:+d})")
+        else:
+            if killzone == 'OFF_HOURS':
+                p7_session = -2
+                details.append(f"P7: Off-hours — low win rate ({p7_session:+d})")
+            else:
+                details.append(f"P7: Session {killzone} (0)")
+    except Exception as e:
+        logger.debug(f"P7 session error for {pair}: {e}")
+        details.append("P7: Error (0)")
+
+    # ── P8: Fibonacci Confluence Density (±5 pts) ─────────────────────────────
+    # Multiple fib levels clustering at same price → high-probability zone
+    try:
+        if n >= 30:
+            # Find swing highs and swing lows using 5-bar fractal
+            swing_highs_list = []
+            swing_lows_list = []
+            lookback = min(50, n - 4)
+
+            for i in range(2, lookback):
+                idx = n - lookback + i
+                if idx >= 2 and idx < n - 2:
+                    if highs[idx] > highs[idx-1] and highs[idx] > highs[idx-2] and \
+                       highs[idx] > highs[idx+1] and highs[idx] > highs[idx+2]:
+                        swing_highs_list.append(highs[idx])
+                    if lows[idx] < lows[idx-1] and lows[idx] < lows[idx-2] and \
+                       lows[idx] < lows[idx+1] and lows[idx] < lows[idx+2]:
+                        swing_lows_list.append(lows[idx])
+
+            # Take up to 3 most recent of each
+            swing_highs_list = sorted(set(swing_highs_list), reverse=True)[:3]
+            swing_lows_list = sorted(set(swing_lows_list))[:3]
+
+            fib_ratios = [0.236, 0.382, 0.500, 0.618, 0.786]
+            fib_levels = []
+
+            for sh in swing_highs_list:
+                for sl in swing_lows_list:
+                    if sh > sl:
+                        diff = sh - sl
+                        for ratio in fib_ratios:
+                            fib_levels.append(sl + diff * ratio)  # Retracement up
+                            fib_levels.append(sh - diff * ratio)  # Retracement down
+
+            if fib_levels:
+                atr_val = tech.get('atr') or DEFAULT_ATR.get(pair, 0.005)
+                cluster_tol = atr_val * 0.5
+
+                # Count fibs clustering near current price
+                nearby_fibs = [f for f in fib_levels if abs(f - current_price) < cluster_tol]
+                # Deduplicate by clustering
+                clusters = []
+                used = set()
+                for i, f1 in enumerate(nearby_fibs):
+                    if i in used:
+                        continue
+                    cluster = [f1]
+                    for j, f2 in enumerate(nearby_fibs):
+                        if j != i and j not in used and abs(f1 - f2) < cluster_tol * 0.5:
+                            cluster.append(f2)
+                            used.add(j)
+                    used.add(i)
+                    clusters.append(cluster)
+
+                p8_cluster_count = max(len(c) for c in clusters) if clusters else 0
+
+                if p8_cluster_count >= 4:
+                    # Determine direction: price below cluster = support (bullish)
+                    avg_cluster = sum(clusters[0]) / len(clusters[0]) if clusters else current_price
+                    if current_price < avg_cluster:
+                        p8_fib = 5
+                        p8_fib_direction = 'BULLISH'
+                    else:
+                        p8_fib = -5
+                        p8_fib_direction = 'BEARISH'
+                elif p8_cluster_count >= 3:
+                    avg_cluster = sum(clusters[0]) / len(clusters[0]) if clusters else current_price
+                    if current_price < avg_cluster:
+                        p8_fib = 3
+                        p8_fib_direction = 'BULLISH'
+                    else:
+                        p8_fib = -3
+                        p8_fib_direction = 'BEARISH'
+                elif p8_cluster_count >= 2:
+                    avg_cluster = sum(clusters[0]) / len(clusters[0]) if clusters else current_price
+                    if current_price < avg_cluster:
+                        p8_fib = 2
+                        p8_fib_direction = 'BULLISH'
+                    else:
+                        p8_fib = -2
+                        p8_fib_direction = 'BEARISH'
+
+                if p8_fib != 0:
+                    details.append(f"P8: Fib confluence {p8_cluster_count} levels ({p8_fib_direction}) ({p8_fib:+d})")
+                else:
+                    details.append(f"P8: Weak fib confluence ({p8_cluster_count}) (0)")
+            else:
+                details.append("P8: No swing points for fibs (0)")
+        else:
+            details.append("P8: Need 30+ candles (0)")
+    except Exception as e:
+        logger.debug(f"P8 fib error for {pair}: {e}")
+        details.append("P8: Error (0)")
+
+    # ── Aggregate Score ───────────────────────────────────────────────────────
+    total_adj = p1_atr_cycle + p2_breakout + p3_pattern + p4_sr_exhaust + p5_sweep + p6_fvg + p7_session + p8_fib
+    score = max(10, min(90, 50 + total_adj))
+
+    if score >= 65:
+        signal = 'BULLISH'
+    elif score <= 35:
+        signal = 'BEARISH'
+    else:
+        signal = 'NEUTRAL'
+
+    return {
+        'score': round(score, 1),
+        'signal': signal,
+        'details': details,
+        # P1: ATR Cycle Phase
+        'p1_atr_cycle': p1_atr_cycle,
+        'p1_atr_ratio': p1_atr_ratio,
+        'p1_phase': p1_phase,
+        # P2: Consolidation Breakout
+        'p2_breakout': p2_breakout,
+        'p2_compression': p2_compression,
+        'p2_narrow_bars': p2_narrow_bars,
+        # P3: Candlestick Pattern
+        'p3_pattern': p3_pattern,
+        'p3_pattern_name': p3_pattern_name,
+        'p3_success_rate': p3_success_rate,
+        # P4: S/R Touch-Count
+        'p4_sr_exhaust': p4_sr_exhaust,
+        'p4_touch_count': p4_touch_count,
+        'p4_level_type': p4_level_type,
+        # P5: Liquidity Sweep
+        'p5_sweep': p5_sweep,
+        'p5_swept': p5_swept,
+        'p5_wick_ratio': p5_wick_ratio,
+        # P6: FVG Magnet
+        'p6_fvg': p6_fvg,
+        'p6_unfilled_count': p6_unfilled_count,
+        'p6_fvg_direction': p6_fvg_direction,
+        # P7: Session Win Rate
+        'p7_session': p7_session,
+        'p7_affinity': p7_affinity,
+        'p7_session_name': p7_session_name,
+        # P8: Fibonacci Confluence
+        'p8_fib': p8_fib,
+        'p8_cluster_count': p8_cluster_count,
+        'p8_fib_direction': p8_fib_direction
+    }
+
+
 def calculate_market_depth(pair, rate_data=None, tech_data=None):
     """
     v9.3.0: Market Depth Factor (10th factor group)
@@ -8712,7 +9307,7 @@ Respond in EXACT JSON format:
                         'flags': flags[:5] if flags else [],  # Limit to 5 flags
                         'recommended_direction': recommended_dir.upper() if isinstance(recommended_dir, str) else 'NEUTRAL',
                         'factors_checked': 11,
-                        'groups_checked': 10,  # v9.5.0: 10 factor groups
+                        'groups_checked': 11,  # v9.6.0: 11 factor groups
                         'factor_analysis': {
                             'strongest_bullish': factor_analysis.get('strongest_bullish', ''),
                             'strongest_bearish': factor_analysis.get('strongest_bearish', ''),
@@ -8796,9 +9391,10 @@ def detect_market_regime(adx, atr, current_price):
 
 def build_factor_groups(factors):
     """
-    v9.4.0: Merge 11 individual factors into 10 independent groups.
+    v9.6.0: Merge 11 individual factors into 11 independent groups.
     Groups: Trend/Momentum, Fundamental, Sentiment, Intermarket, Mean Reversion,
-            Calendar Risk, AI Synthesis, Currency Strength, Geopolitical Risk
+            Calendar Risk, AI Synthesis, Currency Strength, Probability,
+            Geopolitical Risk, Market Depth
     Eliminates correlation between Technical/MTF/Quantitative/Structure.
     """
     factor_groups = {}
@@ -12215,6 +12811,57 @@ def generate_signal(pair):
         }
 
         # ═══════════════════════════════════════════════════════════════════════════
+        # v9.6.0: PROBABILITY FACTOR (11th factor group)
+        # Empirical probability calibration — ATR cycles, breakout detection,
+        # Bulkowski patterns, S/R exhaustion, liquidity sweeps, FVG magnets,
+        # session affinity, fibonacci confluence
+        # ═══════════════════════════════════════════════════════════════════════════
+        try:
+            prob_data = calculate_probability_factor(pair, candles, opens, highs, lows, closes, tech, patterns, rate)
+        except Exception as prob_err:
+            logger.warning(f"Probability factor error for {pair}: {prob_err}")
+            prob_data = {'score': 50, 'signal': 'NEUTRAL', 'details': ['Error - using neutral'],
+                         'p1_atr_cycle': 0, 'p1_atr_ratio': 0, 'p1_phase': 'NORMAL',
+                         'p2_breakout': 0, 'p2_compression': 0, 'p2_narrow_bars': 0,
+                         'p3_pattern': 0, 'p3_pattern_name': 'NONE', 'p3_success_rate': 0,
+                         'p4_sr_exhaust': 0, 'p4_touch_count': 0, 'p4_level_type': 'NONE',
+                         'p5_sweep': 0, 'p5_swept': False, 'p5_wick_ratio': 0,
+                         'p6_fvg': 0, 'p6_unfilled_count': 0, 'p6_fvg_direction': 'NEUTRAL',
+                         'p7_session': 0, 'p7_affinity': 0, 'p7_session_name': 'UNKNOWN',
+                         'p8_fib': 0, 'p8_cluster_count': 0, 'p8_fib_direction': 'NEUTRAL'}
+        prob_weight = COMMODITY_FACTOR_WEIGHTS.get('probability', 6) if is_commodity(pair) else FACTOR_GROUP_WEIGHTS.get('probability', 7)
+        factor_groups['probability'] = {
+            'score': prob_data['score'],
+            'signal': prob_data['signal'],
+            'weight': prob_weight,
+            'details': prob_data.get('details', []),
+            'p1_atr_cycle': prob_data.get('p1_atr_cycle', 0),
+            'p1_atr_ratio': prob_data.get('p1_atr_ratio', 0),
+            'p1_phase': prob_data.get('p1_phase', 'NORMAL'),
+            'p2_breakout': prob_data.get('p2_breakout', 0),
+            'p2_compression': prob_data.get('p2_compression', 0),
+            'p2_narrow_bars': prob_data.get('p2_narrow_bars', 0),
+            'p3_pattern': prob_data.get('p3_pattern', 0),
+            'p3_pattern_name': prob_data.get('p3_pattern_name', 'NONE'),
+            'p3_success_rate': prob_data.get('p3_success_rate', 0),
+            'p4_sr_exhaust': prob_data.get('p4_sr_exhaust', 0),
+            'p4_touch_count': prob_data.get('p4_touch_count', 0),
+            'p4_level_type': prob_data.get('p4_level_type', 'NONE'),
+            'p5_sweep': prob_data.get('p5_sweep', 0),
+            'p5_swept': prob_data.get('p5_swept', False),
+            'p5_wick_ratio': prob_data.get('p5_wick_ratio', 0),
+            'p6_fvg': prob_data.get('p6_fvg', 0),
+            'p6_unfilled_count': prob_data.get('p6_unfilled_count', 0),
+            'p6_fvg_direction': prob_data.get('p6_fvg_direction', 'NEUTRAL'),
+            'p7_session': prob_data.get('p7_session', 0),
+            'p7_affinity': prob_data.get('p7_affinity', 0),
+            'p7_session_name': prob_data.get('p7_session_name', 'UNKNOWN'),
+            'p8_fib': prob_data.get('p8_fib', 0),
+            'p8_cluster_count': prob_data.get('p8_cluster_count', 0),
+            'p8_fib_direction': prob_data.get('p8_fib_direction', 'NEUTRAL')
+        }
+
+        # ═══════════════════════════════════════════════════════════════════════════
         # v9.2.4: SMART MONEY CONCEPTS (SMC) ANALYSIS
         # Order Blocks, Liquidity Zones, Session Timing
         # ═══════════════════════════════════════════════════════════════════════════
@@ -12296,7 +12943,7 @@ def generate_signal(pair):
             scale_factor = 100 / total_weight
             regime_weights = {k: round(v * scale_factor, 1) for k, v in regime_weights.items()}
 
-        # Calculate weighted composite from 10 groups
+        # Calculate weighted composite from 11 groups
         composite_score = 0
         available_weight = 0
 
@@ -13165,7 +13812,7 @@ def generate_signal(pair):
                 category = cat
                 break
         
-        # v9.4.0: Factor grid for display — 10 independent groups
+        # v9.6.0: Factor grid for display — 11 independent groups
         factor_grid = {
             'TREND': factor_groups.get('trend_momentum', {}).get('signal', 'NEUTRAL').lower(),
             'FUND': factor_groups.get('fundamental', {}).get('signal', 'NEUTRAL').lower(),
@@ -13175,6 +13822,7 @@ def generate_signal(pair):
             'CAL': factor_groups.get('calendar_risk', {}).get('signal', 'NEUTRAL').lower(),
             'AI': factor_groups.get('ai_synthesis', {}).get('signal', 'NEUTRAL').lower(),
             'C.STR': factor_groups.get('currency_strength', {}).get('signal', 'NEUTRAL').lower(),
+            'PROB': factor_groups.get('probability', {}).get('signal', 'NEUTRAL').lower(),
             'GEO': factor_groups.get('geopolitical_risk', {}).get('signal', 'NEUTRAL').lower(),
             'DEPTH': factor_groups.get('market_depth', {}).get('signal', 'NEUTRAL').lower()
         }
@@ -13551,8 +14199,8 @@ def run_system_audit():
     # SCORING METHODOLOGY DOCUMENTATION
     # ═══════════════════════════════════════════════════════════════════════════
     audit['scoring_methodology'] = {
-        'version': '9.5.0 PRO',
-        'description': 'v9.5.0 — 10 factor groups, enhanced T&M (10 sub-components), enhanced Fundamental (FRED macro engine: yield curve, CPI/employment/payroll momentum, rate trajectory, fundamental news), dynamic intermarket baselines, magnitude currency strength, cross-pair correlation, triangle deviation, 10-gate quality filter, 50 instruments',
+        'version': '9.6.0 PRO',
+        'description': 'v9.6.0 — 11 factor groups (added Probability: ATR cycles, breakout detection, Bulkowski patterns, S/R exhaustion, liquidity sweeps, FVG magnets, session affinity, fibonacci confluence), enhanced T&M (10 sub-components), FRED macro engine, dynamic intermarket baselines, magnitude currency strength, cross-pair correlation, 10-gate quality filter, 50 instruments',
         'score_range': {
             'min': 5,
             'max': 95,
@@ -13560,32 +14208,33 @@ def run_system_audit():
             'bullish_threshold': 60,
             'bearish_threshold': 40
         },
-        'total_factor_groups': 10,
+        'total_factor_groups': 11,
         'total_weight': 100,
         'factor_groups': {
-            'trend_momentum': {'weight': 22, 'sources': 'Technical (RSI/MACD/Stoch/CCI/Divergence/Patterns/ROC/EMA/Squeeze/Volume + ADX multiplier) 60% + MTF (H1/H4/D1) 40% — #1 return driver'},
-            'fundamental': {'weight': 14, 'sources': 'v9.5.0: Rate diff + Yield curve + CPI/Employment/Payroll momentum + Rate change trajectory + Fundamental news (13 FRED series, 3 historical lookups)'},
-            'mean_reversion': {'weight': 12, 'sources': 'v9.5.0: Quantitative (Z-Score/Bollinger/Triangle + Z-Momentum/EMA Distance/RSI Confluence/Volume Extremes) 55% + Structure (S/R/Pivot/Fib/ADX + Order Blocks/FVGs/Liquidity Zones/Confluence) 45%'},
-            'sentiment': {'weight': 11, 'sources': 'v9.5.0: IG/Saxo retail + Finnhub/RSS/Yahoo news + COT institutional + 8 sub-components (VIX fear gauge, retail extreme, news velocity, price divergence, COT confirmation, sentiment momentum, source agreement, commodity regime)'},
-            'intermarket': {'weight': 10, 'sources': 'v9.5.0: DXY/Gold/Oil/Yields/VIX base + 7 sub-components (VIX momentum, yield curve risk, correlation confirmation, SPX equity proxy via AUD/USD, gold-oil ratio regime, DXY-VIX divergence 4-regime, multi-asset momentum agreement)'},
-            'ai_synthesis': {'weight': 9, 'sources': 'v9.5.0: GPT-4o-mini with enriched pair-specific context (price action, extended technicals, structure levels, carry trade, calendar) + 10 sub-components A1-A10 (confidence scaling, trade quality, risk severity, validation, alignment, drivers, direction match, data quality, conviction alignment, pair insight quality) max_tokens=1000 temperature=0.2'},
+            'trend_momentum': {'weight': 20, 'sources': 'Technical (RSI/MACD/Stoch/CCI/Divergence/Patterns/ROC/EMA/Squeeze/Volume + ADX multiplier) 60% + MTF (H1/H4/D1) 40% — #1 return driver'},
+            'fundamental': {'weight': 13, 'sources': 'v9.5.0: Rate diff + Yield curve + CPI/Employment/Payroll momentum + Rate change trajectory + Fundamental news (13 FRED series, 3 historical lookups)'},
+            'mean_reversion': {'weight': 11, 'sources': 'v9.5.0: Quantitative (Z-Score/Bollinger/Triangle + Z-Momentum/EMA Distance/RSI Confluence/Volume Extremes) 55% + Structure (S/R/Pivot/Fib/ADX + Order Blocks/FVGs/Liquidity Zones/Confluence) 45%'},
+            'sentiment': {'weight': 10, 'sources': 'v9.5.0: IG/Saxo retail + Finnhub/RSS/Yahoo news + COT institutional + 8 sub-components (VIX fear gauge, retail extreme, news velocity, price divergence, COT confirmation, sentiment momentum, source agreement, commodity regime)'},
+            'intermarket': {'weight': 9, 'sources': 'v9.5.0: DXY/Gold/Oil/Yields/VIX base + 7 sub-components (VIX momentum, yield curve risk, correlation confirmation, SPX equity proxy via AUD/USD, gold-oil ratio regime, DXY-VIX divergence 4-regime, multi-asset momentum agreement)'},
+            'ai_synthesis': {'weight': 8, 'sources': 'v9.5.0: GPT-4o-mini with enriched pair-specific context (price action, extended technicals, structure levels, carry trade, calendar) + 10 sub-components A1-A10 (confidence scaling, trade quality, risk severity, validation, alignment, drivers, direction match, data quality, conviction alignment, pair insight quality) max_tokens=1000 temperature=0.2'},
             'currency_strength': {'weight': 8, 'sources': 'v9.4.0: 50-instrument analysis — confirmation tool. v9.5.0: Commodities get Supply & Demand (7%) with 7 sub-components (supply zones, FVG imbalance, real yields, EIA inventory, commodity ratios, DXY momentum, supply disruption)'},
+            'probability': {'weight': 7, 'sources': 'v9.6.0: 8 sub-components — P1 ATR cycle phase (±8), P2 consolidation breakout (±8), P3 Bulkowski candlestick success (±7), P4 S/R touch-count exhaustion (±7), P5 liquidity sweep reversal (±6), P6 FVG magnet effect (±5), P7 session win rate (±5), P8 fibonacci confluence density (±5). Max ±51 raw budget, clamped [10,90].'},
             'calendar_risk': {'weight': 6, 'sources': 'Economic events + Seasonality — gate/filter role'},
             'geopolitical_risk': {'weight': 4, 'sources': 'v9.5.0: 65+ keywords across 5 tiers + 4 dedicated geo RSS feeds (Reuters/BBC/NYT/Al Jazeera) + 7 sub-components (event category severity, escalation detection, currency vulnerability, safe-haven flows, commodity supply disruption, news velocity, VIX correlation)'},
             'market_depth': {'weight': 4, 'sources': 'v9.5.0: Smart depth with 7 sub-components (volume profile, order block density, liquidity zone density, spread dynamics, session-pair affinity, volume-price confluence, ATR regime detection) + base spread/session/liquidity/ATR'}
         },
         'commodity_weights': {
-            'description': 'v9.4.0: Separate weight profile for 5 commodities (XAU, XAG, XPT, WTI, BRENT)',
-            'trend_momentum': 22, 'intermarket': 15, 'mean_reversion': 11,
-            'sentiment': 10, 'fundamental': 8, 'ai_synthesis': 8,
-            'geopolitical_risk': 8, 'calendar_risk': 7, 'supply_demand': 7, 'market_depth': 4,
+            'description': 'v9.6.0: Separate weight profile for 5 commodities (XAU, XAG, XPT, WTI, BRENT)',
+            'trend_momentum': 21, 'intermarket': 14, 'mean_reversion': 10,
+            'sentiment': 9, 'fundamental': 7, 'ai_synthesis': 8,
+            'geopolitical_risk': 7, 'calendar_risk': 7, 'supply_demand': 7, 'probability': 6, 'market_depth': 4,
             'note': 'v9.5.0: Supply & Demand (7%) enhanced with 7 sub-components: SD1 supply/demand zones (±8), SD2 fair value gap imbalance (±6), SD3 real yield impact (±8 metals), SD4 EIA inventory trend (±8 oil), SD5 cross-commodity ratios (±7), SD6 DXY momentum (±6), SD7 supply disruption signal (±6). Max ±49 raw budget, clamped [10,90].'
         },
         'quality_gates': {
             'description': '8 of 10 gates must pass for LONG/SHORT signal, otherwise NEUTRAL. G3/G5/G8 are MANDATORY.',
             'gates': [
                 {'id': 'G1', 'rule': 'Score >= 60 (LONG) or <= 40 (SHORT)'},
-                {'id': 'G2', 'rule': '>= 3 of 10 groups agree on direction'},
+                {'id': 'G2', 'rule': '>= 3 of 11 groups agree on direction'},
                 {'id': 'G3', 'rule': 'MANDATORY — Trend & Momentum + EMA must CONFIRM direction (score > 52 for LONG, < 48 for SHORT)', 'mandatory': True},
                 {'id': 'G4', 'rule': 'R:R >= 1.3:1'},
                 {'id': 'G5', 'rule': 'MANDATORY — No high-impact calendar event imminent', 'mandatory': True},
@@ -13598,7 +14247,7 @@ def run_system_audit():
         },
         'conviction_metric': {
             'description': 'Separate metric (not score amplifier): breadth x strength',
-            'breadth': 'Fraction of 10 groups agreeing on direction (0-1)',
+            'breadth': 'Fraction of 11 groups agreeing on direction (0-1)',
             'strength': 'Average deviation of agreeing groups from 50',
             'scale': '0-100',
             'labels': ['LOW (<30)', 'MODERATE (30-50)', 'HIGH (50-70)', 'VERY HIGH (70+)']
@@ -13616,7 +14265,7 @@ def run_system_audit():
     }
     
     # ═══════════════════════════════════════════════════════════════════════════
-    # 13 FACTOR DETAILS — individual factors merged into 10 groups (v9.4.0)
+    # 13 FACTOR DETAILS — individual factors merged into 11 groups (v9.6.0)
     # ═══════════════════════════════════════════════════════════════════════════
     audit['factor_details'] = {
         'technical': {
@@ -14425,7 +15074,7 @@ def run_system_audit():
         'factor_group_weights': FACTOR_GROUP_WEIGHTS,
         'features': [
             '50 Instruments (45 Forex + 5 Commodities)',
-            '10-Group Gated Scoring (v9.4.0)',
+            '11-Group Gated Scoring (v9.6.0)',
             '10-Gate Quality Filter (G3/G5/G8 Mandatory)',
             'ICT Smart Money Concepts (SMC)',
             'Market Structure (BOS/CHoCH)',
@@ -14541,7 +15190,7 @@ def run_system_audit():
             'structure': 'Swing high/low detection + pivot calculations',
             'calendar': 'Multi-tier economic calendar + Seasonality patterns (month/quarter-end flows)',
             'options': '25-delta risk reversals + Put/Call ratios (price volatility proxy)',
-            'confluence': 'Factor agreement analysis (feeds into 10-group scoring v9.4.0)'
+            'confluence': 'Factor agreement analysis (feeds into 11-group scoring v9.6.0)'
         },
         'calibration_notes': {
             'score_range': '5-95 (proper differentiation)',
@@ -15093,8 +15742,8 @@ Issues:
 {chr(10).join(issues_summary)}
 
 System context:
-- Version: 9.4.0 PRO
-- 10-Group Gated Scoring with 8 Quality Gates
+- Version: 9.6.0 PRO
+- 11-Group Gated Scoring with 10 Quality Gates
 - 50 Instruments (45 Forex + 5 Commodities)
 - Data sources: Polygon, IG Markets, Finnhub, FRED, OpenAI
 
@@ -15190,14 +15839,14 @@ def run_startup_health_check():
 @app.route('/api-info')
 def api_info():
     return jsonify({
-        'name': 'MEGA FOREX v9.4.0 PRO - AI Enhanced',
-        'version': '9.4.0',
+        'name': 'MEGA FOREX v9.6.0 PRO - AI Enhanced',
+        'version': '9.6.0',
         'status': 'operational',
         'pairs': len(ALL_INSTRUMENTS),
         'factor_groups': len(FACTOR_GROUP_WEIGHTS),
         'features': [
             '50 Instruments (45 Forex + 5 Commodities)',
-            '10-Group Gated Scoring with 10-Gate Quality Filter (v9.4.0) + ICT SMC',
+            '11-Group Gated Scoring with 10-Gate Quality Filter (v9.6.0) + ICT SMC',
             'Conviction Metric + Dynamic Regime Weights',
             '90-Day Signal Evaluation & Historical Accuracy',
             'Multi-Source News (Finnhub + RSS)',
@@ -15670,17 +16319,18 @@ def weights_endpoint():
 
 @app.route('/weights/reset')
 def reset_weights():
-    """v9.4.0: Reset to research-backed 10 factor group weights"""
+    """v9.6.0: Reset to research-backed 11 factor group weights"""
     global FACTOR_GROUP_WEIGHTS
     FACTOR_GROUP_WEIGHTS = {
-        'trend_momentum': 22,     # #1 return driver (CME, Quantpedia research)
-        'fundamental': 14,        # #2 FX factor — carry trade (SSRN)
-        'sentiment': 11,          # Confirmation + alpha booster
-        'intermarket': 10,        # DXY, Gold, Yields, Oil correlations
-        'mean_reversion': 12,     # Combined with momentum = best FX strategy
+        'trend_momentum': 20,     # #1 return driver (CME, Quantpedia research)
+        'fundamental': 13,        # #2 FX factor — carry trade (SSRN)
+        'sentiment': 10,          # Confirmation + alpha booster
+        'intermarket': 9,         # DXY, Gold, Yields, Oil correlations
+        'mean_reversion': 11,     # Combined with momentum = best FX strategy
         'calendar_risk': 6,       # Gate/filter role
-        'ai_synthesis': 9,        # Synthesis tool
+        'ai_synthesis': 8,        # Synthesis tool
         'currency_strength': 8,   # Confirmation tool
+        'probability': 7,         # Empirical probability calibration
         'geopolitical_risk': 4,   # Tail-risk filter (IMF 2025)
         'market_depth': 4         # Trade quality filter
     }
@@ -15881,7 +16531,7 @@ def fix_system_issues():
         if total_fx != 100 or total_cmd != 100:
             fixes_failed.append(f'Weight totals incorrect: FX={total_fx}, CMD={total_cmd}')
         else:
-            fixes_applied.append(f'Weight configuration OK: FX=100%, CMD=100% (10 groups each)')
+            fixes_applied.append(f'Weight configuration OK: FX=100%, CMD=100% (11 groups each)')
     except Exception as e:
         fixes_failed.append(f'Weight check failed: {str(e)[:50]}')
 
@@ -17195,14 +17845,14 @@ def run_background_health_check():
     thread.start()
 
 run_background_health_check()
-logger.info("🚀 MEGA FOREX v9.4.0 PRO - AI ENHANCED initialized")
+logger.info("🚀 MEGA FOREX v9.6.0 PRO - AI ENHANCED initialized")
 
 if __name__ == '__main__':
     print("=" * 70)
-    print("      MEGA FOREX v9.4.0 PRO - AI ENHANCED SYSTEM")
+    print("      MEGA FOREX v9.6.0 PRO - AI ENHANCED SYSTEM")
     print("=" * 70)
     print(f"  Instruments:     {len(ALL_INSTRUMENTS)} ({len(FOREX_PAIRS)} Forex + {len(COMMODITY_PAIRS)} Commodities)")
-    print(f"  Factor Groups:   10 (merged from 11 individual factors)")
+    print(f"  Factor Groups:   11 (v9.6.0: added Probability)")
     print(f"  Quality Gates:   10 (G3/G5/G8 mandatory)")
     print(f"  Database:        {DATABASE_PATH}")
     print(f"  Polygon API:     {'✓' if POLYGON_API_KEY else '✗'}")
@@ -17219,9 +17869,9 @@ if __name__ == '__main__':
     print(f"  API Ninjas:      {'✓ (Oil prices)' if API_NINJAS_KEY else '✗ (Optional)'}")
     print(f"  EIA Open Data:   {'✓ (Oil inventory/supply)' if EIA_API_KEY else '✗ (Optional)'}")
     print("=" * 70)
-    print("  v9.4.0 PRO FEATURES:")
+    print("  v9.6.0 PRO FEATURES:")
     print(f"    ✨ {len(ALL_INSTRUMENTS)} Instruments ({len(FOREX_PAIRS)} Forex + {len(COMMODITY_PAIRS)} Commodities)")
-    print("    ✨ 10-Group Scoring (11 factors, 10 groups)")
+    print("    ✨ 11-Group Scoring (Probability factor added v9.6.0)")
     print("    ✨ 10-Gate Quality Filter (G3 Trend, G5 Calendar, G8 Data = MANDATORY)")
     print("    ✨ Dynamic Regime Weights (trending/ranging/volatile/quiet)")
     print("    ✨ 90-Day Signal Evaluation & Historical Accuracy Tracking")

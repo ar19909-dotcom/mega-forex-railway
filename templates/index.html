@@ -33,7 +33,7 @@
     <!-- iOS Splash Screens -->
     <link rel="apple-touch-startup-image" href="/static/icon-512.png">
 
-    <title>MEGA FOREX v9.5.0 PRO - AI Enhanced Trading Dashboard</title>
+    <title>MEGA FOREX v9.6.0 PRO - AI Enhanced Trading Dashboard</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
@@ -2553,7 +2553,7 @@
 
     <!-- Header -->
     <header class="header">
-        <div class="logo">MEGA<span>FOREX</span> v9.5.0 <span style="color: var(--accent-green); font-size: 0.7em;">PRO</span></div>
+        <div class="logo">MEGA<span>FOREX</span> v9.6.0 <span style="color: var(--accent-green); font-size: 0.7em;">PRO</span></div>
         <div class="header-stats">
             <div class="stat-item">
                 <div class="stat-value" id="total-pairs">50</div>
@@ -2783,7 +2783,7 @@
         
         <!-- Weights Tab -->
         <div class="tab-content" id="tab-weights">
-            <h2 style="margin-bottom: 1rem;">⚖️ Factor Group Weights (v9.5.0)</h2>
+            <h2 style="margin-bottom: 1rem;">⚖️ Factor Group Weights (v9.6.0)</h2>
             <div class="weights-editor" id="weights-editor">
                 <div class="loading"><div class="spinner"></div>Loading weights...</div>
             </div>
@@ -3496,7 +3496,7 @@
                             // 7. Bottom bar: AI says + Factors + Groups
                             '<div class="ai-panel-footer">' +
                             '<div class="ai-verdict"><span class="ai-verdict-label">AI says: </span><span class="ai-verdict-dir" style="color:' + aiDirColor + ';background:' + aiDirColor + '22;">' + aiDirDisplay + '</span></div>' +
-                            '<span class="ai-footer-meta">Factors: <strong>' + (aiVal.factors_checked || 11) + '</strong> | Groups: <strong>' + (aiVal.groups_checked || 10) + '</strong></span>' +
+                            '<span class="ai-footer-meta">Factors: <strong>' + (aiVal.factors_checked || 11) + '</strong> | Groups: <strong>' + (aiVal.groups_checked || 11) + '</strong></span>' +
                             '</div>' +
                             // 8. Flags (if any)
                             flagsHtml +
@@ -3753,7 +3753,7 @@
                         </div>
 
                         <!-- FACTOR GROUPS TABLE -->
-                        <h4 style="margin-bottom:0.5rem;">Factor Groups (10 Groups)</h4>
+                        <h4 style="margin-bottom:0.5rem;">Factor Groups (11 Groups)</h4>
                         <table class="analyzer-factor-table">
                             <thead>
                                 <tr><th>Group</th><th>Weight</th><th>Score</th><th>Signal</th><th>Risk</th></tr>
@@ -4317,12 +4317,12 @@
                     const editor = document.getElementById('weights-editor');
                     const weights = data.weights;
 
-                    // v9.5.0: Commodity weight map (keyed by forex group name)
+                    // v9.6.0: Commodity weight map (keyed by forex group name)
                     const commodityMap = {
-                        'trend_momentum': 22, 'fundamental': 8, 'sentiment': 10,
-                        'intermarket': 15, 'mean_reversion': 11, 'calendar_risk': 7,
+                        'trend_momentum': 21, 'fundamental': 7, 'sentiment': 9,
+                        'intermarket': 14, 'mean_reversion': 10, 'calendar_risk': 7,
                         'ai_synthesis': 8, 'currency_strength': 7,
-                        'geopolitical_risk': 8, 'market_depth': 4
+                        'probability': 6, 'geopolitical_risk': 7, 'market_depth': 4
                     };
 
                     const groupLabels = {
@@ -4334,6 +4334,7 @@
                         'calendar_risk': 'Calendar Risk',
                         'ai_synthesis': 'AI Synthesis',
                         'currency_strength': 'Currency Strength',
+                        'probability': 'Probability',
                         'geopolitical_risk': 'Geopolitical Risk',
                         'market_depth': 'Market Depth'
                     };
@@ -4344,7 +4345,7 @@
                         name: groupLabels[key] || key,
                         fWeight: fxVal,
                         cWeight: commodityMap[key] || 0,
-                        cName: key === 'currency_strength' ? 'Supply & Demand' : null
+                        cName: key === 'currency_strength' ? 'Supply & Demand' : key === 'probability' ? 'Probability' : null
                     })).sort((a, b) => b.fWeight - a.fWeight);
 
                     const maxW = Math.max(...compData.map(g => Math.max(g.fWeight, g.cWeight)));
@@ -4467,7 +4468,7 @@
                                     <div class="label">Instruments</div>
                                 </div>
                                 <div class="result-card">
-                                    <div class="value">${data.system_info?.total_factor_groups || 10}</div>
+                                    <div class="value">${data.system_info?.total_factor_groups || 11}</div>
                                     <div class="label">Factor Groups</div>
                                 </div>
                                 <div class="result-card">
@@ -4525,7 +4526,7 @@
                                     <div class="label">Strength Label</div>
                                 </div>
                             </div>
-                            <h4 style="margin-top: 1rem;">v9.5.0 Factor Groups (10 Groups):</h4>
+                            <h4 style="margin-top: 1rem;">v9.6.0 Factor Groups (11 Groups):</h4>
                             <table class="data-table">
                                 <thead>
                                     <tr><th>Group</th><th>Weight</th><th>Score</th><th>Signal</th></tr>
@@ -4710,50 +4711,52 @@
                     const factors = data.factor_details;
                     container.innerHTML = `
                         <div class="audit-section">
-                            <h3>📖 Complete Scoring Methodology - v9.5.0 PRO (10-Gate Protected)</h3>
+                            <h3>📖 Complete Scoring Methodology - v9.6.0 PRO (10-Gate Protected)</h3>
                             <p style="color: var(--text-secondary); margin-bottom: 1rem;">
-                                This system merges 13 individual factors into <strong>10 independent groups</strong> (incl. Currency Strength, Geopolitical Risk + Market Depth) with <strong>regime-dynamic weights</strong>, a <strong>10-gate quality filter</strong> (incl. AI alignment + data quality), and a separate <strong>conviction metric</strong> (breadth x strength).
+                                This system merges 13 individual factors into <strong>11 independent groups</strong> (incl. Probability, Currency Strength, Geopolitical Risk + Market Depth) with <strong>regime-dynamic weights</strong>, a <strong>10-gate quality filter</strong> (incl. AI alignment + data quality), and a separate <strong>conviction metric</strong> (breadth x strength).
                                 <strong>50 instruments</strong> (45 Forex + 5 Commodities) with <strong>separate weight profiles</strong>.
                                 All calculations use <strong>100% REAL market data + AI analysis</strong>. <strong style="color: #ef4444;">3 gates are MANDATORY (G3 Trend, G5 Calendar, G8 Data)</strong>.
                             </p>
                         </div>
 
                         <div class="audit-section">
-                            <h3>📦 10 Factor Groups — Forex Weights (Regime-Weighted) - v9.5.0</h3>
+                            <h3>📦 11 Factor Groups — Forex Weights (Regime-Weighted) - v9.6.0</h3>
                             <table class="data-table">
                                 <thead><tr><th>Group</th><th>Forex Weight</th><th>Sources</th></tr></thead>
                                 <tbody>
-                                    <tr><td><strong>Trend & Momentum</strong></td><td style="font-weight: 600;">22%</td><td>#1 return driver — Technical (RSI/MACD/ADX) 60% + MTF 40%</td></tr>
-                                    <tr><td><strong>Fundamental</strong></td><td style="font-weight: 600;">14%</td><td>#2 FX factor — carry trade / interest rate diffs + FRED</td></tr>
-                                    <tr><td><strong>Mean Reversion</strong></td><td style="font-weight: 600;">12%</td><td>Combined with momentum = best FX strategy — Z-Score + Bollinger + S/R</td></tr>
-                                    <tr><td><strong>Sentiment</strong></td><td style="font-weight: 600;">11%</td><td>Confirmation + alpha booster — IG positioning 65% + Options 35%</td></tr>
-                                    <tr><td><strong>Intermarket</strong></td><td style="font-weight: 600;">10%</td><td>DXY, Gold, Yields, Oil correlations</td></tr>
-                                    <tr><td><strong>AI Synthesis</strong></td><td style="font-weight: 600;">9%</td><td>GPT synthesis tool — follows, doesn't lead</td></tr>
+                                    <tr><td><strong>Trend & Momentum</strong></td><td style="font-weight: 600;">20%</td><td>#1 return driver — Technical (RSI/MACD/ADX) 60% + MTF 40%</td></tr>
+                                    <tr><td><strong>Fundamental</strong></td><td style="font-weight: 600;">13%</td><td>#2 FX factor — carry trade / interest rate diffs + FRED</td></tr>
+                                    <tr><td><strong>Mean Reversion</strong></td><td style="font-weight: 600;">11%</td><td>Combined with momentum = best FX strategy — Z-Score + Bollinger + S/R</td></tr>
+                                    <tr><td><strong>Sentiment</strong></td><td style="font-weight: 600;">10%</td><td>Confirmation + alpha booster — IG positioning 65% + Options 35%</td></tr>
+                                    <tr><td><strong>Intermarket</strong></td><td style="font-weight: 600;">9%</td><td>DXY, Gold, Yields, Oil correlations</td></tr>
+                                    <tr><td><strong>AI Synthesis</strong></td><td style="font-weight: 600;">8%</td><td>GPT synthesis tool — follows, doesn't lead</td></tr>
                                     <tr><td><strong>Currency Strength</strong></td><td style="font-weight: 600; color: #a78bfa;">8%</td><td>Confirmation tool — 50-instrument buy strong/sell weak</td></tr>
+                                    <tr style="background: rgba(139, 92, 246, 0.15);"><td><strong>Probability</strong></td><td style="font-weight: 600; color: #a78bfa;">7%</td><td>ATR cycles, breakout, Bulkowski patterns, S/R exhaust, FVG, session, fib</td></tr>
                                     <tr><td><strong>Calendar Risk</strong></td><td style="font-weight: 600;">6%</td><td>Gate/filter role — events + seasonality</td></tr>
                                     <tr style="background: rgba(239, 68, 68, 0.15);"><td><strong>Geopolitical Risk</strong></td><td style="font-weight: 600; color: #ef4444;">4%</td><td>Tail-risk filter — war, sanctions, tensions (IMF 2025)</td></tr>
                                     <tr style="background: rgba(59, 130, 246, 0.15);"><td><strong>Market Depth</strong></td><td style="font-weight: 600; color: #3b82f6;">4%</td><td>Trade quality filter — spread, session, liquidity, ATR</td></tr>
                                 </tbody>
                             </table>
 
-                            <h3 style="margin-top: 1.5rem;">🏗️ 10 Factor Groups — Commodity Weights (v9.5.0)</h3>
+                            <h3 style="margin-top: 1.5rem;">🏗️ 11 Factor Groups — Commodity Weights (v9.6.0)</h3>
                             <table class="data-table">
                                 <thead><tr><th>Group</th><th>Commodity Weight</th><th>Sources</th></tr></thead>
                                 <tbody>
-                                    <tr><td><strong>Trend & Momentum</strong></td><td style="font-weight: 600; color: #f59e0b;">22%</td><td>#1 commodity factor — commodities trend harder than forex (EDHEC)</td></tr>
-                                    <tr><td><strong>Intermarket</strong></td><td style="font-weight: 600; color: #f59e0b;">15%</td><td>#2 commodity factor — gold/oil/DXY/yields correlations critical</td></tr>
-                                    <tr><td><strong>Mean Reversion</strong></td><td style="font-weight: 600;">11%</td><td>Z-Score, Bollinger %B + S/R structure</td></tr>
-                                    <tr><td><strong>Sentiment</strong></td><td style="font-weight: 600;">10%</td><td>COT positioning (weekly) + IG + commodity news</td></tr>
-                                    <tr style="background: rgba(239, 68, 68, 0.15);"><td><strong>Geopolitical Risk</strong></td><td style="font-weight: 600; color: #ef4444;">8%</td><td>IMF: geo stress directly drives gold, disrupts oil supply</td></tr>
-                                    <tr><td><strong>Fundamental</strong></td><td style="font-weight: 600;">8%</td><td>Slow-moving for commodities — DXY inverse, real yields</td></tr>
+                                    <tr><td><strong>Trend & Momentum</strong></td><td style="font-weight: 600; color: #f59e0b;">21%</td><td>#1 commodity factor — commodities trend harder than forex (EDHEC)</td></tr>
+                                    <tr><td><strong>Intermarket</strong></td><td style="font-weight: 600; color: #f59e0b;">14%</td><td>#2 commodity factor — gold/oil/DXY/yields correlations critical</td></tr>
+                                    <tr><td><strong>Mean Reversion</strong></td><td style="font-weight: 600;">10%</td><td>Z-Score, Bollinger %B + S/R structure</td></tr>
+                                    <tr><td><strong>Sentiment</strong></td><td style="font-weight: 600;">9%</td><td>COT positioning (weekly) + IG + commodity news</td></tr>
                                     <tr><td><strong>AI Synthesis</strong></td><td style="font-weight: 600;">8%</td><td>GPT-4o-mini commodity analysis — supports, doesn't lead</td></tr>
+                                    <tr style="background: rgba(239, 68, 68, 0.15);"><td><strong>Geopolitical Risk</strong></td><td style="font-weight: 600; color: #ef4444;">7%</td><td>IMF: geo stress directly drives gold, disrupts oil supply</td></tr>
+                                    <tr><td><strong>Fundamental</strong></td><td style="font-weight: 600;">7%</td><td>Slow-moving for commodities — DXY inverse, real yields</td></tr>
                                     <tr style="background: rgba(245, 158, 11, 0.15);"><td><strong>Supply & Demand</strong></td><td style="font-weight: 600; color: #f59e0b;">7%</td><td>EIA inventory, USD correlation, safe-haven demand</td></tr>
                                     <tr><td><strong>Calendar Risk</strong></td><td style="font-weight: 600;">7%</td><td>Essential — OPEC, EIA, crop reports</td></tr>
+                                    <tr style="background: rgba(139, 92, 246, 0.15);"><td><strong>Probability</strong></td><td style="font-weight: 600; color: #a78bfa;">6%</td><td>ATR cycles, breakout, Bulkowski patterns, S/R exhaust, FVG, session, fib</td></tr>
                                     <tr style="background: rgba(59, 130, 246, 0.15);"><td><strong>Market Depth</strong></td><td style="font-weight: 600; color: #3b82f6;">4%</td><td>Execution filter — commodities have good liquidity</td></tr>
                                 </tbody>
                             </table>
                             <p style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);">
-                                <strong>Smart AI Weight Adjustment</strong>: Weights shift dynamically based on regime detection (trending/ranging/volatile/quiet). Commodities get higher intermarket (15% vs 10%) and geopolitical_risk (8% vs 4%) — research-backed for swing/position trading.</p>
+                                <strong>Smart AI Weight Adjustment</strong>: Weights shift dynamically based on regime detection (trending/ranging/volatile/quiet). Commodities get higher intermarket (14% vs 9%) and geopolitical_risk (7% vs 4%) — research-backed for swing/position trading.</p>
                         </div>
 
                         <div class="audit-section">
@@ -4822,8 +4825,8 @@
                         
                         <div class="audit-section">
                             <details>
-                                <summary style="cursor: pointer; color: var(--accent-blue); font-size: 1.1rem; font-weight: 600;">📋 Individual Factor Details (13 Underlying Factors — merged into 10 groups above)</summary>
-                                <p style="color: var(--text-secondary); margin: 0.75rem 0; font-size: 0.85rem;">These 13 factors are the raw inputs that feed into the 10 factor groups. Click each to see scoring details.</p>
+                                <summary style="cursor: pointer; color: var(--accent-blue); font-size: 1.1rem; font-weight: 600;">📋 Individual Factor Details (13 Underlying Factors — merged into 11 groups above)</summary>
+                                <p style="color: var(--text-secondary); margin: 0.75rem 0; font-size: 0.85rem;">These 13 factors are the raw inputs that feed into the 11 factor groups. Click each to see scoring details.</p>
                         </div>
 
                         ${Object.entries(factors).map(([name, f]) => `
