@@ -8420,11 +8420,13 @@ def calculate_factor_scores(pair):
     
     # Extract price data for enhanced calculations
     if candles and len(candles) >= 5:
+        opens = [c['open'] for c in candles]
         closes = [c['close'] for c in candles]
         highs = [c['high'] for c in candles]
         lows = [c['low'] for c in candles]
     else:
         current = rate['mid'] if rate else 1.0
+        opens = [current] * 20
         closes = [current] * 20
         highs = [current * 1.001] * 20
         lows = [current * 0.999] * 20
@@ -9210,8 +9212,9 @@ def calculate_factor_scores(pair):
     }
     
     # ═══════════════════════════════════════════════════════════════════════════
-    # 5. QUANTITATIVE (8%) - Z-Score & Bollinger - EXPANDED
-    # Score range: 10-90
+    # 5. QUANTITATIVE (8%) - Z-Score, Bollinger, Triangle, Z-Momentum, EMA
+    #    Distance, RSI Confluence, Volume Extremes - ENHANCED v9.5.0
+    # Score range: 10-90 | ±86 raw → clamped [10, 90]
     # ═══════════════════════════════════════════════════════════════════════════
     zscore_data = calculate_zscore(closes, period=20)
     zscore = zscore_data['zscore']
@@ -9278,6 +9281,120 @@ def calculate_factor_scores(pair):
     except Exception:
         pass
 
+    # ── v9.5.0 MEAN REVERSION ENHANCEMENTS (M1-M4) ────────────────────────
+
+    # M1: Z-Score Momentum (±8 pts) — reverting from extreme is stronger
+    zscore_momentum = 0
+    try:
+        if len(closes) >= 25:
+            old_closes = closes[:-5]
+            if len(old_closes) >= 20:
+                old_mean = sum(old_closes[-20:]) / 20
+                old_std = (sum((c - old_mean) ** 2 for c in old_closes[-20:]) / 20) ** 0.5
+                if old_std > 0:
+                    old_zscore = (old_closes[-1] - old_mean) / old_std
+                    z_delta = zscore - old_zscore
+
+                    if zscore < -1.5 and z_delta > 0.3:
+                        zscore_momentum = 8   # Reverting from oversold
+                    elif zscore < -1.5 and z_delta > 0.1:
+                        zscore_momentum = 4   # Slowly reverting
+                    elif zscore > 1.5 and z_delta < -0.3:
+                        zscore_momentum = -8  # Reverting from overbought
+                    elif zscore > 1.5 and z_delta < -0.1:
+                        zscore_momentum = -4  # Slowly reverting
+                    elif zscore < -2.0 and z_delta < -0.2:
+                        zscore_momentum = 3   # Contrarian: deepening oversold
+                    elif zscore > 2.0 and z_delta > 0.2:
+                        zscore_momentum = -3  # Contrarian: deepening overbought
+        quant_score += zscore_momentum
+    except Exception:
+        zscore_momentum = 0
+
+    # M2: EMA Distance (±10 pts) — ATR-normalized distance from EMA20/50
+    ema_distance_adj = 0
+    try:
+        if len(closes) >= 50 and atr > 0:
+            # Calculate EMA20
+            ema20 = closes[-20]
+            alpha20 = 2.0 / 21.0
+            for c in closes[-20:]:
+                ema20 = alpha20 * c + (1 - alpha20) * ema20
+
+            # Calculate EMA50
+            ema50 = closes[-50]
+            alpha50 = 2.0 / 51.0
+            for c in closes[-50:]:
+                ema50 = alpha50 * c + (1 - alpha50) * ema50
+
+            # ATR-normalized distance from EMA20
+            dist_ema20 = (closes[-1] - ema20) / atr
+            ema20_adj = 0
+            if dist_ema20 > 2.5:
+                ema20_adj = -5   # Very stretched above → MR sell
+            elif dist_ema20 > 1.5:
+                ema20_adj = -3
+            elif dist_ema20 < -2.5:
+                ema20_adj = 5    # Very stretched below → MR buy
+            elif dist_ema20 < -1.5:
+                ema20_adj = 3
+
+            # ATR-normalized distance from EMA50
+            dist_ema50 = (closes[-1] - ema50) / atr
+            ema50_adj = 0
+            if dist_ema50 > 2.5:
+                ema50_adj = -5
+            elif dist_ema50 > 1.5:
+                ema50_adj = -3
+            elif dist_ema50 < -2.5:
+                ema50_adj = 5
+            elif dist_ema50 < -1.5:
+                ema50_adj = 3
+
+            ema_distance_adj = max(-10, min(10, ema20_adj + ema50_adj))
+        quant_score += ema_distance_adj
+    except Exception:
+        ema_distance_adj = 0
+
+    # M3: RSI Confluence (±6 pts) — RSI confirms Z-Score extreme
+    rsi_confluence = 0
+    try:
+        if zscore < -1.5 and rsi < 25:
+            rsi_confluence = 6    # Strong oversold confluence
+        elif zscore < -1.0 and rsi < 30:
+            rsi_confluence = 3    # Mild oversold confluence
+        elif zscore > 1.5 and rsi > 75:
+            rsi_confluence = -6   # Strong overbought confluence
+        elif zscore > 1.0 and rsi > 70:
+            rsi_confluence = -3   # Mild overbought confluence
+        quant_score += rsi_confluence
+    except Exception:
+        rsi_confluence = 0
+
+    # M4: Volume at Extremes (±7 pts) — capitulation/exhaustion detection
+    volume_extreme = 0
+    try:
+        if candles and len(candles) >= 20:
+            volumes = [c.get('volume', 0) for c in candles[-20:]]
+            avg_vol = sum(volumes) / len(volumes) if volumes else 0
+            curr_vol = candles[-1].get('volume', 0)
+
+            if avg_vol > 0 and curr_vol > 0:
+                vol_ratio = curr_vol / avg_vol
+                if zscore < -1.5 and vol_ratio > 2.0:
+                    volume_extreme = 7    # Capitulation selling
+                elif zscore < -1.5 and vol_ratio > 1.5:
+                    volume_extreme = 4    # Elevated selling
+                elif zscore > 1.5 and vol_ratio > 2.0:
+                    volume_extreme = -7   # Blow-off top
+                elif zscore > 1.5 and vol_ratio > 1.5:
+                    volume_extreme = -4   # Elevated buying
+        quant_score += volume_extreme
+    except Exception:
+        volume_extreme = 0
+
+    quant_score = max(10, min(90, quant_score))  # Final re-clamp after M1-M4
+
     factors['quantitative'] = {
         'score': round(quant_score, 1),
         'signal': 'BULLISH' if quant_score >= 58 else 'BEARISH' if quant_score <= 42 else 'NEUTRAL',
@@ -9286,7 +9403,11 @@ def calculate_factor_scores(pair):
             'zscore_mean': zscore_data['mean'],
             'bb_percent': bb_pct,
             'mean_reversion_signal': zscore_data['signal'],
-            'triangle_deviation': triangle_info
+            'triangle_deviation': triangle_info,
+            'zscore_momentum': zscore_momentum,
+            'ema_distance': ema_distance_adj,
+            'rsi_confluence': rsi_confluence,
+            'volume_extreme': volume_extreme
         }
     }
     
@@ -9321,8 +9442,9 @@ def calculate_factor_scores(pair):
     }
     
     # ═══════════════════════════════════════════════════════════════════════════
-    # 7. STRUCTURE (7%) - Enhanced v9.2.4 with Fibonacci Levels
-    # Score range: 10-90 with Fibonacci retracement analysis
+    # 7. STRUCTURE (7%) - S/R, Pivots, Fibonacci, ADX + Order Blocks, FVGs,
+    #    Liquidity Zones, S/R Confluence - ENHANCED v9.5.0
+    # Score range: 10-90 | ±97 raw → clamped [10, 90]
     # ═══════════════════════════════════════════════════════════════════════════
     sr_levels = calculate_support_resistance(highs, lows, closes, lookback=20)
 
@@ -9421,6 +9543,175 @@ def calculate_factor_scores(pair):
 
     structure_score = max(10, min(90, structure_score))
 
+    # ── v9.5.0 MEAN REVERSION ENHANCEMENTS (M5-M8) ────────────────────────
+
+    # M5: Order Block Integration (±15 pts) — wire existing detect_order_blocks()
+    ob_score_adj = 0
+    ob_detail = None
+    try:
+        if candles and len(candles) >= 55:
+            ob_data = detect_order_blocks(opens, highs, lows, closes, lookback=50)
+            current_price = closes[-1]
+
+            # Bullish OB: price near demand zone → buy signal
+            if ob_data.get('nearest_bullish_ob'):
+                ob = ob_data['nearest_bullish_ob']
+                dist_pct = (current_price - ob['high']) / current_price * 100
+                if 0 <= dist_pct < 0.5:
+                    proximity = 1.0 - (dist_pct / 0.5)
+                    strength_pts = (ob['strength'] / 100.0) * 15 * proximity
+                    if ob_data.get('in_discount'):
+                        strength_pts *= 1.2
+                    ob_score_adj += min(15, strength_pts)
+
+            # Bearish OB: price near supply zone → sell signal
+            if ob_data.get('nearest_bearish_ob'):
+                ob = ob_data['nearest_bearish_ob']
+                dist_pct = (ob['low'] - current_price) / current_price * 100
+                if 0 <= dist_pct < 0.5:
+                    proximity = 1.0 - (dist_pct / 0.5)
+                    strength_pts = (ob['strength'] / 100.0) * 15 * proximity
+                    if ob_data.get('in_premium'):
+                        strength_pts *= 1.2
+                    ob_score_adj -= min(15, strength_pts)
+
+            ob_score_adj = max(-15, min(15, ob_score_adj))
+            ob_detail = {
+                'signal': ob_data.get('ob_signal', 'NEUTRAL'),
+                'strength': ob_data.get('ob_strength', 0),
+                'in_discount': ob_data.get('in_discount', False),
+                'in_premium': ob_data.get('in_premium', False),
+                'score_adj': round(ob_score_adj, 1)
+            }
+        structure_score += ob_score_adj
+    except Exception:
+        ob_score_adj = 0
+
+    # M6: Fair Value Gap Integration (±12 pts) — wire existing detect_fair_value_gaps()
+    fvg_score_adj = 0
+    fvg_detail = None
+    try:
+        if candles and len(candles) >= 30:
+            fvg_data = detect_fair_value_gaps(opens, highs, lows, closes, lookback=30)
+            current_price = closes[-1]
+
+            # Bullish FVGs below price (magnet pull up → buy)
+            bullish_fvg_count = 0
+            for fvg in fvg_data.get('bullish_fvg', []):
+                dist_pct = (current_price - fvg['high']) / current_price * 100
+                if 0 < dist_pct < 0.3:
+                    size_mult = 1.0 if fvg.get('size', 0) > 0.2 else 0.6
+                    fvg_score_adj += 4 * size_mult
+                    bullish_fvg_count += 1
+
+            # Bearish FVGs above price (magnet pull down → sell)
+            bearish_fvg_count = 0
+            for fvg in fvg_data.get('bearish_fvg', []):
+                dist_pct = (fvg['low'] - current_price) / current_price * 100
+                if 0 < dist_pct < 0.3:
+                    size_mult = 1.0 if fvg.get('size', 0) > 0.2 else 0.6
+                    fvg_score_adj -= 4 * size_mult
+                    bearish_fvg_count += 1
+
+            fvg_score_adj = max(-12, min(12, fvg_score_adj))
+            fvg_detail = {
+                'signal': fvg_data.get('fvg_signal', 'NEUTRAL'),
+                'unfilled_count': fvg_data.get('unfilled_count', 0),
+                'bullish_near': bullish_fvg_count,
+                'bearish_near': bearish_fvg_count,
+                'score_adj': round(fvg_score_adj, 1)
+            }
+        structure_score += fvg_score_adj
+    except Exception:
+        fvg_score_adj = 0
+
+    # M7: Liquidity Zone Integration (±10 pts) — wire existing detect_liquidity_zones()
+    liq_score_adj = 0
+    liq_detail = None
+    try:
+        if candles and len(candles) >= 50:
+            liq_data = detect_liquidity_zones(highs, lows, closes, lookback=50)
+            current_price = closes[-1]
+
+            # Buy-side liquidity above price (sweep up expected → bearish)
+            if liq_data.get('nearest_buy_liquidity'):
+                bl = liq_data['nearest_buy_liquidity']
+                dist_pct = (bl['level'] - current_price) / current_price * 100
+                if 0 < dist_pct < 0.3:
+                    liq_score_adj -= 5
+
+            # Sell-side liquidity below price (sweep down expected → bullish)
+            if liq_data.get('nearest_sell_liquidity'):
+                sl_liq = liq_data['nearest_sell_liquidity']
+                dist_pct = (current_price - sl_liq['level']) / current_price * 100
+                if 0 < dist_pct < 0.3:
+                    liq_score_adj += 5
+
+            # Liquidity sweep reversal (just swept = reversal signal)
+            if liq_data.get('liquidity_swept'):
+                if len(closes) >= 2:
+                    if closes[-1] > closes[-2]:
+                        liq_score_adj += 5   # Swept down then reversed up
+                    else:
+                        liq_score_adj -= 5   # Swept up then reversed down
+
+            liq_score_adj = max(-10, min(10, liq_score_adj))
+            liq_detail = {
+                'signal': liq_data.get('liquidity_signal', 'NEUTRAL'),
+                'swept': liq_data.get('liquidity_swept', False),
+                'pdh': liq_data.get('pdh'),
+                'pdl': liq_data.get('pdl'),
+                'score_adj': round(liq_score_adj, 1)
+            }
+        structure_score += liq_score_adj
+    except Exception:
+        liq_score_adj = 0
+
+    # M8: S/R Confluence Bonus (±8 pts) — multi-level clustering
+    confluence_bonus = 0
+    try:
+        current_price = closes[-1] if closes else 1.0
+        all_levels = []
+
+        # Collect S/R levels
+        if sr_levels.get('nearest_support'):
+            all_levels.append(sr_levels['nearest_support'])
+        if sr_levels.get('nearest_resistance'):
+            all_levels.append(sr_levels['nearest_resistance'])
+
+        # Collect pivot levels
+        for key in ['s1', 's2', 'r1', 'r2', 'pivot']:
+            if pivot_data.get(key):
+                all_levels.append(pivot_data[key])
+
+        # Collect Fibonacci levels
+        for fib_key in ['0.236', '0.382', '0.5', '0.618', '0.786']:
+            all_levels.append(fib_levels[fib_key])
+
+        # Cluster detection: levels within 0.5% of each other AND near price (0.3%)
+        if all_levels and current_price > 0:
+            near_price = [l for l in all_levels if abs(l - current_price) / current_price < 0.003]
+
+            for ref_level in near_price:
+                cluster_count = sum(1 for l in all_levels if abs(l - ref_level) / current_price < 0.005)
+                if cluster_count >= 3:
+                    if ref_level < current_price:
+                        confluence_bonus = max(confluence_bonus, 8)
+                    else:
+                        confluence_bonus = min(confluence_bonus, -8)
+                    break
+                elif cluster_count >= 2 and confluence_bonus == 0:
+                    if ref_level < current_price:
+                        confluence_bonus = 4
+                    else:
+                        confluence_bonus = -4
+
+        structure_score += confluence_bonus
+    except Exception:
+        confluence_bonus = 0
+
+    structure_score = max(10, min(90, structure_score))  # Re-clamp after M5-M8
+
     factors['structure'] = {
         'score': round(structure_score, 1),
         'signal': 'BULLISH' if structure_score >= 58 else 'BEARISH' if structure_score <= 42 else 'NEUTRAL',
@@ -9442,7 +9733,11 @@ def calculate_factor_scores(pair):
             'fib_0.5': round(fib_levels['0.5'], 5),
             'fib_0.618': round(fib_levels['0.618'], 5),
             'swing_high': round(swing_high, 5),
-            'swing_low': round(swing_low, 5)
+            'swing_low': round(swing_low, 5),
+            'order_block': ob_detail,
+            'fair_value_gap': fvg_detail,
+            'liquidity_zone': liq_detail,
+            'confluence_bonus': confluence_bonus
         }
     }
     
@@ -11095,7 +11390,7 @@ def run_system_audit():
         'factor_groups': {
             'trend_momentum': {'weight': 22, 'sources': 'Technical (RSI/MACD/Stoch/CCI/Divergence/Patterns/ROC/EMA/Squeeze/Volume + ADX multiplier) 60% + MTF (H1/H4/D1) 40% — #1 return driver'},
             'fundamental': {'weight': 14, 'sources': 'v9.5.0: Rate diff + Yield curve + CPI/Employment/Payroll momentum + Rate change trajectory + Fundamental news (13 FRED series, 3 historical lookups)'},
-            'mean_reversion': {'weight': 12, 'sources': 'Quantitative (Z-Score/Bollinger) 55% + Structure (S/R) 45%'},
+            'mean_reversion': {'weight': 12, 'sources': 'v9.5.0: Quantitative (Z-Score/Bollinger/Triangle + Z-Momentum/EMA Distance/RSI Confluence/Volume Extremes) 55% + Structure (S/R/Pivot/Fib/ADX + Order Blocks/FVGs/Liquidity Zones/Confluence) 45%'},
             'sentiment': {'weight': 11, 'sources': 'IG positioning 65% + Options proxy 35% — confirmation + alpha booster'},
             'intermarket': {'weight': 10, 'sources': 'DXY, Gold, Yields, Oil correlations'},
             'ai_synthesis': {'weight': 9, 'sources': 'GPT enhanced analysis — synthesis tool'},
