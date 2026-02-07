@@ -1,7 +1,7 @@
 """
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║                   MEGA FOREX v9.4.0 PRO - AI-ENHANCED SYSTEM                 ║
-║                    Build: February 6, 2026 - MARKET DEPTH + TRADING TIME     ║
+║                    Build: February 7, 2026 - MARKET DEPTH + TRADING TIME     ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
 ║  ✓ 45 Forex Pairs + 5 Commodities (50 Instruments)                           ║
 ║  ✓ 10-Group Gated Scoring + 10-Gate Quality Filter (v9.4.0)                   ║
@@ -17,28 +17,28 @@
 ║  ✓ Smart Money Concepts: Order Blocks, Liquidity Zones, Session Timing       ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
 ║  FOREX SCORING (45 pairs) - 10-Group Gated AI-Enhanced (v9.4.0)              ║
-║  - Trend & Momentum (19%): RSI, MACD, ADX + MTF alignment                    ║
-║  - Fundamental (13%): Interest rate differentials + FRED macro               ║
-║  - Sentiment (12%): IG positioning + enhanced news analysis                  ║
-║  - Intermarket (11%): DXY, Gold, Yields, Oil correlations                    ║
-║  - Mean Reversion (11%): Z-Score, Bollinger %B + S/R structure               ║
-║  - AI Synthesis (10%): GPT-4o-mini market analysis                           ║
-║  - Currency Strength (9%): 50-instrument cross-currency analysis             ║
-║  - Calendar Risk (7%): Economic event risk + seasonality                     ║
+║  - Trend & Momentum (22%): RSI, MACD, ADX + MTF alignment                    ║
+║  - Fundamental (14%): Interest rate differentials + FRED macro               ║
+║  - Mean Reversion (12%): Z-Score, Bollinger %B + S/R structure               ║
+║  - Sentiment (11%): IG positioning + enhanced news analysis                  ║
+║  - Intermarket (10%): DXY, Gold, Yields, Oil correlations                    ║
+║  - AI Synthesis (9%): GPT-4o-mini market analysis                            ║
+║  - Currency Strength (8%): 50-instrument cross-currency analysis             ║
+║  - Calendar Risk (6%): Economic event risk + seasonality                     ║
 ║  - Geopolitical Risk (4%): War, sanctions, trade tensions, elections         ║
 ║  - Market Depth (4%): Spread tightness, session activity, liquidity, ATR    ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
 ║  COMMODITY SCORING (5 instruments) - Commodity-Specific Weights (v9.4.0)     ║
-║  - Trend & Momentum (20%): RSI, MACD, ADX + MTF alignment                    ║
-║  - Intermarket (13%): Cross-commodity, DXY, VIX, Yields, Equities           ║
-║  - Mean Reversion (12%): Z-Score, Bollinger %B + S/R structure               ║
-║  - Sentiment (11%): IG + COT institutional + commodity news                  ║
-║  - Fundamental (10%): DXY inverse, Real yields, VIX safe-haven              ║
-║  - AI Synthesis (9%): GPT-4o-mini commodity analysis                         ║
+║  - Trend & Momentum (22%): RSI, MACD, ADX + MTF alignment                    ║
+║  - Intermarket (15%): Cross-commodity, DXY, VIX, Yields, Equities           ║
+║  - Mean Reversion (11%): Z-Score, Bollinger %B + S/R structure               ║
+║  - Sentiment (10%): IG + COT institutional + commodity news                  ║
+║  - AI Synthesis (8%): GPT-4o-mini commodity analysis                         ║
+║  - Fundamental (8%): DXY inverse, Real yields, VIX safe-haven               ║
+║  - Geopolitical Risk (8%): War, sanctions, OPEC politics, trade tensions    ║
 ║  - Supply & Demand (7%): EIA inventory, USD correlation, warehouse stocks   ║
 ║  - Calendar Risk (7%): OPEC, EIA, FOMC, PMI events                          ║
-║  - Geopolitical Risk (6%): War, sanctions, OPEC politics, trade tensions    ║
-║  - Market Depth (5%): Spread tightness, session activity, liquidity, ATR    ║
+║  - Market Depth (4%): Spread tightness, session activity, liquidity, ATR    ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
 ║  17 APIs: Polygon, TwelveData, TraderMade, GoldAPI, Yahoo, Finnhub + more    ║
 ║  10-Gate Filter: G3 Trend, G5 Calendar, G8 Data are MANDATORY                 ║
