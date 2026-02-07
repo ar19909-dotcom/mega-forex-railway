@@ -4695,7 +4695,12 @@ def get_yahoo_finance_news():
     articles = []
 
     # Yahoo Finance news tickers for forex/commodities
-    tickers = ['EURUSD=X', 'GC=F', 'CL=F', '^DXY']  # EUR/USD, Gold, Oil, DXY
+    # v9.5.0: Expanded ticker coverage for broader sentiment
+    tickers = [
+        'EURUSD=X', 'GBPUSD=X', 'USDJPY=X', 'AUDUSD=X',  # Major forex
+        'GC=F', 'SI=F', 'CL=F', 'BZ=F',                    # Gold, Silver, WTI, Brent
+        '^DXY', '^VIX',                                      # DXY, VIX
+    ]
 
     for ticker in tickers:
         try:
@@ -4757,6 +4762,10 @@ def get_rss_forex_news():
         ('https://news.google.com/rss/search?q=forex+currency+trading&hl=en-US&gl=US&ceid=US:en', 'Google News Forex'),
         ('https://www.reuters.com/rssfeed/businessNews', 'Reuters Business'),
         ('https://www.reuters.com/rssfeed/marketsNews', 'Reuters Markets'),
+        # v9.5.0: Central bank speech/press feeds
+        ('https://www.ecb.europa.eu/rss/press.html', 'ECB Press'),
+        ('https://www.federalreserve.gov/feeds/press_all.xml', 'Fed Press'),
+        ('https://www.bankofengland.co.uk/rss/speeches', 'BoE Speeches'),
     ]
     
     for feed_url, source_name in rss_feeds:
@@ -4857,11 +4866,14 @@ def get_finnhub_news():
     except Exception as e:
         sources_status['yahoo'] = {'status': 'ERROR', 'error': str(e)}
 
-    # Deduplicate by headline hash
+    # Deduplicate by normalized headline hash (v9.5.0: improved from first-40-chars)
     seen = set()
     unique_articles = []
     for article in all_articles:
-        key = hashlib.md5(article['headline'].lower()[:40].encode()).hexdigest()[:8]
+        headline_norm = re.sub(r'[^a-z0-9\s]', '', article['headline'].lower().strip())
+        # Strip common wire-service prefixes
+        headline_norm = re.sub(r'^(update \d+\s*[-:]?\s*|forex\s*[-:]?\s*|market wrap\s*[-:]?\s*|breaking\s*[-:]?\s*)', '', headline_norm)
+        key = hashlib.md5(headline_norm.encode()).hexdigest()[:12]
         if key not in seen:
             seen.add(key)
             unique_articles.append(article)
@@ -9164,20 +9176,271 @@ def calculate_factor_scores(pair):
         }
     
     # ═══════════════════════════════════════════════════════════════════════════
-    # 3. SENTIMENT (13%) - IG Positioning + News - KEEP AS IS BUT CHECK RANGE
+    # 3. SENTIMENT (11%) - IG Positioning + News + COT + VIX Alignment
+    #    + 8 sub-components (S1-S8) - ENHANCED v9.5.0
+    # Score range: 10-90 | ±55 sub-component range → clamped [10, 90]
     # ═══════════════════════════════════════════════════════════════════════════
     sent_score = sentiment['score']
     sent_data_quality = sentiment.get('data_quality', 'MEDIUM')
-    
+
     # Expand sentiment score if it's too narrow - BUT only if real data
     if sent_score != 50 and sent_data_quality in ['HIGH', 'REAL']:
         sent_score = 50 + (sent_score - 50) * 1.3
         sent_score = max(15, min(85, sent_score))
     elif sent_data_quality in ['MEDIUM', 'ESTIMATED']:
-        # Reduce expansion for estimated data
         sent_score = 50 + (sent_score - 50) * 0.8
         sent_score = max(30, min(70, sent_score))
-    
+
+    # ── v9.5.0 SENTIMENT ENHANCEMENTS (S1-S8) ─────────────────────────────
+
+    # S1: VIX Fear Gauge Alignment (±8 pts) — cross-reference VIX with sentiment
+    s1_vix_adj = 0
+    sent_vix_level = 18.0
+    try:
+        macro_sent = get_expanded_fundamental_data() or {}
+        sent_vix_level = macro_sent.get('VIXCLS', 18.0)
+
+        safe_havens = {'USD', 'JPY', 'CHF'}
+        risk_currencies = {'AUD', 'NZD', 'CAD', 'GBP'}
+
+        base_is_safe = base in safe_havens
+        base_is_risk = base in risk_currencies
+        quote_is_safe = quote in safe_havens
+        quote_is_risk = quote in risk_currencies
+
+        if sent_vix_level > 25:  # High fear
+            if sent_score > 55 and base_is_risk and quote_is_safe:
+                s1_vix_adj = -6   # Bullish risk in high-fear = contradictory
+            elif sent_score < 45 and base_is_risk and quote_is_safe:
+                s1_vix_adj = -8   # Bearish risk in high-fear = confirmed
+            elif sent_score > 55 and base_is_safe and quote_is_risk:
+                s1_vix_adj = 8    # Bullish safe-haven in high-fear = confirmed
+            elif sent_score < 45 and base_is_safe and quote_is_risk:
+                s1_vix_adj = 4    # Bearish safe-haven in high-fear = contradictory
+        elif sent_vix_level > 20:  # Moderately elevated
+            if sent_score > 55 and base_is_safe and quote_is_risk:
+                s1_vix_adj = 4
+            elif sent_score < 45 and base_is_risk and quote_is_safe:
+                s1_vix_adj = -4
+        elif sent_vix_level < 14:  # Low fear / complacency
+            if sent_score > 55 and base_is_risk and quote_is_safe:
+                s1_vix_adj = 6    # Bullish risk in calm = confirmed
+            elif sent_score < 45 and base_is_safe and quote_is_risk:
+                s1_vix_adj = -6   # Bearish safe in calm = confirmed (risk-on)
+        sent_score += s1_vix_adj
+    except Exception:
+        s1_vix_adj = 0
+
+    # S2: Retail Positioning Extreme Contrarian (±10 pts)
+    s2_extreme_adj = 0
+    s2_retail_long = None
+    try:
+        retail = sentiment.get('sources', {}).get('retail_positioning')
+        if retail:
+            long_pct = retail.get('long_pct', 50)
+            s2_retail_long = long_pct
+            quality = retail.get('data_quality', 'UNKNOWN')
+            source_count = retail.get('source_count', 0)
+
+            # Quality gate
+            quality_mult = 1.0 if quality == 'HIGH' and source_count >= 2 else 0.6 if quality in ['HIGH', 'MEDIUM'] else 0.3
+
+            if long_pct >= 80:
+                s2_extreme_adj = int(-10 * quality_mult)
+            elif long_pct >= 72:
+                s2_extreme_adj = int(-7 * quality_mult)
+            elif long_pct >= 65:
+                s2_extreme_adj = int(-4 * quality_mult)
+            elif long_pct <= 20:
+                s2_extreme_adj = int(10 * quality_mult)
+            elif long_pct <= 28:
+                s2_extreme_adj = int(7 * quality_mult)
+            elif long_pct <= 35:
+                s2_extreme_adj = int(4 * quality_mult)
+
+            s2_extreme_adj = max(-10, min(10, s2_extreme_adj))
+        sent_score += s2_extreme_adj
+    except Exception:
+        s2_extreme_adj = 0
+
+    # S3: News Velocity & Impact Density (±7 pts)
+    s3_velocity_adj = 0
+    s3_articles = 0
+    s3_high_impact = 0
+    try:
+        news_data = sentiment.get('sources', {}).get('news_analysis', {})
+        s3_articles = news_data.get('articles_analyzed', 0)
+        s3_high_impact = news_data.get('high_impact_articles', 0)
+        news_score = news_data.get('score', 50)
+
+        if s3_articles >= 8 and s3_high_impact >= 3:
+            direction = 1 if news_score > 55 else -1 if news_score < 45 else 0
+            s3_velocity_adj = direction * 7
+        elif s3_articles >= 5 and s3_high_impact >= 2:
+            direction = 1 if news_score > 55 else -1 if news_score < 45 else 0
+            s3_velocity_adj = direction * 5
+        elif s3_articles >= 3 and s3_high_impact >= 1:
+            direction = 1 if news_score > 55 else -1 if news_score < 45 else 0
+            s3_velocity_adj = direction * 3
+        elif s3_articles == 0:
+            # No news = uncertainty → pull toward neutral
+            s3_velocity_adj = int((50 - sent_score) * 0.15)
+            s3_velocity_adj = max(-3, min(3, s3_velocity_adj))
+        sent_score += s3_velocity_adj
+    except Exception:
+        s3_velocity_adj = 0
+
+    # S4: Sentiment-Price Divergence (±8 pts)
+    s4_divergence_adj = 0
+    try:
+        if len(closes) >= 10:
+            price_5d = (closes[-1] - closes[-5]) / closes[-5] * 100
+            price_10d = (closes[-1] - closes[-10]) / closes[-10] * 100
+            sent_bullish = sent_score > 58
+            sent_bearish = sent_score < 42
+
+            # Bearish divergence: price rising but sentiment bearish
+            if price_5d > 0.5 and price_10d > 0.8 and sent_bearish:
+                s4_divergence_adj = -8
+            elif price_5d > 0.3 and sent_bearish:
+                s4_divergence_adj = -5
+            # Bullish divergence: price falling but sentiment bullish
+            elif price_5d < -0.5 and price_10d < -0.8 and sent_bullish:
+                s4_divergence_adj = 8
+            elif price_5d < -0.3 and sent_bullish:
+                s4_divergence_adj = 5
+            # Confirmation: price and sentiment agree
+            elif price_5d > 0.5 and sent_bullish:
+                s4_divergence_adj = 3
+            elif price_5d < -0.5 and sent_bearish:
+                s4_divergence_adj = -3
+        sent_score += s4_divergence_adj
+    except Exception:
+        s4_divergence_adj = 0
+
+    # S5: COT Institutional Confirmation (±6 pts)
+    s5_cot_adj = 0
+    try:
+        retail_src = sentiment.get('sources', {}).get('retail_positioning', {})
+        cot_src = sentiment.get('sources', {}).get('cot_positioning', {})
+
+        if retail_src and cot_src:
+            retail_score = retail_src.get('score', 50)
+            cot_score = cot_src.get('score', 50)
+
+            both_bullish = retail_score > 55 and cot_score > 55
+            both_bearish = retail_score < 45 and cot_score < 45
+
+            if both_bullish:
+                s5_cot_adj = 6    # Smart money confirms contrarian buy
+            elif both_bearish:
+                s5_cot_adj = -6   # Smart money confirms contrarian sell
+            elif retail_score > 55 and cot_score < 45:
+                s5_cot_adj = -3   # Conflicting signals
+            elif retail_score < 45 and cot_score > 55:
+                s5_cot_adj = 3    # Conflicting signals
+        sent_score += s5_cot_adj
+    except Exception:
+        s5_cot_adj = 0
+
+    # S6: Sentiment Momentum Proxy (±6 pts) — news vs retail gap
+    s6_momentum_adj = 0
+    try:
+        news_data_s6 = sentiment.get('sources', {}).get('news_analysis', {})
+        retail_s6 = sentiment.get('sources', {}).get('retail_positioning', {})
+        news_score_s6 = news_data_s6.get('score', 50)
+
+        if retail_s6:
+            retail_contrarian = retail_s6.get('score', 50)
+            gap = news_score_s6 - retail_contrarian
+
+            if gap > 15:
+                s6_momentum_adj = 6    # News much more bullish → bullish momentum
+            elif gap > 8:
+                s6_momentum_adj = 3
+            elif gap < -15:
+                s6_momentum_adj = -6   # News much more bearish → bearish momentum
+            elif gap < -8:
+                s6_momentum_adj = -3
+        else:
+            # No retail: use price momentum as proxy
+            if len(closes) >= 5:
+                price_mom = (closes[-1] - closes[-5]) / closes[-5] * 100
+                sent_dir = 1 if news_score_s6 > 55 else -1 if news_score_s6 < 45 else 0
+                if sent_dir > 0 and price_mom > 0.3:
+                    s6_momentum_adj = 4
+                elif sent_dir < 0 and price_mom < -0.3:
+                    s6_momentum_adj = -4
+        sent_score += s6_momentum_adj
+    except Exception:
+        s6_momentum_adj = 0
+
+    # S7: Multi-Source Agreement Bonus (±5 pts)
+    s7_agreement_adj = 0
+    try:
+        sources_dict = sentiment.get('sources', {})
+        source_scores = []
+        if 'retail_positioning' in sources_dict:
+            source_scores.append(sources_dict['retail_positioning'].get('score', 50))
+        if 'news_analysis' in sources_dict:
+            source_scores.append(sources_dict['news_analysis'].get('score', 50))
+        if 'cot_positioning' in sources_dict:
+            source_scores.append(sources_dict['cot_positioning'].get('score', 50))
+
+        if len(source_scores) >= 2:
+            all_bullish = all(s > 55 for s in source_scores)
+            all_bearish = all(s < 45 for s in source_scores)
+
+            if all_bullish and len(source_scores) >= 3:
+                s7_agreement_adj = 5
+            elif all_bullish:
+                s7_agreement_adj = 3
+            elif all_bearish and len(source_scores) >= 3:
+                s7_agreement_adj = -5
+            elif all_bearish:
+                s7_agreement_adj = -3
+            else:
+                has_bull = any(s > 60 for s in source_scores)
+                has_bear = any(s < 40 for s in source_scores)
+                if has_bull and has_bear:
+                    s7_agreement_adj = int((50 - sent_score) * 0.1)
+                    s7_agreement_adj = max(-3, min(3, s7_agreement_adj))
+        sent_score += s7_agreement_adj
+    except Exception:
+        s7_agreement_adj = 0
+
+    # S8: Commodity Sentiment Regime (±5 pts, commodity pairs only)
+    s8_commodity_adj = 0
+    try:
+        commodities = {'XAU', 'XAG', 'XPT', 'WTI', 'BRENT'}
+        if base in commodities:
+            precious = {'XAU', 'XAG', 'XPT'}
+            energy = {'WTI', 'BRENT'}
+
+            if base in precious:
+                if sent_vix_level > 22 and sent_score > 55:
+                    s8_commodity_adj = 5    # Fear + bullish gold = strong
+                elif sent_vix_level > 22 and sent_score < 45:
+                    s8_commodity_adj = 3    # Fear + bearish gold = mild contradiction
+                elif sent_vix_level < 15 and sent_score < 45:
+                    s8_commodity_adj = -5   # Calm + bearish gold = confirmed
+                elif sent_vix_level < 15 and sent_score > 55:
+                    s8_commodity_adj = -3   # Calm + bullish gold = contradictory
+            elif base in energy:
+                news_s8 = sentiment.get('sources', {}).get('news_analysis', {})
+                hi_s8 = news_s8.get('high_impact_articles', 0)
+                if hi_s8 >= 2:
+                    direction = 1 if sent_score > 55 else -1 if sent_score < 45 else 0
+                    s8_commodity_adj = direction * 5
+                elif hi_s8 >= 1:
+                    direction = 1 if sent_score > 55 else -1 if sent_score < 45 else 0
+                    s8_commodity_adj = direction * 3
+        sent_score += s8_commodity_adj
+    except Exception:
+        s8_commodity_adj = 0
+
+    sent_score = max(10, min(90, sent_score))  # Final clamp after S1-S8
+
     factors['sentiment'] = {
         'score': round(sent_score, 1),
         'signal': 'BULLISH' if sent_score >= 58 else 'BEARISH' if sent_score <= 42 else 'NEUTRAL',
@@ -9185,7 +9448,19 @@ def calculate_factor_scores(pair):
         'details': {
             'articles': sentiment['articles'],
             'sources': sentiment.get('sources', {}),
-            'ig_positioning': sentiment.get('ig_positioning', 'N/A')
+            'ig_positioning': sentiment.get('ig_positioning', 'N/A'),
+            'vix_alignment': s1_vix_adj,
+            'vix_level': round(sent_vix_level, 1),
+            'retail_extreme': s2_extreme_adj,
+            'retail_long_pct': s2_retail_long,
+            'news_velocity': s3_velocity_adj,
+            'news_articles_count': s3_articles,
+            'high_impact_news': s3_high_impact,
+            'price_divergence': s4_divergence_adj,
+            'cot_confirmation': s5_cot_adj,
+            'sentiment_momentum': s6_momentum_adj,
+            'source_agreement': s7_agreement_adj,
+            'commodity_regime': s8_commodity_adj
         }
     }
     
@@ -11391,7 +11666,7 @@ def run_system_audit():
             'trend_momentum': {'weight': 22, 'sources': 'Technical (RSI/MACD/Stoch/CCI/Divergence/Patterns/ROC/EMA/Squeeze/Volume + ADX multiplier) 60% + MTF (H1/H4/D1) 40% — #1 return driver'},
             'fundamental': {'weight': 14, 'sources': 'v9.5.0: Rate diff + Yield curve + CPI/Employment/Payroll momentum + Rate change trajectory + Fundamental news (13 FRED series, 3 historical lookups)'},
             'mean_reversion': {'weight': 12, 'sources': 'v9.5.0: Quantitative (Z-Score/Bollinger/Triangle + Z-Momentum/EMA Distance/RSI Confluence/Volume Extremes) 55% + Structure (S/R/Pivot/Fib/ADX + Order Blocks/FVGs/Liquidity Zones/Confluence) 45%'},
-            'sentiment': {'weight': 11, 'sources': 'IG positioning 65% + Options proxy 35% — confirmation + alpha booster'},
+            'sentiment': {'weight': 11, 'sources': 'v9.5.0: IG/Saxo retail + Finnhub/RSS/Yahoo news + COT institutional + 8 sub-components (VIX fear gauge, retail extreme, news velocity, price divergence, COT confirmation, sentiment momentum, source agreement, commodity regime)'},
             'intermarket': {'weight': 10, 'sources': 'DXY, Gold, Yields, Oil correlations'},
             'ai_synthesis': {'weight': 9, 'sources': 'GPT enhanced analysis — synthesis tool'},
             'currency_strength': {'weight': 8, 'sources': 'v9.4.0: 50-instrument analysis — confirmation tool'},
