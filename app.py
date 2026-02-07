@@ -4,7 +4,7 @@
 ║                    Build: February 7, 2026 - MARKET DEPTH + TRADING TIME     ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
 ║  ✓ 45 Forex Pairs + 5 Commodities (50 Instruments)                           ║
-║  ✓ 10-Group Gated Scoring + 10-Gate Quality Filter (v9.4.0)                   ║
+║  ✓ 10-Group Gated Scoring + 10-Gate Quality Filter                            ║
 ║  ✓ Smart AI Weight Adjustment (Dynamic, Anti-Overfit)                        ║
 ║  ✓ NEW: Market Depth Factor (Spread, Session, Liquidity, ATR)               ║
 ║  ✓ NEW: Trading Time Badge (GREEN/YELLOW/RED per pair)                      ║
@@ -13,11 +13,13 @@
 ║  ✓ Yahoo Finance Live Oil + GoldAPI (XAU/XAG/XPT)                            ║
 ║  ✓ Supply & Demand Factor (replaces Currency Strength for commodities)       ║
 ║  ✓ Multi-Source News: Bloomberg, Reuters, Yahoo Finance, Finnhub             ║
-║  ✓ 16 Candlestick Pattern Recognition                                        ║
+║  ✓ 16 Candlestick Pattern Recognition (v9.5.0: wired into scoring)           ║
+║  ✓ v9.5.0: Enhanced T&M — ADX-adaptive RSI, swing divergence, ROC,          ║
+║    EMA recency, BB squeeze, volume confirmation (±115 raw → clamped)         ║
 ║  ✓ Smart Money Concepts: Order Blocks, Liquidity Zones, Session Timing       ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
-║  FOREX SCORING (45 pairs) - 10-Group Gated AI-Enhanced (v9.4.0)              ║
-║  - Trend & Momentum (22%): RSI, MACD, ADX + MTF alignment                    ║
+║  FOREX SCORING (45 pairs) - 10-Group Gated AI-Enhanced (v9.5.0)              ║
+║  - Trend & Momentum (22%): RSI/MACD/Stoch/CCI/Div/Patterns/ROC/Vol + MTF    ║
 ║  - Fundamental (14%): Interest rate differentials + FRED macro               ║
 ║  - Mean Reversion (12%): Z-Score, Bollinger %B + S/R structure               ║
 ║  - Sentiment (11%): IG positioning + enhanced news analysis                  ║
@@ -28,8 +30,8 @@
 ║  - Geopolitical Risk (4%): War, sanctions, trade tensions, elections         ║
 ║  - Market Depth (4%): Spread tightness, session activity, liquidity, ATR    ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
-║  COMMODITY SCORING (5 instruments) - Commodity-Specific Weights (v9.4.0)     ║
-║  - Trend & Momentum (22%): RSI, MACD, ADX + MTF alignment                    ║
+║  COMMODITY SCORING (5 instruments) - Commodity-Specific Weights (v9.5.0)     ║
+║  - Trend & Momentum (22%): RSI/MACD/Stoch/CCI/Div/Patterns/ROC/Vol + MTF    ║
 ║  - Intermarket (15%): Cross-commodity, DXY, VIX, Yields, Equities           ║
 ║  - Mean Reversion (11%): Z-Score, Bollinger %B + S/R structure               ║
 ║  - Sentiment (10%): IG + COT institutional + commodity news                  ║
@@ -8136,8 +8138,9 @@ def calculate_factor_scores(pair):
     factors = {}
     
     # ═══════════════════════════════════════════════════════════════════════════
-    # 1. TECHNICAL (24%) - RSI, MACD, ADX, Stochastic, CCI - ENHANCED v9.2.4
-    # Score range: 10-90 with multiple indicator confluence
+    # 1. TECHNICAL - RSI, MACD, Stochastic, CCI, Divergence, Patterns, ROC,
+    #    EMA Recency, BB Squeeze, Volume - ENHANCED v9.5.0
+    # Score range: 10-90 with ADX multiplier | ±115 raw → clamped [10, 90]
     # ═══════════════════════════════════════════════════════════════════════════
     rsi = tech['rsi']
     macd_hist = tech['macd']['histogram']
@@ -8148,16 +8151,32 @@ def calculate_factor_scores(pair):
     bb_pct = tech['bollinger']['percent_b']
     tech_data_quality = tech.get('data_quality', 'UNKNOWN')
 
-    # v9.2.4: Calculate Stochastic Oscillator from closes
+    # v9.5.0: Calculate Stochastic Oscillator from closes (fixed %D)
     stoch_k, stoch_d = 50, 50  # Default neutral
-    if len(closes) >= 14 and len(highs) >= 14 and len(lows) >= 14:
+    if len(closes) >= 16 and len(highs) >= 16 and len(lows) >= 16:
+        period = 14
+        # Calculate %K for last 3 bars to get proper %D (3-period SMA of %K)
+        k_values = []
+        for offset in range(3):
+            idx = len(closes) - offset
+            h_slice = highs[idx - period:idx]
+            l_slice = lows[idx - period:idx]
+            hh = max(h_slice)
+            ll = min(l_slice)
+            if hh != ll:
+                k_values.append(((closes[idx - 1] - ll) / (hh - ll)) * 100)
+            else:
+                k_values.append(50)
+        stoch_k = k_values[0]  # Current %K
+        stoch_d = sum(k_values) / len(k_values)  # 3-period SMA of %K
+    elif len(closes) >= 14 and len(highs) >= 14 and len(lows) >= 14:
+        # Fallback: not enough bars for %D, use %K = %D
         period = 14
         highest_high = max(highs[-period:])
         lowest_low = min(lows[-period:])
         if highest_high != lowest_low:
             stoch_k = ((closes[-1] - lowest_low) / (highest_high - lowest_low)) * 100
-            # 3-period SMA for %D (simplified to avoid empty slice issues)
-            stoch_d = stoch_k  # Default to %K if we can't calculate %D
+            stoch_d = stoch_k
 
     # v9.2.4: Calculate CCI (Commodity Channel Index)
     cci = 0  # Default neutral
@@ -8169,16 +8188,66 @@ def calculate_factor_scores(pair):
         if mean_deviation > 0:
             cci = (typical_prices[-1] - tp_mean) / (0.015 * mean_deviation)
 
-    # v9.2.4: Detect RSI Divergence
+    # v9.5.0: Detect RSI Divergence - proper swing high/low comparison
     rsi_divergence = 'NONE'
-    if len(closes) >= 10:
-        # Check for bullish divergence: price making lower lows, RSI making higher lows
-        price_trend = closes[-1] < closes[-5]  # Price going down
-        # Approximate RSI trend (simplified)
-        if price_trend and rsi > 30 and rsi < 50:
-            rsi_divergence = 'BULLISH'  # Potential bullish divergence
-        elif not price_trend and rsi < 70 and rsi > 50:
-            rsi_divergence = 'BEARISH'  # Potential bearish divergence
+    rsi_divergence_strength = 0  # 0-10 scale
+    if len(closes) >= 20:
+        try:
+            # Calculate RSI for recent bars to find swing points
+            rsi_values = []
+            for i in range(max(14, len(closes) - 20), len(closes)):
+                window = closes[max(0, i - 14):i + 1]
+                if len(window) >= 15:
+                    gains = [max(0, window[j] - window[j - 1]) for j in range(1, len(window))]
+                    losses = [max(0, window[j - 1] - window[j]) for j in range(1, len(window))]
+                    avg_gain = sum(gains) / len(gains) if gains else 0.001
+                    avg_loss = sum(losses) / len(losses) if losses else 0.001
+                    rs = avg_gain / avg_loss if avg_loss > 0 else 100
+                    rsi_values.append(100 - (100 / (1 + rs)))
+                else:
+                    rsi_values.append(50)
+
+            # Find swing lows (2-bar pivot) in last 20 candles
+            price_slice = closes[-20:]
+            swing_lows = []
+            swing_highs = []
+            for i in range(2, len(price_slice) - 2):
+                if price_slice[i] <= price_slice[i - 1] and price_slice[i] <= price_slice[i - 2] and \
+                   price_slice[i] <= price_slice[i + 1] and price_slice[i] <= price_slice[i + 2]:
+                    rsi_idx = i - (20 - len(rsi_values)) if i < len(rsi_values) else len(rsi_values) - 1
+                    rsi_idx = max(0, min(rsi_idx, len(rsi_values) - 1))
+                    swing_lows.append((i, price_slice[i], rsi_values[rsi_idx]))
+                if price_slice[i] >= price_slice[i - 1] and price_slice[i] >= price_slice[i - 2] and \
+                   price_slice[i] >= price_slice[i + 1] and price_slice[i] >= price_slice[i + 2]:
+                    rsi_idx = i - (20 - len(rsi_values)) if i < len(rsi_values) else len(rsi_values) - 1
+                    rsi_idx = max(0, min(rsi_idx, len(rsi_values) - 1))
+                    swing_highs.append((i, price_slice[i], rsi_values[rsi_idx]))
+
+            # Bullish divergence: price lower low + RSI higher low
+            if len(swing_lows) >= 2:
+                prev_low, curr_low = swing_lows[-2], swing_lows[-1]
+                if curr_low[1] < prev_low[1] and curr_low[2] > prev_low[2]:
+                    rsi_divergence = 'BULLISH'
+                    rsi_gap = curr_low[2] - prev_low[2]
+                    rsi_divergence_strength = min(10, max(5, int(rsi_gap / 2)))
+
+            # Bearish divergence: price higher high + RSI lower high
+            if len(swing_highs) >= 2:
+                prev_high, curr_high = swing_highs[-2], swing_highs[-1]
+                if curr_high[1] > prev_high[1] and curr_high[2] < prev_high[2]:
+                    rsi_divergence = 'BEARISH'
+                    rsi_gap = prev_high[2] - curr_high[2]
+                    rsi_divergence_strength = min(10, max(5, int(rsi_gap / 2)))
+        except Exception:
+            rsi_divergence = 'NONE'
+            rsi_divergence_strength = 0
+
+    # v9.5.0: Initialize enhancement variables (safe defaults for NO_DATA path)
+    pattern_bonus = 0
+    roc_bonus = 0
+    ema_recency_bonus = 0
+    squeeze_bonus = 0
+    volume_bonus = 0
 
     # If no real technical data, return NEUTRAL score
     if tech_data_quality == 'NO_DATA':
@@ -8186,23 +8255,54 @@ def calculate_factor_scores(pair):
     else:
         tech_score = 50
 
-        # RSI Component (±30 points max)
-        if rsi <= 20:
-            tech_score += 30
-        elif rsi <= 25:
-            tech_score += 24
-        elif rsi <= 30:
-            tech_score += 18
-        elif rsi <= 35:
-            tech_score += 10
-        elif rsi >= 80:
-            tech_score -= 30
-        elif rsi >= 75:
-            tech_score -= 24
-        elif rsi >= 70:
-            tech_score -= 18
-        elif rsi >= 65:
-            tech_score -= 10
+        # v9.5.0: RSI Component (±30 points max) - ADX-adaptive thresholds
+        # In strong trends, pullbacks to RSI 45 are buy zones; in ranges, use tighter bands
+        if adx > 25:
+            # TRENDING: widen oversold zone (pullback = opportunity), tighten overbought
+            if rsi <= 25:
+                tech_score += 30
+            elif rsi <= 35:
+                tech_score += 22
+            elif rsi <= 45:
+                tech_score += 12
+            elif rsi >= 85:
+                tech_score -= 30
+            elif rsi >= 75:
+                tech_score -= 22
+            elif rsi >= 60:
+                tech_score -= 10
+        elif adx < 20:
+            # RANGING: tighter bands, mean reversion is king
+            if rsi <= 20:
+                tech_score += 30
+            elif rsi <= 30:
+                tech_score += 20
+            elif rsi <= 35:
+                tech_score += 8
+            elif rsi >= 80:
+                tech_score -= 30
+            elif rsi >= 70:
+                tech_score -= 20
+            elif rsi >= 65:
+                tech_score -= 8
+        else:
+            # TRANSITION (ADX 20-25): original thresholds
+            if rsi <= 20:
+                tech_score += 30
+            elif rsi <= 25:
+                tech_score += 24
+            elif rsi <= 30:
+                tech_score += 18
+            elif rsi <= 35:
+                tech_score += 10
+            elif rsi >= 80:
+                tech_score -= 30
+            elif rsi >= 75:
+                tech_score -= 24
+            elif rsi >= 70:
+                tech_score -= 18
+            elif rsi >= 65:
+                tech_score -= 10
 
         # MACD Component (±20 points max)
         macd_strength = abs(macd_hist) / (abs(macd_signal) + 0.00001)
@@ -8241,11 +8341,168 @@ def calculate_factor_scores(pair):
         elif cci >= 100:
             tech_score -= 6
 
-        # v9.2.4: RSI Divergence Bonus (±8 points)
+        # v9.5.0: RSI Divergence Bonus (±10 points, strength-based)
         if rsi_divergence == 'BULLISH':
-            tech_score += 8
+            tech_score += rsi_divergence_strength
         elif rsi_divergence == 'BEARISH':
-            tech_score -= 8
+            tech_score -= rsi_divergence_strength
+
+        # ── v9.5.0 ENHANCEMENTS ──────────────────────────────────────────────
+
+        # E1: Candlestick Pattern Integration (±10 points max)
+        pattern_bonus = 0
+        try:
+            if patterns and patterns.get('patterns'):
+                # Find strongest pattern
+                strongest = max(patterns['patterns'], key=lambda p: p.get('strength', 0))
+                p_strength = strongest.get('strength', 0)
+                p_signal = strongest.get('signal', 'NEUTRAL')
+
+                if p_strength >= 80:
+                    raw_bonus = 10
+                elif p_strength >= 70:
+                    raw_bonus = 7
+                elif p_strength >= 60:
+                    raw_bonus = 4
+                else:
+                    raw_bonus = 0
+
+                if raw_bonus > 0:
+                    # Direction: bullish pattern = positive, bearish = negative
+                    if p_signal == 'BULLISH':
+                        pattern_bonus = raw_bonus
+                        # MACD agreement check: halve if contradicts
+                        if macd_hist < 0:
+                            pattern_bonus = raw_bonus // 2
+                        # RSI context: bullish pattern in oversold = 1.3x
+                        if rsi < 40:
+                            pattern_bonus = int(pattern_bonus * 1.3)
+                    elif p_signal == 'BEARISH':
+                        pattern_bonus = -raw_bonus
+                        if macd_hist > 0:
+                            pattern_bonus = -(raw_bonus // 2)
+                        if rsi > 60:
+                            pattern_bonus = int(pattern_bonus * 1.3)
+            tech_score += pattern_bonus
+        except Exception:
+            pattern_bonus = 0
+
+        # E4: Rate of Change Component (±6 points max)
+        roc_bonus = 0
+        try:
+            if len(closes) >= 6:
+                roc_pct = ((closes[-1] - closes[-6]) / closes[-6]) * 100
+                if roc_pct > 1.0:
+                    roc_bonus = 6
+                elif roc_pct > 0.5:
+                    roc_bonus = 4
+                elif roc_pct > 0.2:
+                    roc_bonus = 2
+                elif roc_pct < -1.0:
+                    roc_bonus = -6
+                elif roc_pct < -0.5:
+                    roc_bonus = -4
+                elif roc_pct < -0.2:
+                    roc_bonus = -2
+            tech_score += roc_bonus
+        except Exception:
+            roc_bonus = 0
+
+        # E5: EMA Crossover Recency Bonus (±4 points max)
+        ema_recency_bonus = 0
+        try:
+            ema20_val = tech.get('ema20', 0)
+            ema50_val = tech.get('ema50', 0)
+            if ema20_val and ema50_val and len(closes) >= 10:
+                # Walk back through candles to estimate EMA values and find crossover
+                # Use simple approximation: check price vs EMA gap narrowing
+                ema_gap_pct = abs(ema20_val - ema50_val) / ema50_val * 100 if ema50_val else 0
+                ema_signal = tech.get('ema_signal', 'NEUTRAL')
+
+                if ema_signal == 'BULLISH':
+                    if ema_gap_pct < 0.1:
+                        ema_recency_bonus = 4  # Very fresh crossover
+                    elif ema_gap_pct < 0.3:
+                        ema_recency_bonus = 2  # Recent crossover
+                elif ema_signal == 'BEARISH':
+                    if ema_gap_pct < 0.1:
+                        ema_recency_bonus = -4
+                    elif ema_gap_pct < 0.3:
+                        ema_recency_bonus = -2
+                elif ema_signal == 'NEUTRAL' and ema_gap_pct < 0.15:
+                    # Pending crossover - EMAs converging
+                    if ema20_val > ema50_val:
+                        ema_recency_bonus = 1
+                    else:
+                        ema_recency_bonus = -1
+            tech_score += ema_recency_bonus
+        except Exception:
+            ema_recency_bonus = 0
+
+        # E6: Bollinger Band Squeeze Detection (±5 points max)
+        squeeze_bonus = 0
+        try:
+            bb = tech.get('bollinger', {})
+            bb_upper = bb.get('upper', 0)
+            bb_lower = bb.get('lower', 0)
+            bb_middle = bb.get('middle', 0)
+            if bb_upper and bb_lower and bb_middle and len(closes) >= 20:
+                current_width = (bb_upper - bb_lower) / bb_middle if bb_middle else 0
+                # Compute historical average BB width from closes
+                hist_widths = []
+                for i in range(20, min(len(closes), 40)):
+                    window = closes[max(0, i - 20):i]
+                    if len(window) >= 20:
+                        mean_w = sum(window) / len(window)
+                        std_w = (sum((x - mean_w) ** 2 for x in window) / len(window)) ** 0.5
+                        width_w = (4 * std_w) / mean_w if mean_w else 0  # 2 std devs each side
+                        hist_widths.append(width_w)
+                if hist_widths:
+                    avg_width = sum(hist_widths) / len(hist_widths)
+                    if avg_width > 0:
+                        width_ratio = current_width / avg_width
+                        if width_ratio < 0.5 and adx > 20:
+                            # SQUEEZE: compressed bands + trend building → breakout likely
+                            dominant_dir = 1 if tech_score > 50 else -1
+                            squeeze_bonus = 5 * dominant_dir
+                        elif width_ratio < 0.5 and adx <= 20:
+                            squeeze_bonus = 0  # Coiling, direction unclear
+                        elif width_ratio > 1.5:
+                            # EXPANSION: confirming breakout direction
+                            dominant_dir = 1 if tech_score > 50 else -1
+                            squeeze_bonus = 3 * dominant_dir
+            tech_score += squeeze_bonus
+        except Exception:
+            squeeze_bonus = 0
+
+        # E7: Volume Confirmation (±5 points max)
+        volume_bonus = 0
+        try:
+            if candles and len(candles) >= 20:
+                volumes = [c.get('volume', 0) for c in candles[-20:]]
+                non_zero = [v for v in volumes if v > 0]
+                if len(non_zero) >= 10:
+                    avg_vol = sum(non_zero) / len(non_zero)
+                    curr_vol = candles[-1].get('volume', 0)
+                    if avg_vol > 0 and curr_vol > 0:
+                        vol_ratio = curr_vol / avg_vol
+                        dominant_dir = 1 if tech_score > 50 else -1
+                        price_dir = 1 if closes[-1] > closes[-2] else -1
+                        with_trend = (price_dir == dominant_dir)
+
+                        if vol_ratio > 1.5 and with_trend:
+                            volume_bonus = 5 * dominant_dir  # Strong volume with trend
+                        elif vol_ratio > 1.2 and with_trend:
+                            volume_bonus = 3 * dominant_dir
+                        elif vol_ratio < 0.5:
+                            volume_bonus = -2 * dominant_dir  # Low conviction
+                        elif vol_ratio > 1.5 and not with_trend:
+                            volume_bonus = -4 * dominant_dir  # Volume against trend = reversal
+            tech_score += volume_bonus
+        except Exception:
+            volume_bonus = 0
+
+        # ── END v9.5.0 ENHANCEMENTS ──────────────────────────────────────────
 
         # ADX Trend Strength Multiplier
         if adx > 40:
@@ -8269,6 +8526,7 @@ def calculate_factor_scores(pair):
         'details': {
             'rsi': rsi,
             'rsi_divergence': rsi_divergence,
+            'rsi_divergence_strength': rsi_divergence_strength,
             'macd': round(macd_hist, 5),
             'macd_strength': round(macd_strength, 2),
             'stochastic_k': round(stoch_k, 1),
@@ -8276,7 +8534,12 @@ def calculate_factor_scores(pair):
             'cci': round(cci, 1),
             'adx': adx,
             'atr': round(atr, 5),
-            'bb_percent': bb_pct
+            'bb_percent': bb_pct,
+            'pattern_bonus': pattern_bonus,
+            'roc_bonus': roc_bonus,
+            'ema_recency_bonus': ema_recency_bonus,
+            'squeeze_bonus': squeeze_bonus,
+            'volume_bonus': volume_bonus
         }
     }
     
@@ -10343,7 +10606,7 @@ def run_system_audit():
     # ═══════════════════════════════════════════════════════════════════════════
     audit['scoring_methodology'] = {
         'version': '9.5.0 PRO',
-        'description': 'v9.5.0 — 10 factor groups, dynamic intermarket baselines, magnitude-based currency strength, cross-pair correlation confirmation, triangle deviation scoring, 10-gate quality filter (G3/G5/G8 mandatory), 50 instruments, commodity-specific weights, regime-dynamic weights',
+        'description': 'v9.5.0 — 10 factor groups, enhanced T&M (candlestick patterns, ADX-adaptive RSI, swing divergence, ROC, EMA recency, BB squeeze, volume confirmation), dynamic intermarket baselines, magnitude-based currency strength, cross-pair correlation, triangle deviation, 10-gate quality filter (G3/G5/G8 mandatory), 50 instruments',
         'score_range': {
             'min': 5,
             'max': 95,
@@ -10354,7 +10617,7 @@ def run_system_audit():
         'total_factor_groups': 10,
         'total_weight': 100,
         'factor_groups': {
-            'trend_momentum': {'weight': 22, 'sources': 'Technical (RSI/MACD/ADX) 60% + MTF (H1/H4/D1) 40% — #1 return driver'},
+            'trend_momentum': {'weight': 22, 'sources': 'Technical (RSI/MACD/Stoch/CCI/Divergence/Patterns/ROC/EMA/Squeeze/Volume + ADX multiplier) 60% + MTF (H1/H4/D1) 40% — #1 return driver'},
             'fundamental': {'weight': 14, 'sources': 'Interest rate differentials + FRED macro data — #2 FX factor (carry)'},
             'mean_reversion': {'weight': 12, 'sources': 'Quantitative (Z-Score/Bollinger) 55% + Structure (S/R) 45%'},
             'sentiment': {'weight': 11, 'sources': 'IG positioning 65% + Options proxy 35% — confirmation + alpha booster'},
@@ -10413,40 +10676,70 @@ def run_system_audit():
         'technical': {
             'weight': 13,
             'weight_percent': '60% of Trend & Momentum (22%)',
-            'description': 'RSI, MACD, ADX trend analysis',
+            'description': 'v9.5.0: 10 sub-components with ADX-adaptive RSI, swing divergence, candlestick patterns, ROC, EMA recency, BB squeeze, volume confirmation',
             'data_sources': ['Polygon.io (Tier 1)', 'Twelve Data (Tier 2)', 'TraderMade (Tier 3)', 'ExchangeRate (Tier 4)', 'CurrencyLayer (Tier 5)'],
-            'score_range': '10-90',
+            'score_range': '10-90 (±115 raw, ADX multiplied, clamped)',
             'components': {
                 'RSI': {
-                    'description': 'Relative Strength Index (14-period)',
-                    'scoring': [
-                        {'condition': 'RSI <= 20', 'points': '+40', 'meaning': 'Extreme oversold'},
-                        {'condition': 'RSI <= 25', 'points': '+32', 'meaning': 'Very oversold'},
-                        {'condition': 'RSI <= 30', 'points': '+25', 'meaning': 'Oversold'},
-                        {'condition': 'RSI <= 35', 'points': '+15', 'meaning': 'Slightly oversold'},
-                        {'condition': 'RSI <= 40', 'points': '+8', 'meaning': 'Mild oversold'},
-                        {'condition': 'RSI >= 80', 'points': '-40', 'meaning': 'Extreme overbought'},
-                        {'condition': 'RSI >= 75', 'points': '-32', 'meaning': 'Very overbought'},
-                        {'condition': 'RSI >= 70', 'points': '-25', 'meaning': 'Overbought'},
-                        {'condition': 'RSI >= 65', 'points': '-15', 'meaning': 'Slightly overbought'},
-                        {'condition': 'RSI >= 60', 'points': '-8', 'meaning': 'Mild overbought'}
-                    ]
+                    'description': 'Relative Strength Index (14-period) — v9.5.0: ADX-adaptive thresholds',
+                    'points': '±30',
+                    'note': 'Trending (ADX>25): wider oversold zone (RSI 45 = buy zone). Ranging (ADX<20): tighter bands'
                 },
                 'MACD': {
                     'description': 'Moving Average Convergence Divergence (12,26,9)',
+                    'points': '±20',
                     'scoring': [
-                        {'condition': 'MACD strength > 2', 'points': '±25', 'meaning': 'Strong momentum'},
-                        {'condition': 'MACD strength > 1', 'points': '±18', 'meaning': 'Moderate momentum'},
-                        {'condition': 'MACD strength < 1', 'points': '±10', 'meaning': 'Weak momentum'}
+                        {'condition': 'MACD strength > 2', 'points': '±20', 'meaning': 'Strong momentum'},
+                        {'condition': 'MACD strength > 1', 'points': '±14', 'meaning': 'Moderate momentum'},
+                        {'condition': 'MACD strength < 1', 'points': '±8', 'meaning': 'Weak momentum'}
                     ]
                 },
-                'ADX': {
-                    'description': 'Average Directional Index - Trend strength multiplier',
+                'Stochastic': {
+                    'description': 'Stochastic Oscillator (14-period %K, 3-period SMA %D)',
+                    'points': '±15',
+                    'note': 'v9.5.0: Fixed %D — proper 3-period SMA of %K values'
+                },
+                'CCI': {
+                    'description': 'Commodity Channel Index (20-period)',
+                    'points': '±10'
+                },
+                'RSI_Divergence': {
+                    'description': 'v9.5.0: Proper swing high/low divergence detection (20 candles, 2-bar pivots)',
+                    'points': '±10 (strength-based)',
+                    'note': 'Bullish: price lower low + RSI higher low. Bearish: price higher high + RSI lower high'
+                },
+                'Candlestick_Patterns': {
+                    'description': 'v9.5.0: 16 detected patterns wired into scoring (was unused)',
+                    'points': '±10',
+                    'note': 'Strongest pattern scored. MACD disagreement halves bonus. RSI context (oversold+bullish) = 1.3x'
+                },
+                'Rate_of_Change': {
+                    'description': 'v9.5.0: 5-day price ROC — momentum acceleration',
+                    'points': '±6',
+                    'note': 'ROC >1% = ±6, >0.5% = ±4, >0.2% = ±2'
+                },
+                'EMA_Recency': {
+                    'description': 'v9.5.0: EMA20/50 crossover freshness',
+                    'points': '±4',
+                    'note': 'Gap <0.1% = ±4 (fresh), <0.3% = ±2, converging = ±1'
+                },
+                'BB_Squeeze': {
+                    'description': 'v9.5.0: Bollinger Band width contraction/expansion detection',
+                    'points': '±5',
+                    'note': 'Width <50% of avg + ADX>20 = squeeze (±5). Width >150% = expansion (±3)'
+                },
+                'Volume': {
+                    'description': 'v9.5.0: Candle volume confirmation from Polygon',
+                    'points': '±5',
+                    'note': 'Vol >1.5x avg with trend = ±5. Vol spike against trend = -4 (reversal warning). Requires 10+ non-zero bars'
+                },
+                'ADX_Multiplier': {
+                    'description': 'Average Directional Index - Trend strength multiplier applied after all components',
                     'scoring': [
-                        {'condition': 'ADX > 40', 'multiplier': '1.3x', 'meaning': 'Very strong trend'},
-                        {'condition': 'ADX > 30', 'multiplier': '1.2x', 'meaning': 'Strong trend'},
-                        {'condition': 'ADX > 25', 'multiplier': '1.1x', 'meaning': 'Moderate trend'},
-                        {'condition': 'ADX < 15', 'multiplier': '0.7x', 'meaning': 'Weak trend (reduced confidence)'}
+                        {'condition': 'ADX > 40', 'multiplier': '1.25x', 'meaning': 'Very strong trend'},
+                        {'condition': 'ADX > 30', 'multiplier': '1.15x', 'meaning': 'Strong trend'},
+                        {'condition': 'ADX > 25', 'multiplier': '1.08x', 'meaning': 'Moderate trend'},
+                        {'condition': 'ADX < 15', 'multiplier': '0.75x', 'meaning': 'Weak trend (reduced confidence)'}
                     ]
                 }
             },
