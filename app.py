@@ -5008,50 +5008,180 @@ GEOPOLITICAL_REGIONS = {
     'BRENT': ['oil', 'opec', 'middle east', 'iran', 'saudi', 'russia', 'europe', 'north sea'],
 }
 
-# Geopolitical keywords with impact weights (balanced - not extreme)
+# v9.5.0: Geopolitical keywords with impact weights — expanded to ~65 keywords across 5 tiers
 GEOPOLITICAL_KEYWORDS = {
-    # High impact (weight 3) - clear market movers
+    # Extreme impact (weight 4) — catastrophic market movers
+    'nuclear strike': 4, 'declaration of war': 4, 'assassination': 4,
+    'world war': 4, 'global conflict': 4,
+
+    # High impact (weight 3) — clear market movers
     'war': 3, 'invasion': 3, 'military strike': 3, 'nuclear': 3,
     'sanctions': 3, 'embargo': 3, 'trade war': 3,
+    'cyber attack': 3, 'cyberwar': 3, 'blockade': 3, 'naval confrontation': 3,
+    'missile': 3, 'drone strike': 3, 'terrorist': 3, 'terror attack': 3,
+    'debt default': 3, 'sovereign default': 3, 'currency crisis': 3,
 
-    # Medium-high impact (weight 2) - significant tensions
+    # Medium-high impact (weight 2) — significant tensions
     'conflict': 2, 'tension': 2, 'escalation': 2, 'retaliation': 2,
     'tariff': 2, 'trade dispute': 2, 'trade tension': 2,
     'election': 2, 'referendum': 2, 'political crisis': 2,
-    'coup': 2, 'protest': 2, 'unrest': 2,
+    'coup': 2, 'coup attempt': 2, 'protest': 2, 'unrest': 2, 'civil unrest': 2,
+    'supply chain disruption': 2, 'energy crisis': 2, 'gas pipeline': 2,
+    'oil embargo': 2, 'shipping disruption': 2, 'strait of hormuz': 2,
+    'south china sea': 2, 'taiwan strait': 2, 'border clash': 2,
+    'government shutdown': 2, 'impeachment': 2, 'regime change': 2,
+    'food crisis': 2, 'commodity shock': 2, 'supply shock': 2,
+    'martial law': 2,
 
-    # Medium impact (weight 1.5) - moderate concerns
+    # Medium impact (weight 1.5) — moderate concerns
     'diplomatic': 1.5, 'negotiation': 1.5, 'summit': 1.5,
     'geopolitical': 1.5, 'political risk': 1.5,
     'supply disruption': 1.5, 'pipeline': 1.5,
+    'military exercise': 1.5, 'arms deal': 1.5, 'defense spending': 1.5,
+    'migration crisis': 1.5, 'refugee': 1.5, 'humanitarian': 1.5,
+    'central bank intervention': 1.5, 'capital controls': 1.5,
+    'trade restriction': 1.5, 'export ban': 1.5, 'import ban': 1.5,
 
-    # Lower impact (weight 1) - general uncertainty
+    # Lower impact (weight 1) — general uncertainty
     'uncertainty': 1, 'instability': 1, 'crisis': 1,
-    'policy change': 1, 'government': 1
+    'policy change': 1, 'government': 1,
+    'political tension': 1, 'diplomatic row': 1, 'expel diplomat': 1,
+    'travel ban': 1, 'asset freeze': 1, 'economic slowdown': 1
 }
 
-# Sentiment modifiers - positive resolution reduces risk
-RESOLUTION_KEYWORDS = ['peace', 'ceasefire', 'agreement', 'deal', 'resolved', 'easing', 'de-escalation']
+# v9.5.0: Event category mapping for G1 sub-component
+GEO_EVENT_CATEGORIES = {
+    'MILITARY': ['war', 'invasion', 'military strike', 'nuclear', 'nuclear strike', 'declaration of war',
+                 'missile', 'drone strike', 'naval confrontation', 'world war', 'global conflict', 'border clash'],
+    'SANCTIONS_TRADE': ['sanctions', 'embargo', 'trade war', 'tariff', 'trade dispute', 'trade tension',
+                        'trade restriction', 'export ban', 'import ban', 'oil embargo', 'retaliation'],
+    'POLITICAL': ['election', 'referendum', 'political crisis', 'coup', 'coup attempt', 'protest', 'unrest',
+                  'civil unrest', 'government shutdown', 'impeachment', 'regime change', 'martial law', 'assassination'],
+    'ENERGY_SUPPLY': ['energy crisis', 'gas pipeline', 'supply chain disruption', 'shipping disruption',
+                      'strait of hormuz', 'pipeline', 'supply disruption', 'food crisis', 'commodity shock',
+                      'supply shock', 'oil embargo', 'blockade'],
+    'CYBER_TERROR': ['cyber attack', 'cyberwar', 'terrorist', 'terror attack']
+}
+
+# v9.5.0: Expanded resolution keywords (7 → 18)
+RESOLUTION_KEYWORDS = [
+    'peace', 'ceasefire', 'agreement', 'deal', 'resolved', 'easing', 'de-escalation',
+    'truce', 'treaty', 'normalization', 'diplomatic breakthrough', 'sanctions lifted',
+    'trade deal', 'peace talks', 'reconciliation', 'cooperation', 'alliance', 'partnership'
+]
+
+
+def get_geopolitical_news():
+    """
+    v9.5.0: Fetch dedicated world-news RSS feeds for faster geopolitical event detection.
+    Cached 600s (10 min) — faster refresh than general news for rapid geo response.
+    Returns list of articles in same format as get_finnhub_news().
+    """
+    if is_cache_valid('geo_news', 600):
+        with cache_lock:
+            data = cache.get('geo_news', {}).get('data')
+            if data:
+                return data
+
+    geo_feeds = [
+        ('https://feeds.reuters.com/reuters/worldNews', 'Reuters World'),
+        ('https://feeds.bbci.co.uk/news/world/rss.xml', 'BBC World'),
+        ('https://rss.nytimes.com/services/xml/rss/nyt/World.xml', 'NYT World'),
+        ('https://www.aljazeera.com/xml/rss/all.xml', 'Al Jazeera'),
+    ]
+
+    articles = []
+    for feed_url, source_name in geo_feeds:
+        try:
+            resp = req_lib.get(feed_url, timeout=2, headers={
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            })
+            if resp.status_code == 200:
+                try:
+                    root = ET.fromstring(resp.content)
+                    items = root.findall('.//item')
+                    for item in items[:15]:  # 15 per feed for geo coverage
+                        title = item.find('title')
+                        desc = item.find('description')
+                        pub_date = item.find('pubDate')
+
+                        headline = title.text if title is not None else ''
+                        summary = desc.text if desc is not None else ''
+                        if summary:
+                            summary = re.sub(r'<[^>]+>', '', summary)[:250]
+
+                        dt = int(datetime.now().timestamp())
+                        if pub_date is not None and pub_date.text:
+                            try:
+                                from email.utils import parsedate_to_datetime
+                                dt = int(parsedate_to_datetime(pub_date.text).timestamp())
+                            except Exception:
+                                pass
+
+                        if headline:
+                            articles.append({
+                                'headline': headline,
+                                'summary': summary,
+                                'source': source_name,
+                                'datetime': dt,
+                                'geo_feed': True
+                            })
+                except ET.ParseError:
+                    pass
+        except Exception as e:
+            logger.debug(f"Geo RSS feed {source_name} error: {e}")
+            continue
+
+    # Cache results
+    with cache_lock:
+        if 'geo_news' not in cache:
+            cache['geo_news'] = {}
+        cache['geo_news']['data'] = articles
+        cache['geo_news']['timestamp'] = datetime.now()
+
+    if articles:
+        logger.info(f"🌍 Geo RSS fetched: {len(articles)} articles from {len(geo_feeds)} feeds")
+
+    return articles
+
 
 def calculate_geopolitical_risk(pair):
     """
-    v9.3.0: Calculate geopolitical risk score for a pair
-
-    Balanced approach:
-    - Score range: 35-65 (moderate, avoids extreme swings)
-    - Higher score = more bullish (less risk / positive resolution)
-    - Lower score = more bearish (more risk / negative tensions)
-    - 50 = neutral (no significant geopolitical news)
-
-    Returns: dict with score, signal, details
+    v9.5.0: Enhanced geopolitical risk score for a pair.
+    - Score range: 10-90 (widened from 35-65)
+    - Dedicated geo RSS feeds + general news for comprehensive coverage
+    - Tracks matched event categories for G1 sub-component
+    - 65+ keywords across 5 severity tiers + 18 resolution keywords
+    Returns: dict with score, signal, risk_level, net_risk, relevant_articles,
+             details, matched_categories, high_impact_count
     """
     try:
-        # Get cached news
+        # v9.5.0: Merge general news + dedicated geo RSS feeds
         news_data = get_finnhub_news()
         articles = news_data.get('articles', []) if news_data else []
 
+        # Add dedicated geopolitical RSS articles
+        try:
+            geo_articles = get_geopolitical_news()
+            if geo_articles:
+                # Deduplicate by headline hash
+                existing_headlines = set()
+                for a in articles:
+                    h = a.get('headline', '').lower().strip()[:40]
+                    if h:
+                        existing_headlines.add(h)
+                for ga in geo_articles:
+                    h = ga.get('headline', '').lower().strip()[:40]
+                    if h and h not in existing_headlines:
+                        articles.append(ga)
+                        existing_headlines.add(h)
+        except Exception:
+            pass  # Geo feeds are supplementary — don't block on failure
+
         if not articles:
-            return {'score': 50, 'signal': 'NEUTRAL', 'risk_level': 'LOW', 'details': 'No news data'}
+            return {'score': 50, 'signal': 'NEUTRAL', 'risk_level': 'LOW',
+                    'details': ['No news data'], 'matched_categories': [],
+                    'high_impact_count': 0, 'relevant_articles': 0, 'net_risk': 0}
 
         base, quote = pair.split('/') if '/' in pair else (pair[:3], pair[3:])
 
@@ -5065,18 +5195,18 @@ def calculate_geopolitical_risk(pair):
         resolution_score = 0
         relevant_articles = 0
         risk_details = []
+        matched_categories = set()
+        high_impact_count = 0
 
         current_time = datetime.now().timestamp()
 
-        for article in articles[:30]:  # Check recent 30 articles
+        for article in articles[:50]:  # v9.5.0: Check 50 articles (up from 30)
             headline = article.get('headline', '').lower()
             summary = article.get('summary', '').lower()
             text = f"{headline} {summary}"
 
             # Check if article is relevant to this pair's regions
             is_relevant = any(region in text for region in all_regions)
-
-            # Also check if it mentions the currency/commodity directly
             if base.lower() in text or quote.lower() in text:
                 is_relevant = True
 
@@ -5090,13 +5220,20 @@ def calculate_geopolitical_risk(pair):
             hours_old = max(0, (current_time - article_time) / 3600) if article_time else 0
             time_decay = max(0.3, 1.0 - (hours_old / 48))  # 48-hour decay
 
-            # Check for geopolitical keywords
+            # Check for geopolitical keywords + track categories
             article_risk = 0
             for keyword, weight in GEOPOLITICAL_KEYWORDS.items():
                 if keyword in text:
                     article_risk += weight
-                    if keyword in headline:  # Headlines are more important
+                    if keyword in headline:
                         article_risk += weight * 0.5
+                    # Track which event categories matched
+                    for cat, cat_keywords in GEO_EVENT_CATEGORIES.items():
+                        if keyword in cat_keywords:
+                            matched_categories.add(cat)
+                    # Track high-impact keyword matches
+                    if weight >= 3:
+                        high_impact_count += 1
 
             # Check for resolution/positive keywords
             article_resolution = 0
@@ -5111,30 +5248,31 @@ def calculate_geopolitical_risk(pair):
             resolution_score += article_resolution * time_decay
 
             if article_risk > 2:
-                risk_details.append(headline[:60])
+                risk_details.append(headline[:80])
 
         # Calculate final score
-        # Net risk = risk - resolution (can go negative if good news)
         net_risk = risk_score - resolution_score
 
-        # Normalize to 35-65 range (balanced, not extreme)
-        # 0 net_risk = 50 (neutral)
-        # High positive net_risk = lower score (more bearish due to risk)
-        # High negative net_risk = higher score (bullish, risk resolved)
-
+        # v9.5.0: Widened range 10-90 (was 35-65)
         if net_risk > 0:
-            # More risk -> lower score (capped at 35)
-            normalized_score = 50 - min(15, net_risk * 1.5)
+            normalized_score = 50 - min(40, net_risk * 2.5)
         elif net_risk < 0:
-            # Resolution -> higher score (capped at 65)
-            normalized_score = 50 + min(15, abs(net_risk) * 1.5)
+            normalized_score = 50 + min(40, abs(net_risk) * 2.5)
         else:
             normalized_score = 50
 
+        normalized_score = max(10, min(90, normalized_score))
+
         # Determine risk level
-        if normalized_score < 42:
+        if normalized_score < 35:
+            risk_level = 'EXTREME'
+            signal = 'BEARISH'
+        elif normalized_score < 42:
             risk_level = 'HIGH'
             signal = 'BEARISH'
+        elif normalized_score > 65:
+            risk_level = 'VERY_LOW'
+            signal = 'BULLISH'
         elif normalized_score > 58:
             risk_level = 'LOW'
             signal = 'BULLISH'
@@ -5148,7 +5286,9 @@ def calculate_geopolitical_risk(pair):
             'risk_level': risk_level,
             'net_risk': round(net_risk, 2),
             'relevant_articles': relevant_articles,
-            'details': risk_details[:3] if risk_details else ['No significant geopolitical news']
+            'details': risk_details[:5] if risk_details else ['No significant geopolitical news'],
+            'matched_categories': list(matched_categories),
+            'high_impact_count': high_impact_count
         }
 
     except Exception as e:
@@ -10839,21 +10979,223 @@ def generate_signal(pair):
             'quote_strength': currency_strength_data.get('quote_strength', 50)
         }
 
-        # v9.3.0: Add Geopolitical Risk as 9th factor group (5% forex, 6% commodities)
-        # Analyzes news for war, sanctions, trade tensions, elections
+        # ═══════════════════════════════════════════════════════════════════
+        # 9. GEOPOLITICAL RISK (4%/8%) - ENHANCED v9.5.0
+        #    Sub-components: G1-G7 (±52 raw budget, clamped [10,90])
+        #    Dedicated geo RSS feeds + expanded keywords + safe-haven flows
+        # ═══════════════════════════════════════════════════════════════════
         try:
             geo_risk_data = calculate_geopolitical_risk(pair)
         except Exception as geo_err:
             logger.warning(f"Geopolitical risk error for {pair}: {geo_err}")
-            geo_risk_data = {'score': 50, 'signal': 'NEUTRAL', 'risk_level': 'MODERATE', 'relevant_articles': 0, 'details': ['Error - using neutral']}
-        geo_weight = COMMODITY_FACTOR_WEIGHTS.get('geopolitical_risk', 6) if is_commodity(pair) else FACTOR_GROUP_WEIGHTS.get('geopolitical_risk', 5)
+            geo_risk_data = {'score': 50, 'signal': 'NEUTRAL', 'risk_level': 'MODERATE',
+                             'relevant_articles': 0, 'details': ['Error - using neutral'],
+                             'matched_categories': [], 'high_impact_count': 0, 'net_risk': 0}
+
+        geo_score = geo_risk_data['score']
+        geo_weight = COMMODITY_FACTOR_WEIGHTS.get('geopolitical_risk', 8) if is_commodity(pair) else FACTOR_GROUP_WEIGHTS.get('geopolitical_risk', 4)
+
+        # Initialize G-component variables
+        g1_category_adj = 0
+        g2_escalation_adj = 0
+        g3_vulnerability_adj = 0
+        g4_safehaven_adj = 0
+        g5_supply_adj = 0
+        g6_velocity_adj = 0
+        g7_vix_geo_adj = 0
+
+        # Base/quote for sub-components
+        geo_base = pair.split('/')[0] if '/' in pair else pair[:3]
+        geo_quote = pair.split('/')[1] if '/' in pair else pair[3:]
+        geo_safe_havens = {'USD', 'JPY', 'CHF'}
+        geo_risk_currencies = {'AUD', 'NZD', 'CAD', 'GBP'}
+
+        # --- G1: Event Category Severity (±10 pts) ---
+        try:
+            matched_cats = geo_risk_data.get('matched_categories', [])
+            cat_severity = {'MILITARY': 10, 'SANCTIONS_TRADE': 8, 'ENERGY_SUPPLY': 7,
+                           'POLITICAL': 6, 'CYBER_TERROR': 5}
+
+            if matched_cats:
+                max_severity = max(cat_severity.get(cat, 3) for cat in matched_cats)
+                # Apply as negative (risk = bearish) scaled by how far from neutral
+                risk_direction = -1 if geo_score < 50 else 1 if geo_score > 50 else 0
+                g1_category_adj = round(max_severity * risk_direction * 0.8)
+                g1_category_adj = max(-10, min(10, g1_category_adj))
+
+            geo_score += g1_category_adj
+        except Exception as e:
+            logger.debug(f"G1 event category failed for {pair}: {e}")
+
+        # --- G2: Severity Escalation Detection (±8 pts) ---
+        try:
+            high_impact = geo_risk_data.get('high_impact_count', 0)
+            net_risk = abs(geo_risk_data.get('net_risk', 0))
+            risk_sign = -1 if geo_risk_data.get('net_risk', 0) > 0 else 1
+
+            if high_impact >= 3:
+                g2_escalation_adj = 8 * risk_sign
+            elif high_impact >= 2:
+                g2_escalation_adj = 5 * risk_sign
+            elif high_impact >= 1:
+                g2_escalation_adj = 3 * risk_sign
+
+            geo_score += g2_escalation_adj
+        except Exception as e:
+            logger.debug(f"G2 escalation failed for {pair}: {e}")
+
+        # --- G3: Currency-Specific Vulnerability (±7 pts) ---
+        try:
+            matched_cats = geo_risk_data.get('matched_categories', [])
+            geo_net = geo_risk_data.get('net_risk', 0)
+
+            # Currency vulnerability mapping
+            vulnerability = 0
+            if geo_net > 0:  # Risk detected
+                # EUR highly exposed to Russia/Ukraine/EU events
+                if (geo_base == 'EUR' or geo_quote == 'EUR') and ('MILITARY' in matched_cats or 'SANCTIONS_TRADE' in matched_cats):
+                    vulnerability = -7
+                # JPY/CNH exposed to China/Taiwan events
+                elif (geo_base in ('JPY', 'CNH') or geo_quote in ('JPY', 'CNH')) and 'MILITARY' in matched_cats:
+                    vulnerability = -6
+                # CAD/NOK exposed to energy events
+                elif (geo_base in ('CAD', 'NOK') or geo_quote in ('CAD', 'NOK')) and 'ENERGY_SUPPLY' in matched_cats:
+                    vulnerability = -6
+                # AUD/NZD exposed to China events
+                elif (geo_base in ('AUD', 'NZD') or geo_quote in ('AUD', 'NZD')) and 'SANCTIONS_TRADE' in matched_cats:
+                    vulnerability = -5
+                # Commodities: gold is INVERSE (crisis = bullish)
+                elif geo_base in ('XAU', 'XAG') and any(c in matched_cats for c in ('MILITARY', 'SANCTIONS_TRADE', 'POLITICAL')):
+                    vulnerability = 7  # Crisis is BULLISH for gold
+                # Oil: supply disruption is bullish for price
+                elif geo_base in ('WTI', 'BRENT') and 'ENERGY_SUPPLY' in matched_cats:
+                    vulnerability = 5  # Supply disruption = higher prices
+                else:
+                    vulnerability = -3  # General risk for any pair
+
+            g3_vulnerability_adj = vulnerability
+            geo_score += g3_vulnerability_adj
+        except Exception as e:
+            logger.debug(f"G3 vulnerability failed for {pair}: {e}")
+
+        # --- G4: Safe-Haven Flow Direction (±8 pts) ---
+        try:
+            base_safe = geo_base in geo_safe_havens or geo_base in ('XAU', 'XAG')
+            base_risk = geo_base in geo_risk_currencies
+            quote_safe = geo_quote in geo_safe_havens
+            quote_risk = geo_quote in geo_risk_currencies
+
+            if geo_risk_data['score'] < 42:  # High geo risk → safe-haven flows
+                if base_safe and not quote_safe:
+                    g4_safehaven_adj = 8   # Safe base benefits from crisis inflow
+                elif quote_safe and not base_safe:
+                    g4_safehaven_adj = -8  # Safe quote = pair drops
+                elif base_risk:
+                    g4_safehaven_adj = -6  # Risk base suffers in crisis
+                elif quote_risk:
+                    g4_safehaven_adj = 6   # Risk quote = pair rises
+            elif 42 <= geo_risk_data['score'] < 50:  # Moderate risk
+                if base_safe and not quote_safe:
+                    g4_safehaven_adj = 4
+                elif quote_safe and not base_safe:
+                    g4_safehaven_adj = -4
+            elif geo_risk_data['score'] > 58:  # Low risk → risk-on flow
+                if base_risk:
+                    g4_safehaven_adj = 5   # Risk-on benefits risk currencies
+                elif quote_risk:
+                    g4_safehaven_adj = -3
+                elif base_safe:
+                    g4_safehaven_adj = -3  # Safe-havens lose appeal in calm
+                elif quote_safe:
+                    g4_safehaven_adj = 3
+
+            geo_score += g4_safehaven_adj
+        except Exception as e:
+            logger.debug(f"G4 safe-haven flow failed for {pair}: {e}")
+
+        # --- G5: Commodity Supply Disruption (±8 pts) ---
+        try:
+            is_commodity_pair = pair in ('XAU/USD', 'XAG/USD', 'XPT/USD', 'WTI/USD', 'BRENT/USD')
+            matched_cats = geo_risk_data.get('matched_categories', [])
+            geo_net = geo_risk_data.get('net_risk', 0)
+
+            if is_commodity_pair and geo_net > 0:
+                if pair in ('WTI/USD', 'BRENT/USD') and 'ENERGY_SUPPLY' in matched_cats:
+                    g5_supply_adj = 8   # Direct oil supply disruption = price up
+                elif pair in ('WTI/USD', 'BRENT/USD') and 'MILITARY' in matched_cats:
+                    g5_supply_adj = 6   # Military conflict near oil = supply risk
+                elif pair in ('XAU/USD', 'XAG/USD', 'XPT/USD') and any(c in matched_cats for c in ('MILITARY', 'POLITICAL')):
+                    g5_supply_adj = 5   # Precious metals = safe-haven demand up
+                else:
+                    g5_supply_adj = 3   # General geo risk + commodity
+            elif not is_commodity_pair and geo_net > 2:
+                # Indirect: CAD/NOK benefit from oil price rises during supply disruption
+                if (geo_base in ('CAD', 'NOK') or geo_quote in ('CAD', 'NOK')) and 'ENERGY_SUPPLY' in matched_cats:
+                    g5_supply_adj = 2 if geo_base in ('CAD', 'NOK') else -2
+
+            geo_score += g5_supply_adj
+        except Exception as e:
+            logger.debug(f"G5 supply disruption failed for {pair}: {e}")
+
+        # --- G6: News Velocity & Clustering (±6 pts) ---
+        try:
+            g6_articles = geo_risk_data.get('relevant_articles', 0)
+            geo_net = geo_risk_data.get('net_risk', 0)
+            risk_sign = -1 if geo_net > 0 else 1 if geo_net < 0 else 0
+
+            if g6_articles >= 8:
+                g6_velocity_adj = 6 * risk_sign  # Crisis mode — many articles
+            elif g6_articles >= 5:
+                g6_velocity_adj = 4 * risk_sign
+            elif g6_articles >= 3:
+                g6_velocity_adj = 2 * risk_sign
+
+            geo_score += g6_velocity_adj
+        except Exception as e:
+            logger.debug(f"G6 news velocity failed for {pair}: {e}")
+
+        # --- G7: VIX-Geopolitical Correlation (±5 pts) ---
+        try:
+            macro_geo = get_expanded_fundamental_data()
+            g7_vix = macro_geo.get('VIXCLS', 18.0)
+
+            if g7_vix > 25 and geo_risk_data['score'] < 45:
+                g7_vix_geo_adj = -5  # Market confirms geo risk is real
+            elif g7_vix > 20 and geo_risk_data['score'] < 42:
+                g7_vix_geo_adj = -3
+            elif g7_vix < 15 and geo_risk_data['score'] > 55:
+                g7_vix_geo_adj = 3   # Market calm confirms low geo risk
+
+            # Apply directionally: negative = more risk, positive = less risk
+            # For safe-havens, reverse: more risk = bullish
+            if g7_vix_geo_adj < 0:
+                base_safe = geo_base in geo_safe_havens or geo_base in ('XAU', 'XAG')
+                if base_safe:
+                    g7_vix_geo_adj = abs(g7_vix_geo_adj)  # Safe-havens benefit
+
+            geo_score += g7_vix_geo_adj
+        except Exception as e:
+            logger.debug(f"G7 VIX-geo correlation failed for {pair}: {e}")
+
+        # Final clamp
+        geo_score = max(10, min(90, round(geo_score, 1)))
+
         factor_groups['geopolitical_risk'] = {
-            'score': geo_risk_data['score'],
-            'signal': geo_risk_data['signal'],
+            'score': geo_score,
+            'signal': 'BULLISH' if geo_score >= 58 else 'BEARISH' if geo_score <= 42 else 'NEUTRAL',
             'weight': geo_weight,
             'risk_level': geo_risk_data.get('risk_level', 'MODERATE'),
             'relevant_articles': geo_risk_data.get('relevant_articles', 0),
-            'details': geo_risk_data.get('details', [])
+            'details': geo_risk_data.get('details', []),
+            'matched_categories': geo_risk_data.get('matched_categories', []),
+            'event_category': g1_category_adj,
+            'escalation_level': g2_escalation_adj,
+            'currency_vulnerability': g3_vulnerability_adj,
+            'safe_haven_flow': g4_safehaven_adj,
+            'supply_disruption': g5_supply_adj,
+            'news_velocity': g6_velocity_adj,
+            'vix_geo_correlation': g7_vix_geo_adj,
+            'high_impact_count': geo_risk_data.get('high_impact_count', 0)
         }
 
         # v9.4.0: Add Market Depth as 10th factor group (4% forex, 5% commodities)
@@ -12115,7 +12457,7 @@ def run_system_audit():
             'ai_synthesis': {'weight': 9, 'sources': 'v9.5.0: GPT-4o-mini cross-validation + 8 sub-components (confidence scaling, trade quality grade, risk severity, validation consistency, directional alignment, key driver strength, direction match, data quality gate) + confidence-based weight adjustment'},
             'currency_strength': {'weight': 8, 'sources': 'v9.4.0: 50-instrument analysis — confirmation tool'},
             'calendar_risk': {'weight': 6, 'sources': 'Economic events + Seasonality — gate/filter role'},
-            'geopolitical_risk': {'weight': 4, 'sources': 'War, sanctions, trade tensions — tail-risk filter (IMF 2025)'},
+            'geopolitical_risk': {'weight': 4, 'sources': 'v9.5.0: 65+ keywords across 5 tiers + 4 dedicated geo RSS feeds (Reuters/BBC/NYT/Al Jazeera) + 7 sub-components (event category severity, escalation detection, currency vulnerability, safe-haven flows, commodity supply disruption, news velocity, VIX correlation)'},
             'market_depth': {'weight': 4, 'sources': 'Spread, session, liquidity — trade quality filter'}
         },
         'commodity_weights': {
