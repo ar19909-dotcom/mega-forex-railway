@@ -14212,23 +14212,23 @@ def run_system_audit():
         'total_weight': 100,
         'factor_groups': {
             'trend_momentum': {'weight': 20, 'sources': 'Technical (RSI/MACD/Stoch/CCI/Divergence/Patterns/ROC/EMA/Squeeze/Volume + ADX multiplier) 60% + MTF (H1/H4/D1) 40% — #1 return driver'},
-            'fundamental': {'weight': 13, 'sources': 'v9.5.0: Rate diff + Yield curve + CPI/Employment/Payroll momentum + Rate change trajectory + Fundamental news (13 FRED series, 3 historical lookups)'},
-            'mean_reversion': {'weight': 11, 'sources': 'v9.5.0: Quantitative (Z-Score/Bollinger/Triangle + Z-Momentum/EMA Distance/RSI Confluence/Volume Extremes) 55% + Structure (S/R/Pivot/Fib/ADX + Order Blocks/FVGs/Liquidity Zones/Confluence) 45%'},
-            'sentiment': {'weight': 10, 'sources': 'v9.5.0: IG/Saxo retail + Finnhub/RSS/Yahoo news + COT institutional + 8 sub-components (VIX fear gauge, retail extreme, news velocity, price divergence, COT confirmation, sentiment momentum, source agreement, commodity regime)'},
-            'intermarket': {'weight': 9, 'sources': 'v9.5.0: DXY/Gold/Oil/Yields/VIX base + 7 sub-components (VIX momentum, yield curve risk, correlation confirmation, SPX equity proxy via AUD/USD, gold-oil ratio regime, DXY-VIX divergence 4-regime, multi-asset momentum agreement)'},
-            'ai_synthesis': {'weight': 8, 'sources': 'v9.5.0: GPT-4o-mini with enriched pair-specific context (price action, extended technicals, structure levels, carry trade, calendar) + 10 sub-components A1-A10 (confidence scaling, trade quality, risk severity, validation, alignment, drivers, direction match, data quality, conviction alignment, pair insight quality) max_tokens=1000 temperature=0.2'},
-            'currency_strength': {'weight': 8, 'sources': 'v9.4.0: 50-instrument analysis — confirmation tool. v9.5.0: Commodities get Supply & Demand (7%) with 7 sub-components (supply zones, FVG imbalance, real yields, EIA inventory, commodity ratios, DXY momentum, supply disruption)'},
+            'fundamental': {'weight': 13, 'sources': 'v9.6.0: Rate diff + Yield curve + CPI/Employment/Payroll momentum + Rate change trajectory + Fundamental news (13 FRED series, 3 historical lookups)'},
+            'mean_reversion': {'weight': 11, 'sources': 'v9.6.0: Quantitative (Z-Score/Bollinger/Triangle + Z-Momentum/EMA Distance/RSI Confluence/Volume Extremes) 55% + Structure (S/R/Pivot/Fib/ADX + Order Blocks/FVGs/Liquidity Zones/Confluence) 45%'},
+            'sentiment': {'weight': 10, 'sources': 'v9.6.0: IG/Saxo retail + Finnhub/RSS/Yahoo news + COT institutional + 8 sub-components (VIX fear gauge, retail extreme, news velocity, price divergence, COT confirmation, sentiment momentum, source agreement, commodity regime)'},
+            'intermarket': {'weight': 9, 'sources': 'v9.6.0: DXY/Gold/Oil/Yields/VIX base + 7 sub-components (VIX momentum, yield curve risk, correlation confirmation, SPX equity proxy via AUD/USD, gold-oil ratio regime, DXY-VIX divergence 4-regime, multi-asset momentum agreement)'},
+            'ai_synthesis': {'weight': 8, 'sources': 'v9.6.0: GPT-4o-mini with enriched pair-specific context (price action, extended technicals, structure levels, carry trade, calendar) + 10 sub-components A1-A10 (confidence scaling, trade quality, risk severity, validation, alignment, drivers, direction match, data quality, conviction alignment, pair insight quality) max_tokens=1000 temperature=0.2'},
+            'currency_strength': {'weight': 8, 'sources': 'v9.6.0: 50-instrument analysis — confirmation tool. Commodities get Supply & Demand (7%) with 7 sub-components (supply zones, FVG imbalance, real yields, EIA inventory, commodity ratios, DXY momentum, supply disruption)'},
             'probability': {'weight': 7, 'sources': 'v9.6.0: 8 sub-components — P1 ATR cycle phase (±8), P2 consolidation breakout (±8), P3 Bulkowski candlestick success (±7), P4 S/R touch-count exhaustion (±7), P5 liquidity sweep reversal (±6), P6 FVG magnet effect (±5), P7 session win rate (±5), P8 fibonacci confluence density (±5). Max ±51 raw budget, clamped [10,90].'},
             'calendar_risk': {'weight': 6, 'sources': 'Economic events + Seasonality — gate/filter role'},
-            'geopolitical_risk': {'weight': 4, 'sources': 'v9.5.0: 65+ keywords across 5 tiers + 4 dedicated geo RSS feeds (Reuters/BBC/NYT/Al Jazeera) + 7 sub-components (event category severity, escalation detection, currency vulnerability, safe-haven flows, commodity supply disruption, news velocity, VIX correlation)'},
-            'market_depth': {'weight': 4, 'sources': 'v9.5.0: Smart depth with 7 sub-components (volume profile, order block density, liquidity zone density, spread dynamics, session-pair affinity, volume-price confluence, ATR regime detection) + base spread/session/liquidity/ATR'}
+            'geopolitical_risk': {'weight': 4, 'sources': 'v9.6.0: 65+ keywords across 5 tiers + 4 dedicated geo RSS feeds (Reuters/BBC/NYT/Al Jazeera) + 7 sub-components (event category severity, escalation detection, currency vulnerability, safe-haven flows, commodity supply disruption, news velocity, VIX correlation)'},
+            'market_depth': {'weight': 4, 'sources': 'v9.6.0: Smart depth with 7 sub-components (volume profile, order block density, liquidity zone density, spread dynamics, session-pair affinity, volume-price confluence, ATR regime detection) + base spread/session/liquidity/ATR'}
         },
         'commodity_weights': {
             'description': 'v9.6.0: Separate weight profile for 5 commodities (XAU, XAG, XPT, WTI, BRENT)',
             'trend_momentum': 21, 'intermarket': 14, 'mean_reversion': 10,
             'sentiment': 9, 'fundamental': 7, 'ai_synthesis': 8,
             'geopolitical_risk': 7, 'calendar_risk': 7, 'supply_demand': 7, 'probability': 6, 'market_depth': 4,
-            'note': 'v9.5.0: Supply & Demand (7%) enhanced with 7 sub-components: SD1 supply/demand zones (±8), SD2 fair value gap imbalance (±6), SD3 real yield impact (±8 metals), SD4 EIA inventory trend (±8 oil), SD5 cross-commodity ratios (±7), SD6 DXY momentum (±6), SD7 supply disruption signal (±6). Max ±49 raw budget, clamped [10,90].'
+            'note': 'v9.6.0: Supply & Demand (7%) enhanced with 7 sub-components: SD1 supply/demand zones (±8), SD2 fair value gap imbalance (±6), SD3 real yield impact (±8 metals), SD4 EIA inventory trend (±8 oil), SD5 cross-commodity ratios (±7), SD6 DXY momentum (±6), SD7 supply disruption signal (±6). Max ±49 raw budget, clamped [10,90].'
         },
         'quality_gates': {
             'description': '8 of 10 gates must pass for LONG/SHORT signal, otherwise NEUTRAL. G3/G5/G8 are MANDATORY.',
@@ -14271,12 +14271,12 @@ def run_system_audit():
         'technical': {
             'weight': 13,
             'weight_percent': '60% of Trend & Momentum (20%)',
-            'description': 'v9.5.0: 10 sub-components with ADX-adaptive RSI, swing divergence, candlestick patterns, ROC, EMA recency, BB squeeze, volume confirmation',
+            'description': 'v9.6.0: 10 sub-components with ADX-adaptive RSI, swing divergence, candlestick patterns, ROC, EMA recency, BB squeeze, volume confirmation',
             'data_sources': ['Polygon.io (Tier 1)', 'Twelve Data (Tier 2)', 'TraderMade (Tier 3)', 'ExchangeRate (Tier 4)', 'CurrencyLayer (Tier 5)'],
             'score_range': '10-90 (±115 raw, ADX multiplied, clamped)',
             'components': {
                 'RSI': {
-                    'description': 'Relative Strength Index (14-period) — v9.5.0: ADX-adaptive thresholds',
+                    'description': 'Relative Strength Index (14-period) — v9.6.0: ADX-adaptive thresholds',
                     'points': '±30',
                     'note': 'Trending (ADX>25): wider oversold zone (RSI 45 = buy zone). Ranging (ADX<20): tighter bands'
                 },
@@ -14292,39 +14292,39 @@ def run_system_audit():
                 'Stochastic': {
                     'description': 'Stochastic Oscillator (14-period %K, 3-period SMA %D)',
                     'points': '±15',
-                    'note': 'v9.5.0: Fixed %D — proper 3-period SMA of %K values'
+                    'note': 'v9.6.0: Fixed %D — proper 3-period SMA of %K values'
                 },
                 'CCI': {
                     'description': 'Commodity Channel Index (20-period)',
                     'points': '±10'
                 },
                 'RSI_Divergence': {
-                    'description': 'v9.5.0: Proper swing high/low divergence detection (20 candles, 2-bar pivots)',
+                    'description': 'v9.6.0: Proper swing high/low divergence detection (20 candles, 2-bar pivots)',
                     'points': '±10 (strength-based)',
                     'note': 'Bullish: price lower low + RSI higher low. Bearish: price higher high + RSI lower high'
                 },
                 'Candlestick_Patterns': {
-                    'description': 'v9.5.0: 16 detected patterns wired into scoring (was unused)',
+                    'description': 'v9.6.0: 16 detected patterns wired into scoring',
                     'points': '±10',
                     'note': 'Strongest pattern scored. MACD disagreement halves bonus. RSI context (oversold+bullish) = 1.3x'
                 },
                 'Rate_of_Change': {
-                    'description': 'v9.5.0: 5-day price ROC — momentum acceleration',
+                    'description': 'v9.6.0: 5-day price ROC — momentum acceleration',
                     'points': '±6',
                     'note': 'ROC >1% = ±6, >0.5% = ±4, >0.2% = ±2'
                 },
                 'EMA_Recency': {
-                    'description': 'v9.5.0: EMA20/50 crossover freshness',
+                    'description': 'v9.6.0: EMA20/50 crossover freshness',
                     'points': '±4',
                     'note': 'Gap <0.1% = ±4 (fresh), <0.3% = ±2, converging = ±1'
                 },
                 'BB_Squeeze': {
-                    'description': 'v9.5.0: Bollinger Band width contraction/expansion detection',
+                    'description': 'v9.6.0: Bollinger Band width contraction/expansion detection',
                     'points': '±5',
                     'note': 'Width <50% of avg + ADX>20 = squeeze (±5). Width >150% = expansion (±3)'
                 },
                 'Volume': {
-                    'description': 'v9.5.0: Candle volume confirmation from Polygon',
+                    'description': 'v9.6.0: Candle volume confirmation from Polygon',
                     'points': '±5',
                     'note': 'Vol >1.5x avg with trend = ±5. Vol spike against trend = -4 (reversal warning). Requires 10+ non-zero bars'
                 },
@@ -14343,19 +14343,19 @@ def run_system_audit():
         'fundamental': {
             'weight': 15,
             'weight_percent': '100% of Fundamental (13%)',
-            'description': 'v9.5.0: Enhanced with FRED macro engine — carry trade + yield curve + CPI/employment/payroll momentum + rate trajectory + fundamental news',
+            'description': 'v9.6.0: Enhanced with FRED macro engine — carry trade + yield curve + CPI/employment/payroll momentum + rate trajectory + fundamental news',
             'data_sources': ['Central bank rates database', 'FRED API (13 series + 3 historical)', 'Finnhub/RSS news (fundamental keywords)'],
             'score_range': '10-90 (±88.5 raw, clamped)',
             'components': {
                 'Interest_Rate_Diff': {'points': '±25', 'description': 'Carry trade differential from central bank rates'},
                 'Policy_Bias': {'points': '±10.5', 'description': 'Static CB bias (0.7x weight, supplemented by rate momentum)'},
                 'Economic_Diff': {'points': '±15', 'description': 'GDP, inflation, current account differentials'},
-                'Yield_Curve': {'points': '±8', 'description': 'v9.5.0: US 10Y-2Y spread from FRED T10Y2Y — inverted=recession, steep=growth'},
-                'Inflation_Momentum': {'points': '±6', 'description': 'v9.5.0: CPI trend (3-month change) — rising=hawkish'},
-                'Employment_Momentum': {'points': '±6', 'description': 'v9.5.0: Unemployment trend (3-month change) — falling=strong'},
-                'Payroll_Strength': {'points': '±5', 'description': 'v9.5.0: Nonfarm payrolls 3-month change from FRED PAYEMS'},
-                'Rate_Change_Momentum': {'points': '±6', 'description': 'v9.5.0: Fed funds 6-month trajectory — hiking/cutting cycle'},
-                'Fundamental_News': {'points': '±7', 'description': 'v9.5.0: Economic data release keywords from RSS/Finnhub (24h window)'}
+                'Yield_Curve': {'points': '±8', 'description': 'v9.6.0: US 10Y-2Y spread from FRED T10Y2Y — inverted=recession, steep=growth'},
+                'Inflation_Momentum': {'points': '±6', 'description': 'v9.6.0: CPI trend (3-month change) — rising=hawkish'},
+                'Employment_Momentum': {'points': '±6', 'description': 'v9.6.0: Unemployment trend (3-month change) — falling=strong'},
+                'Payroll_Strength': {'points': '±5', 'description': 'v9.6.0: Nonfarm payrolls 3-month change from FRED PAYEMS'},
+                'Rate_Change_Momentum': {'points': '±6', 'description': 'v9.6.0: Fed funds 6-month trajectory — hiking/cutting cycle'},
+                'Fundamental_News': {'points': '±7', 'description': 'v9.6.0: Economic data release keywords from RSS/Finnhub (24h window)'}
             },
             'fred_series_count': 13,
             'historical_lookups': 3,
@@ -14385,7 +14385,7 @@ def run_system_audit():
         'ai': {
             'weight': 10,
             'weight_percent': '100% of AI Synthesis (8%)',
-            'description': 'GPT-4o-mini AI-powered market analysis (v9.4.0)',
+            'description': 'GPT-4o-mini AI-powered market analysis (v9.6.0)',
             'data_sources': ['OpenAI API (GPT-4o-mini model)'],
             'score_range': '15-85',
             'components': {
@@ -14631,7 +14631,7 @@ def run_system_audit():
         'market_depth': {
             'weight': 4,
             'weight_percent': '100% of Market Depth (4%)',
-            'description': 'v9.5.0 Enhanced: Smart market depth with volume profile, order flow, spread dynamics, session affinity, and ATR regime detection',
+            'description': 'v9.6.0 Enhanced: Smart market depth with volume profile, order flow, spread dynamics, session affinity, and ATR regime detection',
             'data_sources': ['Polygon.io (bid/ask spreads + OHLCV volume)', 'ICT Killzone session detection', 'Pair classification (Major/Minor/Cross/Exotic)', 'ATR (14-period)', 'Order Blocks (institutional flow)', 'Liquidity Zones (stop-loss pools)', 'TYPICAL_SPREAD_BPS (relative spread)', 'SESSION_PAIR_AFFINITY (optimal windows)'],
             'score_range': '10-90',
             'base_function': 'calculate_market_depth() — spread(35%) + session(35%) + pair_class(20%) + ATR(10%)',
@@ -15179,12 +15179,12 @@ def run_system_audit():
         'quality_checks': quality_checks,
         'signal_status': signal_status,
         'data_verification': {
-            'rates': 'v9.4.0 6-Tier: Polygon → Twelve Data → TraderMade → ExchangeRate → CurrencyLayer → Static',
+            'rates': 'v9.6.0 6-Tier: Polygon → Twelve Data → TraderMade → ExchangeRate → CurrencyLayer → Static',
             'technical': 'RSI, MACD, ADX calculated from real-time candle data',
             'fundamental': 'Interest rate differentials from central bank rates + FRED API',
             'sentiment': 'IG positioning + Finnhub news + RSS feeds + COT institutional data',
-            'ai': 'v9.5.0: GPT-4o-mini cross-validation + confidence scaling + trade quality + risk assessment + validation consistency + directional alignment + driver analysis + data quality gate',
-            'intermarket': 'v9.5.0: DXY/Gold/Oil/Yields/VIX + VIX momentum + yield curve risk + cross-pair correlation + SPX proxy + gold-oil ratio + DXY-VIX regime + momentum agreement',
+            'ai': 'v9.6.0: GPT-4o-mini cross-validation + confidence scaling + trade quality + risk assessment + validation consistency + directional alignment + driver analysis + data quality gate',
+            'intermarket': 'v9.6.0: DXY/Gold/Oil/Yields/VIX + VIX momentum + yield curve risk + cross-pair correlation + SPX proxy + gold-oil ratio + DXY-VIX regime + momentum agreement',
             'quantitative': 'Z-score and Bollinger %B from price statistics',
             'mtf': 'H1/H4/D1 EMA analysis from candle data (proper OHLC aggregation)',
             'structure': 'Swing high/low detection + pivot calculations',
@@ -15529,8 +15529,8 @@ def run_ai_system_health_check(use_ai=True):
     # v9.3.0: Commodity-specific anti-overfitting measures
     overfit_check['details']['commodity_safeguards'] = [
         'Separate weight profile prevents forex-tuned weights biasing commodities',
-        'Currency Strength replaced by Supply & Demand (7%) — v9.5.0: 7 sub-components (supply zones, FVG, real yields, EIA inventory, commodity ratios, DXY momentum, supply disruption)',
-        'Intermarket at 15% — cross-commodity correlations validated against historical data',
+        'Currency Strength replaced by Supply & Demand (7%) — v9.6.0: 7 sub-components (supply zones, FVG, real yields, EIA inventory, commodity ratios, DXY momentum, supply disruption)',
+        'Intermarket at 14% — cross-commodity correlations validated against historical data',
         'Entry range capped at 0.1% of price — prevents ATR-driven wide entries',
         'SL/TP use commodity-specific ATR multipliers (not forex defaults)',
         'Commodity fundamental uses DXY/real-yields/VIX — not interest rate differentials',
