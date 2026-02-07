@@ -265,23 +265,26 @@ COMMODITY_DECIMAL_PLACES = {
 }
 
 # v9.4.0: Exotic pair pip sizes - high-value pairs need larger pip units
-# Without this, ATR/pip_size creates absurd pip counts (e.g. 8500 pips for USD/TRY)
-# that get hard-capped by PIP_LIMITS, resulting in SL/TP that are way too tight
+# v9.5.1: Exotic pip sizes — normalized to 0.001 for consistent ATR-in-pips (100-600 range)
+# HUF uses 0.01 (JPY-like convention). All others use 0.001.
+# Without this, ATR/0.0001 produces 1500-8500 pips that get hard-capped by PIP_LIMITS.
+# With 0.01 (old), TRY/MXN/ZAR produced only 15-35 pips — SL/TP way too tight.
 EXOTIC_PIP_SIZES = {
-    'USD/TRY': 0.01,    # Price ~43, ATR ~0.85 → 85 pips
-    'EUR/TRY': 0.01,    # Price ~40, ATR ~0.95 → 95 pips
-    'USD/ZAR': 0.01,    # Price ~18, ATR ~0.35 → 35 pips
-    'USD/MXN': 0.01,    # Price ~20, ATR ~0.25 → 25 pips
-    'EUR/HUF': 0.1,     # Price ~408, ATR ~5.5 → 55 pips
-    'EUR/CZK': 0.01,    # Price ~25, ATR ~0.35 → 35 pips
-    'USD/PLN': 0.001,   # Price ~4, ATR ~0.055 → 55 pips
-    'EUR/PLN': 0.001,   # Price ~4.4, ATR ~0.065 → 65 pips
-    # v9.5.0: Scandinavian pairs — without these, ATR/0.0001 = 1500+ pips, always capped
-    'USD/NOK': 0.001,   # Price ~10.7, ATR ~0.15 → 150 pips
-    'USD/SEK': 0.001,   # Price ~10.5, ATR ~0.15 → 150 pips
-    'USD/DKK': 0.001,   # Price ~6.8, ATR ~0.065 → 65 pips
-    'EUR/NOK': 0.001,   # Price ~11.5, ATR ~0.18 → 180 pips
-    'EUR/SEK': 0.001,   # Price ~11.3, ATR ~0.16 → 160 pips
+    'USD/TRY': 0.001,   # Price ~43, ATR ~0.15-0.85 → 150-850 pips
+    'EUR/TRY': 0.001,   # Price ~40, ATR ~0.20-0.95 → 200-950 pips
+    'USD/ZAR': 0.001,   # Price ~16, ATR ~0.20-0.35 → 200-350 pips
+    'USD/MXN': 0.001,   # Price ~17, ATR ~0.15-0.25 → 150-250 pips
+    'EUR/HUF': 0.01,    # Price ~395, ATR ~3-6 → 300-600 pips (JPY-like)
+    'USD/HUF': 0.01,    # Price ~382, ATR ~3-6 → 300-600 pips (JPY-like)
+    'EUR/CZK': 0.001,   # Price ~25, ATR ~0.10-0.35 → 100-350 pips
+    'USD/CZK': 0.001,   # Price ~24, ATR ~0.10-0.35 → 100-350 pips
+    'USD/PLN': 0.001,   # Price ~3.6, ATR ~0.03-0.06 → 30-60 pips
+    'EUR/PLN': 0.001,   # Price ~4.4, ATR ~0.04-0.07 → 40-70 pips
+    'USD/NOK': 0.001,   # Price ~10.7, ATR ~0.10-0.15 → 100-150 pips
+    'USD/SEK': 0.001,   # Price ~10.5, ATR ~0.10-0.15 → 100-150 pips
+    'USD/DKK': 0.001,   # Price ~6.8, ATR ~0.03-0.07 → 30-70 pips
+    'EUR/NOK': 0.001,   # Price ~11.5, ATR ~0.12-0.18 → 120-180 pips
+    'EUR/SEK': 0.001,   # Price ~11.3, ATR ~0.10-0.16 → 100-160 pips
 }
 
 def get_pip_size(pair):
@@ -1155,9 +1158,9 @@ DEFAULT_ATR = {
     'CAD/JPY': 0.95, 'CHF/JPY': 1.05, 'SGD/JPY': 0.65, 'HKD/JPY': 0.15,
     'AUD/NZD': 0.0065, 'AUD/CAD': 0.0065, 'AUD/CHF': 0.0055, 'NZD/CAD': 0.0065,
     'NZD/CHF': 0.0045, 'CAD/CHF': 0.0055, 'USD/SGD': 0.0075, 'USD/HKD': 0.0035,
-    'USD/MXN': 0.25, 'USD/ZAR': 0.35, 'USD/TRY': 0.85, 'USD/NOK': 0.15,
-    'USD/SEK': 0.15, 'USD/DKK': 0.065, 'USD/PLN': 0.055, 'EUR/TRY': 0.95,
-    'EUR/PLN': 0.065, 'EUR/NOK': 0.18, 'EUR/SEK': 0.16, 'EUR/HUF': 5.5, 'EUR/CZK': 0.35,
+    'USD/MXN': 0.25, 'USD/ZAR': 0.30, 'USD/TRY': 0.35, 'USD/NOK': 0.12,
+    'USD/SEK': 0.12, 'USD/DKK': 0.05, 'USD/PLN': 0.04, 'EUR/TRY': 0.40,
+    'EUR/PLN': 0.05, 'EUR/NOK': 0.15, 'EUR/SEK': 0.13, 'EUR/HUF': 3.0, 'EUR/CZK': 0.12,
     # v9.3.0: Commodities
     'XAU/USD': 30.0, 'XAG/USD': 0.60, 'XPT/USD': 18.0,
     'WTI/USD': 1.80, 'BRENT/USD': 1.90
@@ -12880,12 +12883,14 @@ def generate_signal(pair):
                               'GBP/NOK', 'GBP/SEK', 'NOK/SEK', 'NOK/JPY', 'SEK/JPY']
         is_scandinavian = pair in scandinavian_pairs or 'NOK' in pair or 'SEK' in pair or 'DKK' in pair
 
+        # v9.5.1: PIP_LIMITS recalibrated for 0.001 pip_size on all exotics
+        # Exotic ATR range: 30-850 pips (PLN/DKK low end, TRY high end)
         PIP_LIMITS = {
             'MAJOR':     {'sl_abs_min': 12,  'sl_abs_max': 60,   'tp1_abs_max': 100,  'tp2_abs_max': 180},
             'MINOR':     {'sl_abs_min': 15,  'sl_abs_max': 80,   'tp1_abs_max': 140,  'tp2_abs_max': 240},
             'CROSS':     {'sl_abs_min': 18,  'sl_abs_max': 100,  'tp1_abs_max': 180,  'tp2_abs_max': 300},
-            'EXOTIC':    {'sl_abs_min': 25,  'sl_abs_max': 300,  'tp1_abs_max': 500,  'tp2_abs_max': 800},
-            'SCANDINAVIAN': {'sl_abs_min': 80, 'sl_abs_max': 400, 'tp1_abs_max': 600, 'tp2_abs_max': 1000},
+            'EXOTIC':    {'sl_abs_min': 30,  'sl_abs_max': 600,  'tp1_abs_max': 1000, 'tp2_abs_max': 1500},
+            'SCANDINAVIAN': {'sl_abs_min': 30, 'sl_abs_max': 600, 'tp1_abs_max': 1000, 'tp2_abs_max': 1500},
             'COMMODITY': {'sl_abs_min': 50,  'sl_abs_max': 500,  'tp1_abs_max': 800,  'tp2_abs_max': 1500}
         }
         # Use SCANDINAVIAN limits for NOK/SEK/DKK pairs
@@ -13097,8 +13102,8 @@ def generate_signal(pair):
                         liq_buffer = max(5, atr_pips * 0.3)
                         new_sl_pips = liquidity_distance + liq_buffer
 
-                        # Only adjust if within acceptable limits
-                        if new_sl_pips <= limits['sl_abs_max']:
+                        # v9.5.1: Must respect BOTH min and max limits
+                        if new_sl_pips >= limits['sl_abs_min'] and new_sl_pips <= limits['sl_abs_max']:
                             sl_pips = new_sl_pips
                             sl = liquidity_level - (liq_buffer * pip_size)
 
@@ -13114,7 +13119,8 @@ def generate_signal(pair):
                         liq_buffer = max(5, atr_pips * 0.3)
                         new_sl_pips = liquidity_distance + liq_buffer
 
-                        if new_sl_pips <= limits['sl_abs_max']:
+                        # v9.5.1: Must respect BOTH min and max limits
+                        if new_sl_pips >= limits['sl_abs_min'] and new_sl_pips <= limits['sl_abs_max']:
                             sl_pips = new_sl_pips
                             sl = liquidity_level + (liq_buffer * pip_size)
 
