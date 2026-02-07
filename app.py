@@ -13130,12 +13130,16 @@ def generate_signal(pair):
         tp1_pips = abs(tp1 - entry) / pip_size
         tp2_pips = abs(tp2 - entry) / pip_size
 
-        # Final safety check - ensure minimum R:R
+        # Final safety check - ensure minimum R:R and TP2 > TP1
         if tp1_pips < sl_pips * 1.3:
             tp1_pips = sl_pips * 1.5
             tp1 = entry + (tp1_pips * pip_size) if direction == 'LONG' else entry - (tp1_pips * pip_size)
         if tp2_pips < sl_pips * 2.0:
             tp2_pips = sl_pips * 2.5
+            tp2 = entry + (tp2_pips * pip_size) if direction == 'LONG' else entry - (tp2_pips * pip_size)
+        # v9.5.1: TP2 must always be beyond TP1
+        if tp2_pips < tp1_pips * 1.2:
+            tp2_pips = tp1_pips * 1.5
             tp2 = entry + (tp2_pips * pip_size) if direction == 'LONG' else entry - (tp2_pips * pip_size)
 
         # ─────────────────────────────────────────────────────────────────────────
