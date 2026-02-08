@@ -493,6 +493,10 @@ PAIR_CORRELATIONS = {
     ('WTI/USD', 'USD/CAD'): -0.70,      # Oil-USDCAD: Oil up = CAD up = USDCAD down
     ('XAU/USD', 'WTI/USD'): 0.35,       # Gold-Oil: weak positive (inflation hedge)
     ('XPT/USD', 'XAU/USD'): 0.75,       # Platinum-Gold: precious metals
+    # v9.6.2: Commodity-Forex cross-correlations
+    ('XAU/USD', 'AUD/USD'): 0.60,       # Gold-AUD: Australia #2 gold producer
+    ('WTI/USD', 'USD/NOK'): -0.65,      # Oil-NOK: Norway oil exporter (Oil ↑ = NOK ↑ = USD/NOK ↓)
+    ('WTI/USD', 'USD/JPY'): 0.30,       # Oil-USDJPY: Japan energy importer (Oil ↑ = JPY ↓ = USD/JPY ↑)
 }
 
 # Triangle relationships for arbitrage detection
@@ -8574,18 +8578,26 @@ def analyze_intermarket(pair):
         pass
     
     # ═══════════════════════════════════════════════════════════════════════════
-    # Gold Correlation (Risk Sentiment)
-    # High gold = Risk-off = Bearish for risk currencies (AUD, NZD), Bullish for JPY, CHF
+    # Gold Correlation (Risk Sentiment + Commodity Exporter)
+    # v9.6.2: AUD gets POSITIVE gold correlation (Australia #2 gold producer)
+    # Other risk currencies: Gold ↑ = Risk-off = Bearish
+    # Safe havens (JPY, CHF): Gold ↑ = Bullish (both safe-haven bids)
     # ═══════════════════════════════════════════════════════════════════════════
     if gold and pair != 'XAU/USD' and pair != 'XAG/USD' and pair != 'XPT/USD':  # v9.3.0: Skip self-reference for metals
         gold_baseline = dynamic.get('gold', 2000)  # v9.5.0: Dynamic 20d SMA
         gold_sentiment = (gold - gold_baseline) / max(gold_baseline, 1) * 100
 
-        risk_currencies = ['AUD', 'NZD', 'CAD', 'NOK', 'SEK']
+        # v9.6.2: Commodity gold exporters — gold ↑ = BULLISH (mining revenue outweighs risk-off)
+        commodity_gold_exporters = ['AUD']  # Australia: #2 gold producer, #1 iron ore exporter
+        risk_currencies = ['NZD', 'CAD', 'GBP', 'NOK', 'SEK']  # v9.6.2: AUD removed (exporter), GBP added
         safe_havens = ['JPY', 'CHF']
 
         gold_impact = 0
-        if base in risk_currencies:
+        if base in commodity_gold_exporters:
+            gold_impact = gold_sentiment * 0.4      # POSITIVE: exporter boost (~0.60 historical corr)
+        elif quote in commodity_gold_exporters:
+            gold_impact = -gold_sentiment * 0.4     # Quote AUD: inverted direction
+        elif base in risk_currencies:
             gold_impact = -gold_sentiment * 0.5
         elif base in safe_havens:
             gold_impact = gold_sentiment * 0.5
@@ -8599,11 +8611,16 @@ def analyze_intermarket(pair):
         signals.append(f"Gold at ${gold:.0f} (base ${gold_baseline:.0f}): {'Risk-off' if gold > gold_baseline else 'Risk-on'}")
 
         # v9.5.0: Gold momentum — rising gold signals increasing risk-off
+        # v9.6.2: AUD gets positive momentum (commodity exporter)
         try:
             gold_mom = dynamic.get('gold_momentum', 0)
             if abs(gold_mom) > 0.5:
                 gold_mom_impact = 0
-                if base in risk_currencies:
+                if base in commodity_gold_exporters:
+                    gold_mom_impact = gold_mom * 0.3    # POSITIVE for AUD
+                elif quote in commodity_gold_exporters:
+                    gold_mom_impact = -gold_mom * 0.3   # Inverted for quote AUD
+                elif base in risk_currencies:
                     gold_mom_impact = -gold_mom * 0.3
                 elif base in safe_havens:
                     gold_mom_impact = gold_mom * 0.3
@@ -8635,16 +8652,20 @@ def analyze_intermarket(pair):
         signals.append(f"US 10Y at {us_10y:.2f}%: {'High' if us_10y > 4.5 else 'Normal'}")
     
     # ═══════════════════════════════════════════════════════════════════════════
-    # Oil Correlation (CAD, NOK specific)
-    # Higher oil = Bullish for CAD
+    # Oil Correlation (Exporters + Importers)
+    # v9.6.2: Exporters (CAD, NOK): Oil ↑ = Bullish | Importers (JPY, INR, TRY): Oil ↑ = Bearish
     # ═══════════════════════════════════════════════════════════════════════════
+    oil_exporters = ['CAD', 'NOK']
+    oil_importers = ['JPY', 'INR', 'TRY']  # v9.6.2: Japan 90% energy import, India/Turkey major importers
+
+    # Oil exporter correlation (strong: 1.0x multiplier)
     if oil and ('CAD' in pair or 'NOK' in pair):
         oil_baseline = dynamic.get('oil', 75)  # v9.5.0: Dynamic 20d SMA
         oil_impact = (oil - oil_baseline) / max(oil_baseline, 1) * 20
 
-        if base in ['CAD', 'NOK']:
+        if base in oil_exporters:
             score += oil_impact
-        elif quote in ['CAD', 'NOK']:
+        elif quote in oil_exporters:
             score -= oil_impact
 
         correlations['oil'] = {'value': oil, 'impact': oil_impact, 'baseline': oil_baseline}
@@ -8655,14 +8676,30 @@ def analyze_intermarket(pair):
             oil_mom = dynamic.get('oil_momentum', 0)
             if abs(oil_mom) > 1:
                 oil_mom_impact = max(-5, min(5, oil_mom * 0.4))
-                if base in ['CAD', 'NOK']:
+                if base in oil_exporters:
                     score += oil_mom_impact
-                elif quote in ['CAD', 'NOK']:
+                elif quote in oil_exporters:
                     score -= oil_mom_impact
                 if abs(oil_mom_impact) > 1:
                     signals.append(f"Oil momentum: {'+' if oil_mom > 0 else ''}{oil_mom:.1f}%/5d")
         except Exception:
             pass
+
+    # v9.6.2: Oil importer correlation (weaker: 0.3x multiplier)
+    # Oil ↑ = energy cost pressure = bearish for importing economies
+    if oil and (base in oil_importers or quote in oil_importers):
+        oil_baseline = dynamic.get('oil', 75)
+        oil_import_impact = (oil - oil_baseline) / max(oil_baseline, 1) * 6  # 0.3x vs exporter's 1.0x
+
+        if base in oil_importers:
+            score -= oil_import_impact   # Oil up = bearish for importer base currency
+        elif quote in oil_importers:
+            score += oil_import_impact   # Oil up = quote weakens = pair rises
+
+        if 'oil' not in correlations:
+            correlations['oil'] = {'value': oil, 'impact': -oil_import_impact, 'baseline': oil_baseline}
+        if abs(oil_import_impact) > 1:
+            signals.append(f"Oil import pressure: ${oil:.1f} (base ${oil_baseline:.1f})")
 
     # ═══════════════════════════════════════════════════════════════════════════
     # v9.2.4: VIX Correlation (Fear Index)
@@ -8775,7 +8812,9 @@ def analyze_intermarket(pair):
 
             # Silver: gold-silver ratio (historically 60-80)
             if pair == 'XAG/USD' and gold:
-                silver_price = intermarket.get('silver', 30)
+                # v9.6.2: Use real XAG/USD rate instead of hardcoded $30
+                silver_rate = get_rate('XAG/USD')
+                silver_price = silver_rate.get('mid', 0) if silver_rate else intermarket.get('silver', 30)
                 if silver_price > 0:
                     gold_silver = gold / silver_price
                     if gold_silver > 85:
