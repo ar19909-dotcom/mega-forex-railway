@@ -2894,11 +2894,31 @@
         });
         
         // Load Signals - Uses /signals endpoint
+        // v9.6.1: localStorage cache for instant render on page load
         let lastSignalsUpdate = null;
         async function loadSignals(forceRefresh = false) {
             const container = document.getElementById('signals-container');
-            const loadingText = forceRefresh ? 'Auto-refreshing signals...' : 'Loading signals...';
-            container.innerHTML = `<div class="loading"><div class="spinner"></div>${loadingText}</div>`;
+
+            // v9.6.1: Show cached data instantly while fetching fresh data
+            const cachedJson = localStorage.getItem('megaforex_signals');
+            if (cachedJson && !forceRefresh) {
+                try {
+                    const cachedData = JSON.parse(cachedJson);
+                    if (cachedData.signals && cachedData.signals.length > 0) {
+                        signalsData = cachedData.signals;
+                        renderSignals();
+                        updateStats();
+                        document.getElementById('connection-dot').style.background = 'var(--accent-yellow)';
+                        document.getElementById('connection-text').textContent = 'Updating...';
+                    }
+                } catch(e) { /* invalid cache, ignore */ }
+            }
+
+            // Show spinner only if no cached data was rendered
+            if (!signalsData || signalsData.length === 0) {
+                const loadingText = forceRefresh ? 'Auto-refreshing signals...' : 'Loading signals...';
+                container.innerHTML = `<div class="loading"><div class="spinner"></div>${loadingText}</div>`;
+            }
 
             try {
                 // v9.5.0: Only add refresh=true on MANUAL refresh (button click), not auto-refresh
@@ -2911,6 +2931,10 @@
                     lastSignalsUpdate = new Date();
                     renderSignals();
                     updateStats();
+                    // v9.6.1: Save to localStorage for instant next load
+                    try {
+                        localStorage.setItem('megaforex_signals', JSON.stringify(data));
+                    } catch(e) { /* storage full, ignore */ }
                     document.getElementById('connection-dot').style.background = 'var(--accent-green)';
                     document.getElementById('connection-text').textContent = 'Connected';
                     // Update refresh timer display
@@ -2920,7 +2944,10 @@
                 }
             } catch (error) {
                 console.error('Error loading signals:', error);
-                container.innerHTML = '<div class="loading" style="color: var(--accent-red);">Failed to load signals. Is backend running?</div>';
+                // Only show error if we have no cached data at all
+                if (!signalsData || signalsData.length === 0) {
+                    container.innerHTML = '<div class="loading" style="color: var(--accent-red);">Failed to load signals. Is backend running?</div>';
+                }
                 document.getElementById('connection-dot').style.background = 'var(--accent-red)';
                 document.getElementById('connection-text').textContent = 'Disconnected';
             }

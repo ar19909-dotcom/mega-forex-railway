@@ -201,7 +201,7 @@ OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '')
 AI_FACTOR_CONFIG = {
     'enabled': True,                    # Set to False to disable AI factor
     'model': 'gpt-4o-mini',             # OpenAI model to use (gpt-4o-mini available)
-    'cache_ttl': 1800,                  # 30 minutes cache
+    'cache_ttl': 3600,                  # v9.6.1: 1 hour cache (was 30min — AI analysis valid hourly)
     'min_signal_strength': 5,           # Only call AI for signals with strength >= 5 (faster load)
     'max_pairs_per_refresh': 10,        # Reduced from 15 to speed up loading
     'timeout': 15,                      # v9.2.4: Increased to 15s to avoid timeout errors
@@ -1271,6 +1271,7 @@ cache = {
 
 # Thread lock for cache access (prevents race conditions in ThreadPoolExecutor)
 cache_lock = threading.Lock()
+_bg_regen_lock = threading.Lock()  # v9.6.1: Prevents multiple simultaneous background regenerations
 
 CACHE_TTL = {
     'rates': 120,     # v9.4.0: 120 seconds (was 30s - too short, expired before signal generation finished)
@@ -15871,6 +15872,91 @@ def get_rates_endpoint():
         'rates': rates
     })
 
+def _regenerate_signals_background():
+    """v9.6.1: Background signal regeneration — runs full pipeline and updates cache silently"""
+    if not _bg_regen_lock.acquire(blocking=False):
+        logger.debug("📊 Background regen: Already running, skipping")
+        return
+    try:
+        import time as _time
+        bg_start = _time.time()
+        logger.info("📊 Background regen: Starting full signal regeneration...")
+
+        # Pre-fetch phase (same as /signals endpoint)
+        def _bg_prefetch_shared():
+            try:
+                get_fundamental_data()
+                get_real_intermarket_data()
+                get_calendar_risk('EUR/USD')  # Warms calendar cache
+            except Exception:
+                pass
+
+        def _bg_prefetch_positioning():
+            try:
+                get_all_ig_sentiment()
+                get_saxo_sentiment()
+            except Exception:
+                pass
+
+        def _bg_prefetch_candles():
+            count = 0
+            with ThreadPoolExecutor(max_workers=10) as ce:
+                futs = {ce.submit(get_polygon_candles, pair, 'day', 100): pair for pair in ALL_INSTRUMENTS}
+                for f in as_completed(futs):
+                    try:
+                        if f.result(timeout=10):
+                            count += 1
+                    except Exception:
+                        pass
+            return count
+
+        with ThreadPoolExecutor(max_workers=4) as pe:
+            pe.submit(get_all_rates)
+            pe.submit(_bg_prefetch_candles)
+            pe.submit(_bg_prefetch_shared)
+            pe.submit(_bg_prefetch_positioning)
+
+        # Signal generation phase
+        signals = []
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            future_to_pair = {executor.submit(generate_signal, pair): pair for pair in ALL_INSTRUMENTS}
+            for future in as_completed(future_to_pair):
+                try:
+                    signal = future.result(timeout=20)
+                    if signal:
+                        signals.append(signal)
+                except Exception:
+                    pass
+
+        if signals:
+            # Sort same as /signals endpoint
+            def _sort_key(x):
+                d = x.get('direction', 'NEUTRAL')
+                s = abs(x.get('composite_score', 50) - 50)
+                return (0 if d in ['LONG', 'SHORT'] else 1, -s)
+            signals.sort(key=_sort_key)
+
+            result = {
+                'success': True,
+                'count': len(signals),
+                'timestamp': datetime.now().isoformat(),
+                'version': '9.0',
+                'signals': signals
+            }
+            with cache_lock:
+                cache['signals']['data'] = result
+                cache['signals']['timestamp'] = datetime.now()
+
+            bg_time = round(_time.time() - bg_start, 1)
+            logger.info(f"📊 Background regen: Done in {bg_time}s — {len(signals)} signals cached")
+        else:
+            logger.warning("📊 Background regen: No signals generated, keeping old cache")
+    except Exception as e:
+        logger.warning(f"📊 Background regen error: {e}")
+    finally:
+        _bg_regen_lock.release()
+
+
 @app.route('/signals')
 def get_signals():
     """Get all trading signals with caching for fast loading"""
@@ -15886,16 +15972,21 @@ def get_signals():
                     logger.debug("📊 Signals: Returning cached data")
                     return jsonify(cached)
 
-        # v9.4.0: Stale-while-revalidate — serve stale cache if expired by < 10 minutes
-        # Beyond 10 minutes stale, force full regeneration for data freshness
+        # v9.6.1: Stale-while-revalidate — serve stale cache up to 1 hour old
+        # Kick off background regeneration if stale > 5 min to keep data fresh
         if not force_refresh:
             with cache_lock:
                 stale_data = cache.get('signals', {}).get('data')
                 stale_ts = cache.get('signals', {}).get('timestamp')
             if stale_data and stale_ts:
                 stale_age = (datetime.now() - stale_ts).total_seconds()
-                if stale_age < 600:  # Less than 10 minutes old — still usable
+                if stale_age < 3600:  # v9.6.1: Extended from 600s to 3600s (1 hour)
                     logger.info(f"📊 Signals: Serving stale cache ({int(stale_age)}s old, instant response)")
+                    # v9.6.1: Trigger background regeneration if cache is older than 5 minutes
+                    if stale_age > 300 and not _bg_regen_lock.locked():
+                        from threading import Thread
+                        Thread(target=_regenerate_signals_background, daemon=True).start()
+                        logger.info("📊 Signals: Background regeneration started")
                     return jsonify(stale_data)
                 else:
                     logger.info(f"📊 Signals: Cache too old ({int(stale_age)}s), regenerating...")
@@ -15916,13 +16007,18 @@ def get_signals():
         candle_count = 0
 
         def _prefetch_shared_data():
-            """Pre-fetch fundamental, intermarket, calendar data"""
-            try:
-                get_fundamental_data()
-                get_intermarket_data()
-                get_calendar_data()
-            except Exception as e:
-                logger.debug(f"Pre-fetch shared data warning: {e}")
+            """Pre-fetch fundamental, intermarket, calendar data (v9.6.1: parallel)"""
+            with ThreadPoolExecutor(max_workers=3) as shared_ex:
+                shared_futs = [
+                    shared_ex.submit(get_fundamental_data),
+                    shared_ex.submit(get_real_intermarket_data),
+                    shared_ex.submit(get_calendar_risk, 'EUR/USD'),  # Warms calendar cache
+                ]
+                for sf in as_completed(shared_futs):
+                    try:
+                        sf.result(timeout=10)
+                    except Exception as e:
+                        logger.debug(f"Pre-fetch shared data warning: {e}")
 
         def _prefetch_positioning():
             """v9.4.0: Pre-fetch ALL sentiment data in batch (avoids 50 individual API calls)"""
@@ -16776,22 +16872,31 @@ def get_all_ig_sentiment():
     
     results = []
     batch_data = {}
+    batch_lock = threading.Lock()
 
-    for pair, market_id in ig_market_ids.items():
+    # v9.6.1: Parallel IG sentiment fetch (was sequential — 20 calls × 1s = 20s, now 5 workers = ~4s)
+    def _fetch_ig_one(pair, market_id):
         sentiment = get_ig_client_sentiment(market_id)
-
         if sentiment:
             long_pct = sentiment['long_percentage']
             short_pct = sentiment['short_percentage']
-            batch_data[market_id] = sentiment
+            with batch_lock:
+                batch_data[market_id] = sentiment
+                results.append({
+                    'pair': pair,
+                    'long_percentage': long_pct,
+                    'short_percentage': short_pct,
+                    'contrarian_signal': 'SHORT' if long_pct > 60 else 'LONG' if long_pct < 40 else 'NEUTRAL',
+                    'source': 'IG_REAL'
+                })
 
-            results.append({
-                'pair': pair,
-                'long_percentage': long_pct,
-                'short_percentage': short_pct,
-                'contrarian_signal': 'SHORT' if long_pct > 60 else 'LONG' if long_pct < 40 else 'NEUTRAL',
-                'source': 'IG_REAL'
-            })
+    with ThreadPoolExecutor(max_workers=5) as ig_executor:
+        ig_futures = [ig_executor.submit(_fetch_ig_one, pair, mid) for pair, mid in ig_market_ids.items()]
+        for f in as_completed(ig_futures):
+            try:
+                f.result(timeout=8)
+            except Exception:
+                pass
 
     # v9.4.0: Populate batch cache so per-pair calls don't make redundant API requests
     if batch_data:
